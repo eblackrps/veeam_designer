@@ -14,6 +14,12 @@ Two components:
 
 ---
 
+## What's new in v3.1.0
+
+- **Bug fixes** — 4 critical engine math errors corrected (replication change rate, replica storage
+  formula, WAN accelerator unit conversion, proxy task threshold), plus 5 high and 5 medium issues
+  resolved from a full code review before public release. See [CHANGELOG](CHANGELOG.md) for details.
+
 ## What's new in v3.0.0
 
 - **Form UX overhaul** — datalist dropdowns for common values, pre-populated defaults, workload type tabs (VM / NAS / Physical / Replication)
@@ -60,7 +66,7 @@ ui/
     report.html       # Downloadable HTML report template
 config.json           # Engine tuning parameters
 profiles.json         # MSP / SMB / Enterprise / Dedupe presets
-pyproject.toml        # Package metadata (veeam-designer 3.0.0)
+pyproject.toml        # Package metadata (veeam-designer 3.1.0)
 example-project.yml   # Reference project file
 tests/                # 12-module pytest suite
 ```
@@ -151,7 +157,7 @@ After running, the dashboard shows:
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/health` | `{"status": "ok", "version": "3.0.0"}` |
+| `GET` | `/api/health` | `{"status": "ok", "version": "3.1.0"}` |
 | `GET` | `/api/profiles` | List available profile names |
 | `POST` | `/api/design` | Accept YAML body (`text/plain`), return full JSON design |
 
@@ -232,7 +238,7 @@ sites:
 
 ---
 
-## New Engine Modules (v3.0.0)
+## Engine Modules (added in v3.0.0)
 
 ### WAN Accelerator (`wan_accel.py`)
 
