@@ -822,6 +822,22 @@
                 </div></div>
               {% endif %}
 
+              <!-- WAN Accelerator / BCJ card -->
+              {% if site.wan_accel and site.wan_accel.source_appliance_count > 0 %}
+              <div class="mt-2 p-2 bg-slate-800 border border-slate-700 rounded-lg">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">WAN Accelerator / Backup Copy</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div><span class="text-slate-400">Source Appliances</span><br><span class="text-slate-100 font-semibold">{{ site.wan_accel.source_appliance_count }}</span></div>
+                  <div><span class="text-slate-400">Target Appliances</span><br><span class="text-slate-100 font-semibold">{{ site.wan_accel.target_appliance_count }}</span></div>
+                  <div><span class="text-slate-400">Cache per Source</span><br><span class="text-slate-100 font-semibold">{{ site.wan_accel.cache_size_gb_per_source }} GB</span></div>
+                  <div><span class="text-slate-400">Effective Throughput</span><br><span class="text-slate-100 font-semibold">{{ site.wan_accel.effective_mbps }} Mbps</span></div>
+                  <div class="col-span-2"><span class="text-slate-400">BCJ Window</span><br>
+                    <span class="font-semibold {% if site.wan_accel.meets_copy_window %} text-green-400{% else %} text-amber-400{% endif %}">
+                      {{ site.wan_accel.backup_copy_window_hours }} h — {% if site.wan_accel.meets_copy_window %}fits within copy frequency{% else %}exceeds copy frequency{% endif %}
+                    </span></div>
+                </div></div>
+              {% endif %}
+
               <!-- 3-year TCO and cloud comparison -->
               {% if site.three_year_tco %}
               <div class="mt-2 p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg text-[11px]">

@@ -121,6 +121,21 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     from .nas import size_nas as _size_nas
     nas_design = _size_nas(vin.nas_input) if vin.nas_input else None
 
+    # v3: WAN accelerator sizing
+    from .wan_accel import size_wan_accel as _size_wa
+    from .models import WanAccelInput as _WaIn
+    wan_accel_design = None
+    if vin.wan_accel_input:
+        wan_accel_design = _size_wa(vin.wan_accel_input)
+    elif vin.wan_bandwidth_mbps > 0:
+        wa_in = _WaIn(
+            source_tb=vin.total_data_tb,
+            wan_mbps=vin.wan_bandwidth_mbps,
+            dedupe_ratio=vin.dedupe_ratio,
+            compression_ratio=vin.compression_ratio,
+        )
+        wan_accel_design = _size_wa(wa_in)
+
     blueprint = build_blueprint(roles, jobs, sobr, repo_perf, network, cost)
     blueprint.orca = orca
 
@@ -142,6 +157,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     design.risk = compute_risk(design)
     design.replication = replication_design
     design.nas = nas_design
+    design.wan_accel = wan_accel_design
     return design
 
 

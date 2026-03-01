@@ -313,3 +313,119 @@ class AgentDesign:
     coordinator_cores: int
     coordinator_ram_gb: int
     notes: List[str] = field(default_factory=list)
+
+# ---------------------------------------------------------------------------
+# v3 Round 4: WAN Accelerator
+# ---------------------------------------------------------------------------
+
+@dataclass
+class WanAccelInput:
+    source_tb: float
+    wan_mbps: float
+    backup_copy_frequency_hours: float = 24.0
+    dedupe_ratio: float = 3.0
+    compression_ratio: float = 1.6
+
+
+@dataclass
+class WanAccelDesign:
+    source_appliance_count: int
+    target_appliance_count: int
+    cache_size_gb_per_source: int
+    effective_mbps: float
+    meets_copy_window: bool
+    backup_copy_window_hours: float
+    notes: list = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# v3 Round 5: Licensing
+# ---------------------------------------------------------------------------
+
+@dataclass
+class LicenseInput:
+    vm_count: int
+    physical_count: int = 0
+    nas_tb: float = 0.0
+    cloud_workloads: int = 0
+    license_type: str = "vul"
+
+
+@dataclass
+class LicenseEstimate:
+    protected_workloads: int
+    estimated_sockets: int
+    tier: str
+    annual_maintenance_usd: float
+    notes: list = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# v3 Round 6: Tape / Archive
+# ---------------------------------------------------------------------------
+
+@dataclass
+class TapeInput:
+    archive_tb: float
+    lto_generation: int = 9
+    retention_years: int = 7
+    daily_change_pct: float = 1.0
+
+
+@dataclass
+class TapeDesign:
+    cartridge_count: int
+    drive_count_recommended: int
+    library_slots_needed: int
+    lto_generation: int
+    tb_per_cartridge: float
+    annual_media_cost_usd: float
+    notes: list = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# v3 Round 7: Veeam ONE
+# ---------------------------------------------------------------------------
+
+@dataclass
+class VeeamOneInput:
+    protected_vms: int
+    protected_physical: int = 0
+    retention_days: int = 30
+    enterprise_manager: bool = False
+    vspc_tenants: int = 0
+
+
+@dataclass
+class VeeamOneDesign:
+    server_cores: int
+    server_ram_gb: int
+    database_size_gb: int
+    em_cores: int = 0
+    em_ram_gb: int = 0
+    vspc_cores: int = 0
+    notes: list = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# v3 Round 8: Compliance
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ComplianceInput:
+    framework: str
+    current_retention_days: int
+    immutability_enabled: bool = False
+    encryption_enabled: bool = True
+    offsite_copy_enabled: bool = False
+    target_rpo_hours: float = 24.0
+
+
+@dataclass
+class ComplianceResult:
+    framework: str
+    compliant: bool
+    gaps: list = field(default_factory=list)
+    recommended_retention_days: int = 0
+    risk_level: str = "compliant"
+
