@@ -34,7 +34,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/veeam-designer:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/veeam-designer:${{ github.ref_name }}
+            eblack079/veeam-designer:latest
+            eblack079/veeam-designer:${{ github.ref_name }}
             ghcr.io/eblackrps/veeam-designer:latest
             ghcr.io/eblackrps/veeam-designer:${{ github.ref_name }}
