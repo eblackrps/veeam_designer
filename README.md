@@ -54,10 +54,15 @@ pip install -e .
 pip install -e ".[web]"
 ```
 
-Or manually:
+Or individually:
 ```bash
 pip install fastapi uvicorn jinja2 python-multipart
 ```
+
+> **Install everything at once:**
+> ```bash
+> pip install -e ".[web,dev]"
+> ```
 
 ---
 

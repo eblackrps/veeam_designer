@@ -7,7 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.0.0] – 2025-12-15
+## [Unreleased]
+
+---
+
+## [1.0.0] – 2026-03-01
 
 First stable release.
 
@@ -40,4 +44,4 @@ First stable release.
 
 ## [0.95] – 2025-12-15
 
-Initial preview release.
+Initial preview release (pre-repo, internal distribution).
