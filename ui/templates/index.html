@@ -228,6 +228,25 @@
               </div>
             </div>
 
+            <!-- NAS workload section -->
+            <div id="section-nas" class="hidden bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-4">
+              <h3 class="text-sm font-semibold text-slate-300 mb-3">NAS / Unstructured Configuration</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs text-slate-400 mb-1">Source Data (TB)</label><input type="number" id="nas-source-tb" value="50" min="0" step="any" list="dl-tb" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Share Count</label><input type="number" id="nas-share-count" value="100" min="1" list="dl-shares" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">File Count (millions)</label><input type="number" id="nas-file-count" value="1" min="0" step="0.1" list="dl-files" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Compression Preset</label><select id="nas-compress" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"><option value="10">Media (10% — video/images)</option><option value="30" selected>Mix (30% — general files)</option><option value="50">Documents (50% — office files)</option></select></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Daily Change %</label><input type="number" id="nas-daily" value="5" min="0" step="0.5" list="dl-daily-churn" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Retention (days)</label><input type="number" id="nas-retention" value="14" min="1" list="dl-retention" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Backup Window (hrs)</label><input type="number" id="nas-window" value="8" min="1" list="dl-window" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Annual Growth %</label><input type="number" id="nas-growth" value="10" min="0" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+              </div>
+              <div class="flex gap-6 mt-3">
+                <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"><input type="checkbox" id="nas-cft" class="rounded border-slate-500"><span>Storage-native CFT</span></label>
+                <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"><input type="checkbox" id="nas-immutability" class="rounded border-slate-500"><span>Immutability</span></label>
+              </div>
+            </div>
+
             <!-- Sites -->
             <div id="sites-container" class="space-y-4">
               <!-- Site 1 -->
@@ -1577,6 +1596,18 @@ function buildYamlFromForm() {
         const notes = notesEl ? notesEl.value : "";
         const notesLine = notes ? `    notes: ${JSON.stringify(notes)}\n` : "";
 
+        const nasBlock = activeWtype === 'nas' ? `  nas:
+    source_tb: ${cleanNumber(document.getElementById('nas-source-tb')?.value, 50)}
+    share_count: ${cleanNumber(document.getElementById('nas-share-count')?.value, 100)}
+    file_count_millions: ${cleanNumber(document.getElementById('nas-file-count')?.value, 1)}
+    compress_pct: ${cleanNumber(document.getElementById('nas-compress')?.value, 30)}
+    daily_change_pct: ${cleanNumber(document.getElementById('nas-daily')?.value, 5)}
+    retention_days: ${cleanNumber(document.getElementById('nas-retention')?.value, 14)}
+    backup_window_hours: ${cleanNumber(document.getElementById('nas-window')?.value, 8)}
+    growth_rate_pct: ${cleanNumber(document.getElementById('nas-growth')?.value, 10)}
+    storage_native_cft: ${document.getElementById('nas-cft')?.checked ? 'true' : 'false'}
+    immutability_enabled: ${document.getElementById('nas-immutability')?.checked ? 'true' : 'false'}` : '';
+
         return `  - name: ${name}
     veeam_input:
       total_data_tb: ${data}
@@ -1596,7 +1627,7 @@ function buildYamlFromForm() {
       hypervisor: ${hypervisor}
       has_san_access: ${san}
       on_host_proxy: ${onhost}
-      refs_xfs: ${refsXfs}
+${repBlock}${nasBlock}      refs_xfs: ${refsXfs}
       immutability_enabled: ${immutability}
       capacity_tier_enabled: ${capTier}
       direct_to_object: ${directObj}
