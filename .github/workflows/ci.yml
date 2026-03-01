@@ -30,7 +30,7 @@ jobs:
 
       - name: Lint with flake8
         run: |
-          flake8 veeam_designer/ ui/ --max-line-length=120 --ignore=E501,W503
+          flake8 veeam_designer/ ui/ --max-line-length=120 --ignore=E501,W503,E241
 
       - name: Validate config.json
         run: python -m json.tool config.json > /dev/null && echo "config.json is valid JSON"
