@@ -648,13 +648,22 @@
             <h2 class="text-sm font-semibold text-emerald-300 uppercase tracking-wide">
               Environment summary
             </h2>
-            <button
-              id="export-csv"
-              type="button"
-              class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500 text-slate-900 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900"
-            >
-              Export CSV
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                id="export-csv"
+                type="button"
+                class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500 text-slate-900 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+              >
+                Export CSV
+              </button>
+              <a
+                id="export-report"
+                href="/export/report"
+                class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-600 text-slate-100 hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+              >
+                Download Report
+              </a>
+            </div>
           </div>
 
           <div class="mb-3">

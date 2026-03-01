@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -394,6 +395,23 @@ async def export_csv() -> PlainTextResponse:
         content=csv_text,
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=veeam-designer-dashboard.csv"},
+    )
+
+
+@app.get("/export/report")
+async def export_report(request: Request):
+    """Download a self-contained HTML design report."""
+    if LAST_DASHBOARD_DATA is None:
+        raise HTTPException(status_code=400, detail="No dashboard data available. Run a design first.")
+    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    html_content = templates.TemplateResponse(
+        "report.html",
+        {"request": request, "dashboard": LAST_DASHBOARD_DATA, "generated_at": generated_at},
+    ).body.decode("utf-8")
+    return PlainTextResponse(
+        content=html_content,
+        media_type="text/html",
+        headers={"Content-Disposition": "attachment; filename=veeam-design-report.html"},
     )
 
 
