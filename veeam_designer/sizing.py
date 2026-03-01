@@ -158,6 +158,19 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     design.replication = replication_design
     design.nas = nas_design
     design.wan_accel = wan_accel_design
+
+    # v3: license estimation
+    from .licensing import estimate_license as _est_lic
+    from .models import LicenseInput as _LicIn
+    lic_in = vin.license_input or _LicIn(
+        vm_count=vin.vm_count,
+        physical_count=0,
+        nas_tb=0.0,
+        cloud_workloads=0,
+        license_type="vul",
+    )
+    design.license_estimate = _est_lic(lic_in)
+
     return design
 
 

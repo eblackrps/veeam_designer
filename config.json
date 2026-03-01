@@ -18,5 +18,7 @@
   "aws_s3_cost_per_tb_month": 23.0,
   "azure_blob_cost_per_tb_month": 18.0,
   "wasabi_cost_per_tb_month": 6.99,
-  "objectfirst_cost_per_tb_month": 15.0
+  "objectfirst_cost_per_tb_month": 15.0,
+  "vul_price_per_instance_usd": 150.0,
+  "vul_enterprise_price_usd": 120.0
 }
