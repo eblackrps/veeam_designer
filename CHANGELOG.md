@@ -11,6 +11,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [3.0.0] – 2026-03-01
+
+### Added
+- **Round 1**: Form UX overhaul — HTML datalists for common values, pre-populated defaults, workload type tabs (VM / NAS / Physical / Replication)
+- **Round 2**: Replication sizing section — replica storage, CDP proxy + journal sizing, dashboard card
+- **Round 3**: NAS / unstructured backup sizing — file proxy sizing, cache repo, dashboard card
+- **Round 4**: WAN accelerator sizing (`wan_accel.py`) — source/target appliance count, cache, effective throughput, BCJ window validation
+- **Round 5**: Veeam VUL license estimator (`licensing.py`) — workload count, tier (community/standard/enterprise), annual cost
+- **Round 6**: LTO tape library sizing (`tape.py`) — cartridge count, scratch pool, slots, drives, media cost
+- **Round 7**: Veeam ONE + Enterprise Manager sizing (`veeam_one.py`) — tiered by workload count, DB sizing, EM/VSPC
+- **Round 8**: Compliance gap analysis (`compliance.py`) — HIPAA, SOC 2, GDPR, PCI DSS, DORA frameworks
+- **Round 9**: Downloadable self-contained HTML design report (`/export/report`)
+- **Round 10**: REST API (`/api/health`, `/api/profiles`, `/api/design`), 12-module pytest suite, v3.0.0 packaging
+
+---
+
 ## [2.0.0] – 2026-03-01
 
 ### Added

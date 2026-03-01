@@ -8,8 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Form, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse
+from fastapi import Body, FastAPI, Form, Request, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
 # Project root: ...\veeam-designer-final-with-ui
@@ -487,3 +487,37 @@ async def post_run(
             "dashboard": dashboard,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# REST API
+# ---------------------------------------------------------------------------
+
+@app.get("/api/health")
+async def api_health():
+    """Health check endpoint."""
+    return {"status": "ok", "version": "3.0.0"}
+
+
+@app.get("/api/profiles")
+async def api_profiles():
+    """List available sizing profiles."""
+    profiles_path = BASE_DIR / "profiles.json"
+    if profiles_path.exists():
+        import json as _json
+        data = _json.loads(profiles_path.read_text(encoding="utf-8"))
+        return {"profiles": list(data.get("profiles", {}).keys())}
+    return {"profiles": ["smb", "enterprise", "msp", "dedupe"]}
+
+
+@app.post("/api/design")
+async def api_design(yaml_content: str = Body(..., media_type="text/plain")):
+    """Accept YAML project definition, return JSON design output."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / "project.yml"
+        tmp_path.write_text(yaml_content, encoding="utf-8")
+        try:
+            data = run_cli_with_json(tmp_path)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+    return JSONResponse(content=data)

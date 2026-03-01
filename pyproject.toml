@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "veeam-designer"
-version = "2.0.0"
+version = "3.0.0"
 description = "Veeam backup environment sizing and architecture designer"
 authors = [{name = "E. Black"}]
 license = {text = "MIT"}
@@ -34,7 +34,7 @@ veeam-designer = "veeam_designer.cli:main"
 
 [project.optional-dependencies]
 web = ["fastapi", "uvicorn", "jinja2", "python-multipart"]
-dev = ["flake8", "pytest"]
+dev = ["flake8", "pytest", "httpx"]
 
 [tool.setuptools.packages.find]
 include = ["veeam_designer*"]
