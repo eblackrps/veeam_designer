@@ -209,6 +209,25 @@
             </div>
             <input type="hidden" id="active-workload-type" name="active_workload_type" value="vm">
 
+            <!-- Replication workload section -->
+            <div id="section-replication" class="hidden bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-4">
+              <h3 class="text-sm font-semibold text-slate-300 mb-3">Replication Configuration</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs text-slate-400 mb-1">Source Data (TB)</label><input type="number" id="rep-source-tb" value="100" min="0" step="any" list="dl-tb" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">VM Count</label><input type="number" id="rep-vm-count" value="500" min="0" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">WAN to DR Site (Mbps)</label><input type="number" id="rep-wan-mbps" value="1000" min="0" list="dl-wan" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Target RPO (hours)</label><input type="number" id="rep-rpo-hours" value="1" min="0.25" step="0.25" list="dl-rpo-hrs" class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100"></div>
+              </div>
+              <div class="flex gap-6 mt-3">
+                <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"><input type="checkbox" id="rep-cdp" class="rounded border-slate-500"><span>Enable CDP (near-zero RPO)</span></label>
+                <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"><input type="checkbox" id="rep-compression" checked class="rounded border-slate-500"><span>Replica compression</span></label>
+              </div>
+              <div id="rep-cdp-opts" class="hidden mt-3">
+                <label class="block text-xs text-slate-400 mb-1">CDP RPO (seconds)</label>
+<input type="number" id="rep-rpo-sec" value="15" min="2" max="60" class="w-32 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100">
+              </div>
+            </div>
+
             <!-- Sites -->
             <div id="sites-container" class="space-y-4">
               <!-- Site 1 -->
@@ -751,6 +770,37 @@
                   {% endif %}
                 </p>
               </div>
+              {% endif %}
+
+              <!-- Replication design card -->
+              {% if site.replication %}
+              <div class="mt-2 p-2 bg-slate-800 border border-slate-700 rounded-lg">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Replication</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div><span class="text-slate-400">Replica Storage</span><br><span class="text-slate-100 font-semibold">{{ "%.1f"|format(site.replication.replica_storage_tb) }} TB</span></div>
+                  <div><span class="text-slate-400">Required WAN</span><br><span class="text-slate-100 font-semibold">{{ "%.0f"|format(site.replication.required_mbps) }} Mbps</span></div>
+                  <div class="col-span-2"><span class="text-slate-400">RPO Feasibility</span><br>
+                    <span class="font-semibold {% if site.replication.meets_rpo %} text-green-400{% else %} text-red-400{% endif %}">
+                      {% if site.replication.meets_rpo %}Meets RPO target{% else %}RPO not achievable on current WAN{% endif %}
+                    </span></div>
+                  {% if site.replication.cdp_proxy_cores %}
+                  <div><span class="text-slate-400">CDP Journal</span><br><span class="text-slate-100 font-semibold">{{ "%.2f"|format(site.replication.cdp_journal_tb) }} TB</span></div>
+                  <div><span class="text-slate-400">CDP Proxy Cores</span><br><span class="text-slate-100 font-semibold">{{ site.replication.cdp_proxy_cores }} cores</span></div>
+                  {% endif %}
+                </div></div>
+              {% endif %}
+
+              <!-- NAS design card -->
+              {% if site.nas %}
+              <div class="mt-2 p-2 bg-slate-800 border border-slate-700 rounded-lg">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">NAS / Unstructured</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div><span class="text-slate-400">Cache Repo</span><br><span class="text-slate-100 font-semibold">{{ "%.2f"|format(site.nas.cache_repo_tb) }} TB</span></div>
+                  <div><span class="text-slate-400">Primary Backup</span><br><span class="text-slate-100 font-semibold">{{ "%.1f"|format(site.nas.primary_repo_tb) }} TB</span></div>
+                  <div><span class="text-slate-400">GFS Copies</span><br><span class="text-slate-100 font-semibold">{{ "%.1f"|format(site.nas.gfs_repo_tb) }} TB</span></div>
+                  <div><span class="text-slate-400">Total NAS Repo</span><br><span class="text-blue-400 font-bold">{{ "%.1f"|format(site.nas.total_repo_tb) }} TB</span></div>
+                  <div class="col-span-2"><span class="text-slate-400">File Proxy</span><br><span class="text-slate-100 font-semibold">{{ site.nas.file_proxy_cores }} cores / {{ site.nas.file_proxy_ram_gb }} GB RAM</span></div>
+                </div></div>
               {% endif %}
 
               <!-- 3-year TCO and cloud comparison -->
@@ -1694,6 +1744,15 @@ function restoreFormState() {
       switchMode(mode);
       validateDesignForm();
     }
+    // CDP toggle
+    var repCdpCb = document.getElementById('rep-cdp');
+    if (repCdpCb) {
+      repCdpCb.addEventListener('change', function() {
+        var opts = document.getElementById('rep-cdp-opts');
+        if (opts) opts.classList.toggle('hidden', !this.checked);
+      });
+    }
+
     // Workload type tab switching
     document.querySelectorAll('.wtype-tab').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -1705,6 +1764,10 @@ function restoreFormState() {
         btn.classList.add('bg-green-600', 'text-white', 'border-green-500');
         var wtype = btn.getAttribute('data-wtype');
         document.getElementById('active-workload-type').value = wtype;
+        var repSection = document.getElementById('section-replication');
+        if (repSection) repSection.classList.toggle('hidden', wtype !== 'replication');
+        var nasSection = document.getElementById('section-nas');
+        if (nasSection) nasSection.classList.toggle('hidden', wtype !== 'nas');
         saveFormState();
       });
     });

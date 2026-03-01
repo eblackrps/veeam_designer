@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from .config import CONFIG
 
 
@@ -51,6 +51,15 @@ class VeeamInput:
     capacity_tier_fraction: float = 0.5
     direct_to_object: bool = False
     capacity_tier_immutable: bool = False
+
+    # v3: optional sub-workload inputs
+    compliance_framework: str = "none"
+    replication_input: Optional[Any] = field(default=None)
+    nas_input: Optional[Any] = field(default=None)
+    wan_accel_input: Optional[Any] = field(default=None)
+    tape_input: Optional[Any] = field(default=None)
+    license_input: Optional[Any] = field(default=None)
+    veeam_one_input: Optional[Any] = field(default=None)
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +231,13 @@ class VeeamDesign:
     risk: RiskScore
     notes: Dict[str, str]
     orca: Optional["OrcaDesign"] = None
+    replication: Optional["ReplicationDesign"] = field(default=None)
+    nas: Optional["NasDesign"] = field(default=None)
+    wan_accel: Optional["WanAccelDesign"] = field(default=None)
+    license_estimate: Optional["LicenseEstimate"] = field(default=None)
+    tape: Optional["TapeDesign"] = field(default=None)
+    veeam_one: Optional["VeeamOneDesign"] = field(default=None)
+    compliance: Optional["ComplianceResult"] = field(default=None)
 
 
 @dataclass

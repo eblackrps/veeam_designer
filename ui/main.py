@@ -81,6 +81,8 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
         cost = design.get("cost", {})
         sobr = design.get("sobr", {})
         orca = design.get("orca")
+        replication = design.get("replication")
+        nas = design.get("nas")
 
         total_repo = float(repo.get("total_repo_tb", 0.0))
         primary_repo = float(repo.get("primary_repo_tb", 0.0))
@@ -142,6 +144,8 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
                 "three_year_tco": three_year_tco,
                 "break_even_years": break_even_years,
                 "orca": orca,
+                "replication": replication,
+                "nas": nas,
             }
         )
 

@@ -47,6 +47,12 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         capacity_tier_fraction=d.get("capacity_tier_fraction", 0.5),
         direct_to_object=d.get("direct_to_object", False),
         capacity_tier_immutable=d.get("capacity_tier_immutable", False),
+        # v3: compliance
+        compliance_framework=d.get("compliance_framework", "none"),
+        # v3: replication sub-input
+        replication_input=_replication_input_from_dict(d),
+        # v3: nas sub-input
+        nas_input=_nas_input_from_site_dict(d),
     )
 
 
@@ -92,6 +98,29 @@ def _replication_from_dict(d: dict) -> ReplicationInput:
         rpo_seconds=d.get("rpo_seconds", 15),
         compression=d.get("compression", True),
     )
+
+
+def _replication_input_from_dict(d: dict):
+    rep_d = d.get("replication")
+    if not rep_d:
+        return None
+    from .models import ReplicationInput
+    return ReplicationInput(
+        source_tb=float(rep_d.get("source_tb", d.get("total_data_tb", 10.0))),
+        vm_count=int(rep_d.get("vm_count", d.get("vm_count", 0))),
+        wan_mbps=float(rep_d.get("wan_mbps", d.get("wan_bandwidth_mbps", 100.0))),
+        rpo_hours=float(rep_d.get("rpo_hours", 1.0)),
+        cdp_enabled=bool(rep_d.get("cdp_enabled", False)),
+        rpo_seconds=int(rep_d.get("rpo_seconds", 15)),
+        compression=bool(rep_d.get("compression", True)),
+    )
+
+
+def _nas_input_from_site_dict(d: dict):
+    nas_d = d.get("nas")
+    if not nas_d:
+        return None
+    return _nas_from_dict(nas_d)
 
 
 def _dispatch_workload(wtype: str, d: dict):

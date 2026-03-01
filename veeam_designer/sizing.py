@@ -113,6 +113,14 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
             immutability_days=30 if vin.immutability_enabled else 0,
         )
 
+    # v3: replication sizing
+    from .replication import size_replication as _size_rep
+    replication_design = _size_rep(vin.replication_input) if vin.replication_input else None
+
+    # v3: NAS sizing
+    from .nas import size_nas as _size_nas
+    nas_design = _size_nas(vin.nas_input) if vin.nas_input else None
+
     blueprint = build_blueprint(roles, jobs, sobr, repo_perf, network, cost)
     blueprint.orca = orca
 
@@ -132,6 +140,8 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     )
 
     design.risk = compute_risk(design)
+    design.replication = replication_design
+    design.nas = nas_design
     return design
 
 
