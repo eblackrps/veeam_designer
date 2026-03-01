@@ -86,6 +86,8 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
         wan_accel = design.get("wan_accel")
         license_estimate = design.get("license_estimate")
         tape = design.get("tape")
+        veeam_one = design.get("veeam_one")
+        compliance = design.get("compliance")
 
         total_repo = float(repo.get("total_repo_tb", 0.0))
         primary_repo = float(repo.get("primary_repo_tb", 0.0))
@@ -152,6 +154,8 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
                 "wan_accel": wan_accel,
                 "license_estimate": license_estimate,
                 "tape": tape,
+                "veeam_one": veeam_one,
+                "compliance": compliance,
             }
         )
 

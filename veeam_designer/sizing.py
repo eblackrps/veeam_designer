@@ -175,6 +175,12 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     from .tape import size_tape as _size_tape
     design.tape = _size_tape(vin.tape_input) if vin.tape_input else None
 
+    # v3: Veeam ONE sizing (auto-generate from vm_count)
+    from .veeam_one import size_veeam_one as _size_v1
+    from .models import VeeamOneInput as _V1In
+    v1_in = vin.veeam_one_input or _V1In(protected_vms=vin.vm_count)
+    design.veeam_one = _size_v1(v1_in)
+
     return design
 
 

@@ -864,6 +864,22 @@
                 </div></div>
               {% endif %}
 
+              <!-- Veeam ONE monitoring card -->
+              {% if site.veeam_one %}
+              <div class="mt-2 p-2 bg-slate-800 border border-slate-700 rounded-lg">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Veeam ONE / Monitoring</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div><span class="text-slate-400">ONE Server</span><br><span class="text-slate-100 font-semibold">{{ site.veeam_one.server_cores }}c / {{ site.veeam_one.server_ram_gb }} GB</span></div>
+                  <div><span class="text-slate-400">Database</span><br><span class="text-slate-100 font-semibold">{{ site.veeam_one.database_size_gb }} GB</span></div>
+                  {% if site.veeam_one.em_cores %}
+                  <div><span class="text-slate-400">Enterprise Manager</span><br><span class="text-slate-100 font-semibold">{{ site.veeam_one.em_cores }}c / {{ site.veeam_one.em_ram_gb }} GB</span></div>
+                  {% endif %}
+                  {% if site.veeam_one.vspc_cores %}
+                  <div><span class="text-slate-400">VSPC Cores</span><br><span class="text-slate-100 font-semibold">{{ site.veeam_one.vspc_cores }}</span></div>
+                  {% endif %}
+                </div></div>
+              {% endif %}
+
               <!-- 3-year TCO and cloud comparison -->
               {% if site.three_year_tco %}
               <div class="mt-2 p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg text-[11px]">
