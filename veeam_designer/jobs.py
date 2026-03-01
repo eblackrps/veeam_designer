@@ -37,7 +37,7 @@ def build_jobs(vin: VeeamInput) -> JobSet:
         tb_here = vms_here * vm_size_tb
         jobs.append(
             JobDefinition(
-                name=f"Job-{i+1}",
+                name=f"Job-{i + 1}",
                 vm_count=vms_here,
                 total_tb=round(tb_here, 2),
                 mode=vin.backup_type,
