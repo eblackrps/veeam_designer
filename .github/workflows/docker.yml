@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Extra image tag to push (e.g. v2.0.0). "latest" is always pushed.'
+        default: 'latest'
+        required: false
 
 jobs:
   build-push:
@@ -35,6 +41,6 @@ jobs:
           push: true
           tags: |
             eblack079/veeam-designer:latest
-            eblack079/veeam-designer:${{ github.ref_name }}
+            eblack079/veeam-designer:${{ github.event.inputs.image_tag || github.ref_name }}
             ghcr.io/eblackrps/veeam-designer:latest
-            ghcr.io/eblackrps/veeam-designer:${{ github.ref_name }}
+            ghcr.io/eblackrps/veeam-designer:${{ github.event.inputs.image_tag || github.ref_name }}

@@ -35,3 +35,6 @@ veeam-designer = "veeam_designer.cli:main"
 [project.optional-dependencies]
 web = ["fastapi", "uvicorn", "jinja2", "python-multipart"]
 dev = ["flake8", "pytest"]
+
+[tool.setuptools.packages.find]
+include = ["veeam_designer*"]
