@@ -181,6 +181,19 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     v1_in = vin.veeam_one_input or _V1In(protected_vms=vin.vm_count)
     design.veeam_one = _size_v1(v1_in)
 
+    # v3: compliance check
+    from .compliance import check_compliance as _check_comp
+    from .models import ComplianceInput as _CompIn
+    comp_in = _CompIn(
+        framework=vin.compliance_framework,
+        current_retention_days=vin.primary_retention_days,
+        immutability_enabled=vin.immutability_enabled,
+        encryption_enabled=True,
+        offsite_copy_enabled=False,
+        target_rpo_hours=vin.target_rpo_hours,
+    )
+    design.compliance = _check_comp(comp_in)
+
     return design
 
 

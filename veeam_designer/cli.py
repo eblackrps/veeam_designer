@@ -163,7 +163,9 @@ def main():
                                 "replication": asdict(s.design.replication) if s.design.replication else None,
                                 "nas": asdict(s.design.nas) if s.design.nas else None,
                                 "wan_accel": asdict(s.design.wan_accel) if s.design.wan_accel else None,
-                                "license_estimate": asdict(s.design.license_estimate) if s.design.license_estimate else None,
+                                "license_estimate": (
+                                    asdict(s.design.license_estimate)
+                                    if s.design.license_estimate else None),
                                 "tape": asdict(s.design.tape) if s.design.tape else None,
                                 "veeam_one": asdict(s.design.veeam_one) if s.design.veeam_one else None,
                                 "compliance": asdict(s.design.compliance) if s.design.compliance else None,

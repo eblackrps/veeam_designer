@@ -194,6 +194,17 @@
                     Optional override. Leave blank to use engine default (15 MB/s per core).
                   </p>
                 </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Compliance Framework</label>
+                  <select id="compliance-framework" class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1 text-sm">
+                    <option value="none" selected>None</option>
+                    <option value="hipaa">HIPAA</option>
+                    <option value="soc2">SOC 2</option>
+                    <option value="gdpr">GDPR</option>
+                    <option value="pci_dss">PCI DSS</option>
+                    <option value="dora">DORA (EU)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -878,6 +889,22 @@
                   <div><span class="text-slate-400">VSPC Cores</span><br><span class="text-slate-100 font-semibold">{{ site.veeam_one.vspc_cores }}</span></div>
                   {% endif %}
                 </div></div>
+              {% endif %}
+
+              <!-- Compliance card -->
+              {% if site.compliance and site.compliance.framework != 'none' %}
+              <div class="mt-2 p-2 bg-slate-800 border border-slate-700 rounded-lg">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Compliance — {{ site.compliance.framework | upper | replace("_", " ") }}
+                  <span class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold {% if site.compliance.risk_level == 'compliant' %} bg-green-900 text-green-300{% elif site.compliance.risk_level == 'partial' %} bg-amber-900 text-amber-300{% else %} bg-red-900 text-red-300{% endif %}">{{ site.compliance.risk_level | replace('-', ' ') | title }}</span></p>
+                {% if site.compliance.gaps %}
+                <ul class="text-xs text-amber-300 space-y-0.5">
+                  {% for gap in site.compliance.gaps %}<li>⚠ {{ gap }}</li>{% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-xs text-green-400">All requirements met.</p>
+                {% endif %}
+                <div class="mt-1 text-xs text-slate-400">Min. retention: {{ site.compliance.recommended_retention_days }} days</div>
+              </div>
               {% endif %}
 
               <!-- 3-year TCO and cloud comparison -->
@@ -1583,6 +1610,7 @@ function buildYamlFromForm() {
       const profile = document.getElementById("profile").value || "msp";
       const hypervisor = document.getElementById("hypervisor").value || "vmware";
       const globalRpo = cleanNumber(document.getElementById("target-rpo").value, 24);
+      const complianceFramework = document.getElementById("compliance-framework")?.value || "none";
 
       const compression = readOptionalNumber("compression-ratio");
       const dedupe = readOptionalNumber("dedupe-ratio");
@@ -1734,6 +1762,7 @@ ${extraLines()}`;
       const yaml =
 `profile: ${profile}
 workload_type: ${activeWtype}
+compliance_framework: ${complianceFramework}
 sites:
 ${sitesYaml}`;
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .models import VeeamInput, VeeamDesign
 from .config import CONFIG
-from .sizing import design_veeam_environment
+from .sizing import design_veeam_environment  # noqa: F401
 
 
 def _prompt_float(prompt: str, default: float) -> float:

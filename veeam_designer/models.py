@@ -318,6 +318,7 @@ class AgentDesign:
 # v3 Round 4: WAN Accelerator
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class WanAccelInput:
     source_tb: float
@@ -428,4 +429,3 @@ class ComplianceResult:
     gaps: list = field(default_factory=list)
     recommended_retention_days: int = 0
     risk_level: str = "compliant"
-

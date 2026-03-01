@@ -64,7 +64,7 @@ PROFILES: Dict[str, Dict[str, Any]] = load_profiles()
 
 
 def select_profile(name: str | None) -> Dict[str, Any]:
-    global CONFIG
+    global CONFIG  # noqa: F824
     if not name:
         return CONFIG
     profile = PROFILES.get(name)

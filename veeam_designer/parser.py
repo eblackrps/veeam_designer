@@ -167,9 +167,14 @@ def load_project(path: Path):
     if "sites" in data:
         sites_def = data["sites"]
         sites: List[Tuple[str, VeeamInput]] = []
+        top_compliance = data.get("compliance_framework", "none")
         for s in sites_def:
             name = s.get("name", "site")
             vin_kwargs = s.get("veeam_input") or s
+            # Inject top-level compliance_framework into site if not already set
+            if "compliance_framework" not in vin_kwargs and top_compliance != "none":
+                vin_kwargs = dict(vin_kwargs)
+                vin_kwargs["compliance_framework"] = top_compliance
             # Sites always use VM workload path (multi-site is VM-only for now)
             vin = _vin_from_dict(vin_kwargs)
             sites.append((name, vin))

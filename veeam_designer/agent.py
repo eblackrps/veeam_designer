@@ -41,7 +41,7 @@ def size_agent(ain: AgentInput) -> AgentDesign:
 
     # Validate against available network bandwidth
     available_mb_s = ain.network_bandwidth_mbps / 8.0
-    bottleneck = min(required_mb_s, available_mb_s) if available_mb_s > 0 else required_mb_s
+    # bottleneck unused; kept for future use
 
     # Agent coordinator: 1 coordinator per 100 machines minimum
     coordinator_cores = max(2, ceil(ain.machine_count / 100))
