@@ -508,7 +508,7 @@ async def post_run(
 @app.get("/api/health")
 async def api_health():
     """Health check endpoint."""
-    return {"status": "ok", "version": "3.0.0"}
+    return {"status": "ok", "version": "3.1.0"}
 
 
 @app.get("/api/profiles")

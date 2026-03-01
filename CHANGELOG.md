@@ -11,6 +11,33 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [3.1.0] – 2026-03-01
+
+### Fixed
+- **replication.py** (CRITICAL): daily change rate was hardcoded at 5%; now reads `daily_change_pct`
+  from `ReplicationInput` — pass-through field added to the model with 5% default
+- **replication.py** (CRITICAL): replica storage formula was inverted — compressed replicas were
+  shown as *larger* than source (1.1×/2.0×); corrected to 0.9× with compression, 1.1× without
+- **wan_accel.py** (CRITICAL): BCJ window unit conversion used `1024**3` (1 GiB) instead of
+  `1024**4` (1 TiB), treating source TB as GB and understating transfer time by 1024×;
+  rewrote to use consistent MB arithmetic matching `network.py`
+- **sizing.py** (CRITICAL): proxy parallelism warning fired at `tasks < vm_count / 3`, requiring
+  333 tasks for 1000 VMs; corrected threshold to `vm_count / 10`
+- **compliance.py** (HIGH): unknown framework name silently returned `compliant=True`; now returns
+  `compliant=False`, `risk_level="non-compliant"`, with a gap listing valid framework names
+- **models.py** (HIGH): bare `list` type hints in `WanAccelDesign`, `LicenseEstimate`, `TapeDesign`,
+  `VeeamOneDesign`, `ComplianceResult` replaced with `List[str]`
+- **network.py** (HIGH): `backup_window_hours * 3600 or 1` fallback set window to 1 second on zero
+  input, producing nonsensical throughput values; replaced with `max(hours, 1.0) * 3600`
+- **orca.py** (HIGH): immutability overhead formula gave ~0.8% for 30-day windows; updated to
+  `max(5%, 20% × years)` — minimum 5% overhead always applied
+- **wan_accel.py / licensing.py / tape.py / veeam_one.py / compliance.py** (MEDIUM):
+  absolute package imports changed to relative imports
+- **sizing.py** (MEDIUM): v3 module imports moved from inline (inside function body) to module level
+- **ui/main.py** (MEDIUM): added 1 MB YAML size limit to `/run` POST and `/api/design` endpoints
+
+---
+
 ## [3.0.0] – 2026-03-01
 
 ### Added
