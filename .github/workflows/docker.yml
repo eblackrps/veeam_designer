@@ -40,7 +40,7 @@ jobs:
           context: .
           push: true
           tags: |
-            eblack079/veeam-designer:latest
-            eblack079/veeam-designer:${{ github.event.inputs.image_tag || github.ref_name }}
+            emb079/veeam-designer:latest
+            emb079/veeam-designer:${{ github.event.inputs.image_tag || github.ref_name }}
             ghcr.io/eblackrps/veeam-designer:latest
             ghcr.io/eblackrps/veeam-designer:${{ github.event.inputs.image_tag || github.ref_name }}

@@ -187,8 +187,8 @@ veeam-designer
 ### Docker Hub
 
 ```bash
-docker pull eblack079/veeam-designer
-docker run -p 8000:8000 eblack079/veeam-designer
+docker pull emb079/veeam-designer
+docker run -p 8000:8000 emb079/veeam-designer
 ```
 
 ### GitHub Container Registry
