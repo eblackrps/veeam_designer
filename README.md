@@ -191,12 +191,16 @@ docker pull emb079/veeam-designer
 docker run -p 8000:8000 emb079/veeam-designer
 ```
 
+[hub.docker.com/r/emb079/veeam-designer](https://hub.docker.com/r/emb079/veeam-designer)
+
 ### GitHub Container Registry
 
 ```bash
 docker pull ghcr.io/eblackrps/veeam-designer
 docker run -p 8000:8000 ghcr.io/eblackrps/veeam-designer
 ```
+
+[ghcr.io/eblackrps/veeam-designer](https://github.com/eblackrps/veeam_designer/pkgs/container/veeam-designer)
 
 ### docker-compose
 
@@ -206,17 +210,21 @@ docker-compose up
 
 Open `http://localhost:8000/run`.
 
-Mount custom config/profiles:
+### Mount custom config/profiles
+
 ```bash
+# Docker Hub
+docker run -p 8000:8000 \
+  -v ./config.json:/app/config.json \
+  -v ./profiles.json:/app/profiles.json \
+  emb079/veeam-designer
+
+# GitHub Container Registry
 docker run -p 8000:8000 \
   -v ./config.json:/app/config.json \
   -v ./profiles.json:/app/profiles.json \
   ghcr.io/eblackrps/veeam-designer
 ```
-
-> **Docker Hub push requires** `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets
-> in your GitHub repository Settings → Secrets and Variables → Actions.
-> `GITHUB_TOKEN` is provided automatically by GitHub Actions.
 
 ---
 

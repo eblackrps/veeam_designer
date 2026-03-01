@@ -75,7 +75,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   - `Dockerfile` — Python 3.12-slim, uvicorn entrypoint
   - `docker-compose.yml` — single-service compose file with volume mounts
   - `.dockerignore` — excludes venv, cache, git history
-  - `.github/workflows/docker.yml` — build + push to Docker Hub and GHCR on tag push
+  - `.github/workflows/docker.yml` — build + push to `emb079/veeam-designer` (Docker Hub) and `ghcr.io/eblackrps/veeam-designer` (GHCR) on tag push
 
 ### Changed
 - `pyproject.toml` version bumped to `2.0.0`
