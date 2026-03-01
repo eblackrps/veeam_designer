@@ -14,5 +14,9 @@
   "onprem_cost_usd_per_tb_year": 20.0,
   "hardened_tb_per_host_cap": 1000.0,
   "hardened_volume_tb_target": 250.0,
-  "proxy_transport_default": "auto"
+  "proxy_transport_default": "auto",
+  "aws_s3_cost_per_tb_month": 23.0,
+  "azure_blob_cost_per_tb_month": 18.0,
+  "wasabi_cost_per_tb_month": 6.99,
+  "objectfirst_cost_per_tb_month": 15.0
 }

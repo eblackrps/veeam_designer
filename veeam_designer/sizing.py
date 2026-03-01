@@ -15,6 +15,7 @@ from .network import build_network_plan
 from .cost import estimate_costs
 from .blueprint import build_blueprint
 from .risk import compute_risk
+from .orca import size_orca
 
 
 def size_repository(vin: VeeamInput) -> RepoSizing:
@@ -39,6 +40,10 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
 
     total_repo_tb = primary_repo_tb + gfs_repo_tb
 
+    # Round 3: immutability adds ~5% for XFS extended attribute / object-lock metadata
+    if vin.immutability_enabled:
+        total_repo_tb *= 1.05
+
     return RepoSizing(
         primary_repo_tb=round(primary_repo_tb, 1),
         gfs_repo_tb=round(gfs_repo_tb, 1),
@@ -50,10 +55,10 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     repo = size_repository(vin)
     jobs = build_jobs(vin)
     roles = build_role_plan(vin, repo)
-    sobr = design_sobr(repo)
+    sobr = design_sobr(repo, vin)
     repo_perf = estimate_repo_perf(vin, repo, jobs)
     network = build_network_plan(vin, repo)
-    cost = estimate_costs(repo)
+    cost = estimate_costs(repo, sobr, vin)
 
     notes: Dict[str, str] = {}
 
@@ -100,7 +105,16 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
             "segmented from production where possible.",
         )
 
+    # Round 4: ObjectFirst Orca sizing when repo_type is object storage
+    orca = None
+    if vin.repo_type == "object":
+        orca = size_orca(
+            total_protected_tb=repo.total_repo_tb,
+            immutability_days=30 if vin.immutability_enabled else 0,
+        )
+
     blueprint = build_blueprint(roles, jobs, sobr, repo_perf, network, cost)
+    blueprint.orca = orca
 
     design = VeeamDesign(
         input=vin,
@@ -114,6 +128,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
         blueprint=blueprint,
         risk=None,
         notes=notes,
+        orca=orca,
     )
 
     design.risk = compute_risk(design)

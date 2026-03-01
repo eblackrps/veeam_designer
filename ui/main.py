@@ -58,6 +58,9 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create a compact summary for the visual environment dashboard.
     """
+    # Import here to avoid circular import at module level
+    from veeam_designer.roles import TRANSPORT_MB_PER_CORE
+
     sites_summary: List[Dict[str, Any]] = []
 
     total_repo_tb = data.get("total_repo_tb")
@@ -71,23 +74,30 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
         repo = design.get("repo", {})
         roles = design.get("roles", {})
         proxies = roles.get("proxies", {})
+        backup_server = roles.get("backup_server", {})
         network = design.get("network", {})
         risk = design.get("risk", {})
-        veeam_input = design.get("input", {})
         repo_perf = design.get("repo_perf", {})
         cost = design.get("cost", {})
+        sobr = design.get("sobr", {})
+        orca = design.get("orca")
 
         total_repo = float(repo.get("total_repo_tb", 0.0))
         primary_repo = float(repo.get("primary_repo_tb", 0.0))
         gfs_repo = float(repo.get("gfs_repo_tb", 0.0))
+        capacity_tier_tb = float(sobr.get("capacity_tier_tb", 0.0))
 
         proxy_count = int(proxies.get("proxy_count", 0))
         total_proxy_cores = int(proxies.get("total_proxy_cores", 0))
+        proxy_ram_gb = int(proxies.get("total_proxy_ram_gb", 0))
+        transport_mode = proxies.get("transport_mode", "auto")
+
+        bs_cores = int(backup_server.get("cores", 0))
+        bs_ram_gb = int(backup_server.get("ram_gb", 0))
 
         required_mb_s = float(repo_perf.get("required_mb_s", 0.0))
-        throughput_mb_per_core = float(veeam_input.get("throughput_mb_per_core", 15.0))
-
-        proxy_capacity_mb_s = total_proxy_cores * throughput_mb_per_core
+        mb_per_core = TRANSPORT_MB_PER_CORE.get(transport_mode, 15.0)
+        proxy_capacity_mb_s = total_proxy_cores * mb_per_core
         proxy_load_ratio = (
             required_mb_s / proxy_capacity_mb_s if proxy_capacity_mb_s > 0 else 0.0
         )
@@ -101,6 +111,9 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
 
         yearly_onprem_usd = float(cost.get("yearly_onprem_usd", 0.0))
         monthly_object_usd = float(cost.get("monthly_object_usd", 0.0))
+        cloud_comparison = cost.get("cloud_comparison", {})
+        three_year_tco = cost.get("three_year_tco", {})
+        break_even_years = float(cost.get("break_even_years", 0.0))
 
         sites_summary.append(
             {
@@ -108,8 +121,13 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
                 "total_repo_tb": total_repo,
                 "primary_repo_tb": primary_repo,
                 "gfs_repo_tb": gfs_repo,
+                "capacity_tier_tb": capacity_tier_tb,
                 "proxy_count": proxy_count,
                 "total_proxy_cores": total_proxy_cores,
+                "proxy_ram_gb": proxy_ram_gb,
+                "transport_mode": transport_mode,
+                "bs_cores": bs_cores,
+                "bs_ram_gb": bs_ram_gb,
                 "required_mb_s": required_mb_s,
                 "proxy_capacity_mb_s": proxy_capacity_mb_s,
                 "proxy_load_ratio": proxy_load_ratio,
@@ -120,6 +138,10 @@ def build_dashboard_from_json(data: Dict[str, Any]) -> Dict[str, Any]:
                 "risk_details": risk_details,
                 "yearly_onprem_usd": yearly_onprem_usd,
                 "monthly_object_usd": monthly_object_usd,
+                "cloud_comparison": cloud_comparison,
+                "three_year_tco": three_year_tco,
+                "break_even_years": break_even_years,
+                "orca": orca,
             }
         )
 

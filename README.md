@@ -11,6 +11,20 @@ Two components:
 1. **Engine** — calculates repository footprint, proxy requirements, SOBR layout, WAN/RPO performance, risk scoring, and cost modeling from a YAML project file.
 2. **Web UI** — FastAPI + Jinja2 interface for building project files, running the engine, and viewing results in the browser.
 
+### What's new in v2.0.0
+- NAS/unstructured workload sizing (file proxy + cache repo)
+- Agent/Physical machine backup sizing
+- VM Replication + CDP sizing
+- ObjectFirst Orca node sizing (object storage)
+- Per-transport proxy throughput and RAM (DirectSAN / HotAdd / NBD)
+- Backup server sizing overhaul (workload count, concurrency, v13 appliance)
+- ReFS/XFS filesystem flag + immutability overhead
+- Block generation period for synthetic fulls
+- Full capacity tier modeling + direct-to-object path
+- 3-year TCO with multi-cloud comparison (AWS S3, Azure Blob, Wasabi, ObjectFirst)
+- Expanded risk scoring (growth, immutability compliance, RPO margin)
+- Docker distribution (Docker Hub + GHCR)
+
 ---
 
 ## Project Structure
@@ -165,6 +179,55 @@ veeam-designer
 `config.json` holds tuning parameters (throughput per core, overhead factors, cost rates, etc.). Edit to match your environment. All values must be valid JSON.
 
 `profiles.json` holds preset ratio and retention values for each profile type.
+
+---
+
+## Docker
+
+### Docker Hub
+
+```bash
+docker pull <dockerhub-username>/veeam-designer
+docker run -p 8000:8000 <dockerhub-username>/veeam-designer
+```
+
+### GitHub Container Registry
+
+```bash
+docker pull ghcr.io/eblackrps/veeam-designer
+docker run -p 8000:8000 ghcr.io/eblackrps/veeam-designer
+```
+
+### docker-compose
+
+```bash
+docker-compose up
+```
+
+Open `http://localhost:8000/run`.
+
+Mount custom config/profiles:
+```bash
+docker run -p 8000:8000 \
+  -v ./config.json:/app/config.json \
+  -v ./profiles.json:/app/profiles.json \
+  ghcr.io/eblackrps/veeam-designer
+```
+
+> **Docker Hub push requires** `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets
+> in your GitHub repository Settings → Secrets and Variables → Actions.
+> `GITHUB_TOKEN` is provided automatically by GitHub Actions.
+
+---
+
+## Workload types
+
+| Type | CLI flag | YAML key | Description |
+|---|---|---|---|
+| VM backup | `--workload-type vm` | `workload_type: vm` | Default |
+| NAS/unstructured | `--workload-type nas` | `workload_type: nas` | File shares, NAS filers |
+| Physical/agent | `--workload-type physical` | `workload_type: physical` | Bare-metal, agent-based |
+| Replication | `--workload-type replication` | `workload_type: replication` | VM replica + CDP |
 
 ---
 

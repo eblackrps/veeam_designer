@@ -289,6 +289,42 @@
                     Use on-host (HotAdd) proxies on the same hosts/clusters
                   </label>
                 </div>
+                <!-- v2 advanced options -->
+                <div class="mt-3 text-[11px]">
+                  <div class="text-sky-400 mb-1">Advanced v2 options</div>
+                  <div class="flex flex-col gap-1">
+                    <label class="inline-flex items-center gap-1 text-slate-300">
+                      <input id="site1-refs-xfs" type="checkbox" class="rounded border-slate-600 bg-slate-800" checked />
+                      ReFS / XFS filesystem (block-clone synthetic fulls)
+                    </label>
+                    <label class="inline-flex items-center gap-1 text-slate-300">
+                      <input id="site1-immutability" type="checkbox" class="rounded border-slate-600 bg-slate-800" />
+                      Immutability enabled (object-lock / hardened repo)
+                    </label>
+                    <label class="inline-flex items-center gap-1 text-slate-300">
+                      <input id="site1-capacity-tier" type="checkbox" class="rounded border-slate-600 bg-slate-800" />
+                      Capacity tier (object storage offload)
+                    </label>
+                    <label class="inline-flex items-center gap-1 text-slate-300">
+                      <input id="site1-direct-to-object" type="checkbox" class="rounded border-slate-600 bg-slate-800" />
+                      Direct-to-object (bypass performance tier)
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 mt-2">
+                    <div>
+                      <label class="block text-slate-300 mb-1">Block gen period (days)</label>
+                      <input id="site1-block-gen" type="number" min="1" max="60"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="10" />
+                    </div>
+                    <div>
+                      <label class="block text-slate-300 mb-1">Concurrent jobs</label>
+                      <input id="site1-concurrent-jobs" type="number" min="1"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="5" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Site 2 -->
@@ -598,14 +634,17 @@
                   <p class="text-slate-100">
                     Cap: {{ "%.1f"|format(site.proxy_capacity_mb_s) }} MB/s
                   </p>
+                  <p class="text-slate-400 mt-0.5">
+                    {{ site.transport_mode | upper }} · {{ site.proxy_ram_gb }} GB RAM
+                  </p>
                   {% set load = site.proxy_load_ratio %}
                   <p class="mt-0.5 text-[11px]">
                     {% if load <= 0.7 %}
-                      <span class="text-emerald-300">Proxies overprovisioned (headroom available)</span>
+                      <span class="text-emerald-300">Overprovisioned</span>
                     {% elif load <= 1.0 %}
-                      <span class="text-amber-300">Proxies roughly right-sized</span>
+                      <span class="text-amber-300">Right-sized</span>
                     {% else %}
-                      <span class="text-rose-300">Proxies underprovisioned – consider more cores/tasks</span>
+                      <span class="text-rose-300">Underprovisioned</span>
                     {% endif %}
                   </p>
                 </div>
@@ -622,14 +661,64 @@
                       {% else %}
                         bg-rose-500/80
                       {% endif %}"
-                      style="width: {{ (load * 100) | round(0) }}%">
+                      style="width: {{ [load * 100, 100] | min | round(0) }}%">
                     </div>
                   </div>
                   <p class="mt-0.5 text-slate-300">
                     {{ (load * 100) | round(0) }}% of capacity
                   </p>
+                  {% if site.bs_cores %}
+                  <p class="mt-1 text-slate-400">
+                    Backup server: {{ site.bs_cores }}c / {{ site.bs_ram_gb }} GB
+                  </p>
+                  {% endif %}
                 </div>
               </div>
+
+              <!-- Orca sizing (object storage only) -->
+              {% if site.orca %}
+              <div class="mt-2 p-2 bg-sky-900/30 border border-sky-700/40 rounded-lg text-[11px]">
+                <p class="text-sky-300 font-semibold mb-1">ObjectFirst Orca</p>
+                <p class="text-slate-200">
+                  {{ site.orca.node_count }} node(s) ·
+                  {{ "%.0f"|format(site.orca.total_usable_tb) }} TB usable ·
+                  {{ site.orca.concurrent_stream_capacity }} streams
+                  {% if site.orca.scale_out_recommended %}
+                  · <span class="text-amber-300">Scale-out recommended</span>
+                  {% endif %}
+                </p>
+              </div>
+              {% endif %}
+
+              <!-- 3-year TCO and cloud comparison -->
+              {% if site.three_year_tco %}
+              <div class="mt-2 p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg text-[11px]">
+                <p class="text-slate-300 font-semibold mb-1">3-Year TCO</p>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                  <p class="text-slate-400">On-prem</p>
+                  <p class="text-slate-200 font-mono">${{ "{:,.0f}".format(site.three_year_tco.get("onprem", 0)) }}</p>
+                  {% set provider = site.three_year_tco.get("provider", "") %}
+                  {% if provider %}
+                  <p class="text-slate-400">{{ provider | replace("_", " ") | title }}</p>
+                  <p class="text-slate-200 font-mono">${{ "{:,.0f}".format(site.three_year_tco.get(provider, 0)) }}</p>
+                  {% endif %}
+                  <p class="text-slate-400">Break-even</p>
+                  <p class="text-slate-200">{% if site.break_even_years == 0 %}Cloud already cheaper{% else %}{{ site.break_even_years | round(0) | int }} yr(s){% endif %}</p>
+                </div>
+                {% if site.cloud_comparison %}
+                <div class="mt-1.5 pt-1.5 border-t border-slate-700/40">
+                  <p class="text-slate-500 mb-1">Cloud comparison (yr 1)</p>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                    {% for provider, cost in site.cloud_comparison.items() %}
+                    <p class="text-slate-400">{{ provider | replace("_", " ") | title }}</p>
+                    <p class="text-slate-200 font-mono">${{ "{:,.0f}".format(cost) }}/yr</p>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+              {% endif %}
+
             </div>
             {% endfor %}
           </div>
@@ -1357,6 +1446,20 @@ function buildYamlFromForm() {
         const san = document.getElementById(`site${idx}-san`).checked ? "true" : "false";
         const onhost = document.getElementById(`site${idx}-onhost`).checked ? "true" : "false";
 
+        // v2 advanced options (only present on site 1 currently; site 2 inherits defaults)
+        const refsXfsEl = document.getElementById(`site${idx}-refs-xfs`);
+        const refsXfs = refsXfsEl ? (refsXfsEl.checked ? "true" : "false") : "true";
+        const immutabilityEl = document.getElementById(`site${idx}-immutability`);
+        const immutability = immutabilityEl ? (immutabilityEl.checked ? "true" : "false") : "false";
+        const capTierEl = document.getElementById(`site${idx}-capacity-tier`);
+        const capTier = capTierEl ? (capTierEl.checked ? "true" : "false") : "false";
+        const directObjEl = document.getElementById(`site${idx}-direct-to-object`);
+        const directObj = directObjEl ? (directObjEl.checked ? "true" : "false") : "false";
+        const blockGenEl = document.getElementById(`site${idx}-block-gen`);
+        const blockGen = blockGenEl ? cleanNumber(blockGenEl.value, 10) : 10;
+        const concJobsEl = document.getElementById(`site${idx}-concurrent-jobs`);
+        const concJobs = concJobsEl ? cleanNumber(concJobsEl.value, 5) : 5;
+
         const notesEl = document.getElementById(`site${idx}-notes`);
         const notes = notesEl ? notesEl.value : "";
         const notesLine = notes ? `    notes: ${JSON.stringify(notes)}\n` : "";
@@ -1380,6 +1483,12 @@ function buildYamlFromForm() {
       hypervisor: ${hypervisor}
       has_san_access: ${san}
       on_host_proxy: ${onhost}
+      refs_xfs: ${refsXfs}
+      immutability_enabled: ${immutability}
+      capacity_tier_enabled: ${capTier}
+      direct_to_object: ${directObj}
+      block_generation_days: ${blockGen}
+      concurrent_jobs: ${concJobs}
 ${extraLines()}${notesLine}`;
       }
 

@@ -1,0 +1,9 @@
+services:
+  veeam-designer:
+    image: veeam-designer:latest
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.json:/app/config.json
+      - ./profiles.json:/app/profiles.json

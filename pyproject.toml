@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "veeam-designer"
-version = "1.0.0"
+version = "2.0.0"
 description = "Veeam backup environment sizing and architecture designer"
 authors = [{name = "E. Black"}]
 license = {text = "MIT"}
