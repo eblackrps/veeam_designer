@@ -171,6 +171,10 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     )
     design.license_estimate = _est_lic(lic_in)
 
+    # v3: tape sizing (optional)
+    from .tape import size_tape as _size_tape
+    design.tape = _size_tape(vin.tape_input) if vin.tape_input else None
+
     return design
 
 

@@ -53,6 +53,8 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         replication_input=_replication_input_from_dict(d),
         # v3: nas sub-input
         nas_input=_nas_input_from_site_dict(d),
+        # v3: tape sub-input
+        tape_input=_tape_input_from_dict(d),
     )
 
 
@@ -121,6 +123,19 @@ def _nas_input_from_site_dict(d: dict):
     if not nas_d:
         return None
     return _nas_from_dict(nas_d)
+
+
+def _tape_input_from_dict(d: dict):
+    tape_d = d.get("tape")
+    if not tape_d:
+        return None
+    from .models import TapeInput
+    return TapeInput(
+        archive_tb=float(tape_d.get("archive_tb", 0.0)),
+        lto_generation=int(tape_d.get("lto_generation", 9)),
+        retention_years=int(tape_d.get("retention_years", 7)),
+        daily_change_pct=float(tape_d.get("daily_change_pct", 1.0)),
+    )
 
 
 def _dispatch_workload(wtype: str, d: dict):

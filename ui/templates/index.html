@@ -851,6 +851,19 @@
                 </div></div>
               {% endif %}
 
+              <!-- Tape archive card -->
+              {% if site.tape %}
+              <div class="mt-2 p-2 bg-slate-800 border border-slate-700 rounded-lg">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Archive / Tape (LTO-{{ site.tape.lto_generation }})</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div><span class="text-slate-400">Cartridges</span><br><span class="text-slate-100 font-semibold">{{ site.tape.cartridge_count }}</span></div>
+                  <div><span class="text-slate-400">Library Slots</span><br><span class="text-slate-100 font-semibold">{{ site.tape.library_slots_needed }}</span></div>
+                  <div><span class="text-slate-400">Drives</span><br><span class="text-slate-100 font-semibold">{{ site.tape.drive_count_recommended }}</span></div>
+                  <div><span class="text-slate-400">Annual Media Cost</span><br><span class="text-slate-100 font-semibold">${{ "{:,.0f}".format(site.tape.annual_media_cost_usd) }}</span></div>
+                  <div><span class="text-slate-400">TB per Cartridge</span><br><span class="text-slate-100 font-semibold">{{ site.tape.tb_per_cartridge }} TB</span></div>
+                </div></div>
+              {% endif %}
+
               <!-- 3-year TCO and cloud comparison -->
               {% if site.three_year_tco %}
               <div class="mt-2 p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg text-[11px]">
