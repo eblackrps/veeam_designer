@@ -1,7 +1,7 @@
 """LTO tape library / archive tier sizing."""
 from __future__ import annotations
 from math import ceil
-from veeam_designer.models import TapeInput, TapeDesign
+from .models import TapeInput, TapeDesign
 
 LTO_COMPRESSED_TB: dict[int, float] = {7: 15.0, 8: 30.0, 9: 45.0}
 COST_PER_CART: dict[int, float] = {7: 20.0, 8: 25.0, 9: 35.0}

@@ -5,6 +5,10 @@ from .models import (
     VeeamDesign,
     MultiSiteDesign,
     SiteDesign,
+    WanAccelInput,
+    LicenseInput,
+    VeeamOneInput,
+    ComplianceInput,
 )
 from .config import CONFIG
 from .jobs import build_jobs
@@ -16,6 +20,13 @@ from .cost import estimate_costs
 from .blueprint import build_blueprint
 from .risk import compute_risk
 from .orca import size_orca
+from .replication import size_replication
+from .nas import size_nas
+from .wan_accel import size_wan_accel
+from .licensing import estimate_license
+from .tape import size_tape
+from .veeam_one import size_veeam_one
+from .compliance import check_compliance
 
 
 def size_repository(vin: VeeamInput) -> RepoSizing:
@@ -71,7 +82,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     if not network.meets_target:
         notes["wan"] = "WAN bandwidth does not meet target RPO; replication/copy jobs will lag behind."
 
-    if vin.vm_count and roles.proxies.total_parallel_tasks < vin.vm_count / 3:
+    if vin.vm_count and roles.proxies.total_parallel_tasks < vin.vm_count / 10:
         notes["proxies"] = (
             "Proxy parallelism is low vs VM count. Consider more proxy cores or additional proxy VMs."
         )
@@ -114,27 +125,23 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
         )
 
     # v3: replication sizing
-    from .replication import size_replication as _size_rep
-    replication_design = _size_rep(vin.replication_input) if vin.replication_input else None
+    replication_design = size_replication(vin.replication_input) if vin.replication_input else None
 
     # v3: NAS sizing
-    from .nas import size_nas as _size_nas
-    nas_design = _size_nas(vin.nas_input) if vin.nas_input else None
+    nas_design = size_nas(vin.nas_input) if vin.nas_input else None
 
     # v3: WAN accelerator sizing
-    from .wan_accel import size_wan_accel as _size_wa
-    from .models import WanAccelInput as _WaIn
     wan_accel_design = None
     if vin.wan_accel_input:
-        wan_accel_design = _size_wa(vin.wan_accel_input)
+        wan_accel_design = size_wan_accel(vin.wan_accel_input)
     elif vin.wan_bandwidth_mbps > 0:
-        wa_in = _WaIn(
+        wa_in = WanAccelInput(
             source_tb=vin.total_data_tb,
             wan_mbps=vin.wan_bandwidth_mbps,
             dedupe_ratio=vin.dedupe_ratio,
             compression_ratio=vin.compression_ratio,
         )
-        wan_accel_design = _size_wa(wa_in)
+        wan_accel_design = size_wan_accel(wa_in)
 
     blueprint = build_blueprint(roles, jobs, sobr, repo_perf, network, cost)
     blueprint.orca = orca
@@ -160,31 +167,24 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     design.wan_accel = wan_accel_design
 
     # v3: license estimation
-    from .licensing import estimate_license as _est_lic
-    from .models import LicenseInput as _LicIn
-    lic_in = vin.license_input or _LicIn(
+    lic_in = vin.license_input or LicenseInput(
         vm_count=vin.vm_count,
         physical_count=0,
         nas_tb=0.0,
         cloud_workloads=0,
         license_type="vul",
     )
-    design.license_estimate = _est_lic(lic_in)
+    design.license_estimate = estimate_license(lic_in)
 
     # v3: tape sizing (optional)
-    from .tape import size_tape as _size_tape
-    design.tape = _size_tape(vin.tape_input) if vin.tape_input else None
+    design.tape = size_tape(vin.tape_input) if vin.tape_input else None
 
     # v3: Veeam ONE sizing (auto-generate from vm_count)
-    from .veeam_one import size_veeam_one as _size_v1
-    from .models import VeeamOneInput as _V1In
-    v1_in = vin.veeam_one_input or _V1In(protected_vms=vin.vm_count)
-    design.veeam_one = _size_v1(v1_in)
+    v1_in = vin.veeam_one_input or VeeamOneInput(protected_vms=vin.vm_count)
+    design.veeam_one = size_veeam_one(v1_in)
 
     # v3: compliance check
-    from .compliance import check_compliance as _check_comp
-    from .models import ComplianceInput as _CompIn
-    comp_in = _CompIn(
+    comp_in = ComplianceInput(
         framework=vin.compliance_framework,
         current_retention_days=vin.primary_retention_days,
         immutability_enabled=vin.immutability_enabled,
@@ -192,7 +192,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
         offsite_copy_enabled=False,
         target_rpo_hours=vin.target_rpo_hours,
     )
-    design.compliance = _check_comp(comp_in)
+    design.compliance = check_compliance(comp_in)
 
     return design
 

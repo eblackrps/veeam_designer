@@ -1,6 +1,6 @@
 """Compliance framework gap analysis for Veeam backup configurations."""
 from __future__ import annotations
-from veeam_designer.models import ComplianceInput, ComplianceResult
+from .models import ComplianceInput, ComplianceResult
 
 FRAMEWORKS: dict[str, dict] = {
     "hipaa": {
@@ -48,13 +48,23 @@ FRAMEWORKS: dict[str, dict] = {
 
 def check_compliance(cin: ComplianceInput) -> ComplianceResult:
     """Check if configuration meets a regulatory framework's minimum requirements."""
-    if cin.framework == "none" or cin.framework not in FRAMEWORKS:
+    if cin.framework == "none":
         return ComplianceResult(
             framework="none",
             compliant=True,
             gaps=[],
             recommended_retention_days=cin.current_retention_days,
             risk_level="compliant",
+        )
+
+    if cin.framework not in FRAMEWORKS:
+        return ComplianceResult(
+            framework=cin.framework,
+            compliant=False,
+            gaps=[f"Unknown compliance framework '{cin.framework}'. "
+                  f"Supported: {', '.join(FRAMEWORKS.keys())}."],
+            recommended_retention_days=cin.current_retention_days,
+            risk_level="non-compliant",
         )
 
     fw = FRAMEWORKS[cin.framework]

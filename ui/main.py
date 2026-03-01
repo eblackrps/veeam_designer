@@ -444,6 +444,18 @@ async def post_run(
     run_blueprint_flag = run_blueprint is not None
     run_cost_flag = run_cost is not None
 
+    if len(yaml_content) > 1_048_576:  # 1 MB limit
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                "request": request,
+                "yaml_content": yaml_content[:4096],
+                "blueprint_output": "Error: YAML payload exceeds 1 MB limit.",
+                "cost_output": None,
+                "dashboard": None,
+            },
+        )
+
     if not (run_blueprint_flag or run_cost_flag):
         return templates.TemplateResponse(
             "index.html",
@@ -513,6 +525,8 @@ async def api_profiles():
 @app.post("/api/design")
 async def api_design(yaml_content: str = Body(..., media_type="text/plain")):
     """Accept YAML project definition, return JSON design output."""
+    if len(yaml_content) > 1_048_576:  # 1 MB limit
+        raise HTTPException(status_code=413, detail="YAML payload too large (max 1 MB).")
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir) / "project.yml"
         tmp_path.write_text(yaml_content, encoding="utf-8")

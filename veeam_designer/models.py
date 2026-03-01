@@ -280,6 +280,7 @@ class ReplicationInput:
     cdp_enabled: bool = False
     rpo_seconds: int = 15
     compression: bool = True
+    daily_change_pct: float = 5.0
 
 
 @dataclass
@@ -336,7 +337,7 @@ class WanAccelDesign:
     effective_mbps: float
     meets_copy_window: bool
     backup_copy_window_hours: float
-    notes: list = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -358,7 +359,7 @@ class LicenseEstimate:
     estimated_sockets: int
     tier: str
     annual_maintenance_usd: float
-    notes: list = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -381,7 +382,7 @@ class TapeDesign:
     lto_generation: int
     tb_per_cartridge: float
     annual_media_cost_usd: float
-    notes: list = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -405,7 +406,7 @@ class VeeamOneDesign:
     em_cores: int = 0
     em_ram_gb: int = 0
     vspc_cores: int = 0
-    notes: list = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -426,6 +427,6 @@ class ComplianceInput:
 class ComplianceResult:
     framework: str
     compliant: bool
-    gaps: list = field(default_factory=list)
+    gaps: List[str] = field(default_factory=list)
     recommended_retention_days: int = 0
     risk_level: str = "compliant"

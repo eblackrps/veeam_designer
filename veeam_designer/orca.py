@@ -37,9 +37,9 @@ def size_orca(
     Returns:
         OrcaDesign with node count, usable TB, stream capacity, and guidance notes.
     """
-    # Immutability lock keeps extra metadata proportional to the lock window;
-    # empirical overhead ~10 % of raw capacity per year of retention.
-    overhead_factor = 1.0 + (immutability_days / 365.0) * 0.10
+    # Immutability lock keeps extra metadata proportional to the lock window.
+    # Minimum 5% overhead; scales at ~20% per year for longer lock windows.
+    overhead_factor = 1.0 + max(0.05, (immutability_days / 365.0) * 0.20)
     effective_tb = total_protected_tb * overhead_factor
 
     node_count = max(1, ceil(effective_tb / ORCA_TB_PER_NODE))

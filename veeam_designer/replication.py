@@ -22,7 +22,7 @@ from .models import ReplicationDesign, ReplicationInput
 
 def size_replication(rin: ReplicationInput) -> ReplicationDesign:
     """Size replication infrastructure for the given ReplicationInput."""
-    daily_change_tb = rin.source_tb * 0.05   # default assumption; caller should override
+    daily_change_tb = rin.source_tb * rin.daily_change_pct / 100.0
 
     # Data that must transfer within one RPO window
     change_per_rpo_tb = daily_change_tb * (rin.rpo_hours / 24.0)
@@ -35,9 +35,10 @@ def size_replication(rin: ReplicationInput) -> ReplicationDesign:
     required_mbps = required_mb_s * 8.0
     meets_rpo = rin.wan_mbps > 0 and required_mbps <= rin.wan_mbps
 
-    # Replica storage: uncompressed copy (Veeam replication default)
-    # With compression flag it is ~10% saving
-    replica_storage_tb = rin.source_tb * (1.1 if rin.compression else 2.0)
+    # Replica storage: full VM copy on target side.
+    # With source-side compression: ~10% smaller than source (0.9×).
+    # Without compression: close to source size with ~10% overhead for metadata (1.1×).
+    replica_storage_tb = rin.source_tb * (0.9 if rin.compression else 1.1)
 
     cdp_proxy_cores = 0
     cdp_journal_tb = 0.0

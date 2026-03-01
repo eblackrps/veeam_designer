@@ -1,7 +1,7 @@
 """WAN accelerator and backup copy job sizing."""
 from __future__ import annotations
 from math import ceil
-from veeam_designer.models import WanAccelInput, WanAccelDesign
+from .models import WanAccelInput, WanAccelDesign
 
 
 def size_wan_accel(win: WanAccelInput) -> WanAccelDesign:
@@ -26,11 +26,12 @@ def size_wan_accel(win: WanAccelInput) -> WanAccelDesign:
 
     # Daily change estimate (5% of source)
     daily_change_tb = win.source_tb * 0.05
-    # Bytes to transfer per BCJ cycle
-    bytes_to_xfer = daily_change_tb * 1024 ** 3 / effective_ratio
-    wan_bytes_per_sec = (win.wan_mbps / 8.0) * 1_000_000
-    if wan_bytes_per_sec > 0:
-        bcj_window_hours = bytes_to_xfer / wan_bytes_per_sec / 3600.0
+    # Convert TB → MB (binary, consistent with network.py), then apply WAN accel reduction
+    daily_change_mb = daily_change_tb * 1024.0 * 1024.0
+    effective_mb = daily_change_mb / effective_ratio  # MB after dedupe + compress
+    wan_mb_per_sec = win.wan_mbps / 8.0               # Mbps → MB/s
+    if wan_mb_per_sec > 0:
+        bcj_window_hours = effective_mb / wan_mb_per_sec / 3600.0
     else:
         bcj_window_hours = 999.0
 

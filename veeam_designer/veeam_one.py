@@ -1,7 +1,7 @@
 """Veeam ONE monitoring server and Enterprise Manager sizing."""
 from __future__ import annotations
 from math import ceil
-from veeam_designer.models import VeeamOneInput, VeeamOneDesign
+from .models import VeeamOneInput, VeeamOneDesign
 
 
 def size_veeam_one(vin: VeeamOneInput) -> VeeamOneDesign:

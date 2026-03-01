@@ -1,8 +1,8 @@
 """Veeam license tier estimation (VUL — Universal License)."""
 from __future__ import annotations
 from math import ceil
-from veeam_designer.config import CONFIG
-from veeam_designer.models import LicenseInput, LicenseEstimate
+from .config import CONFIG
+from .models import LicenseInput, LicenseEstimate
 
 
 def estimate_license(lin: LicenseInput) -> LicenseEstimate:
