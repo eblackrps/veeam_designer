@@ -7,6 +7,57 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
+<!-- Common value datalists -->
+<datalist id="dl-tb">
+  <option value="10"><option value="25"><option value="50">
+  <option value="100"><option value="200"><option value="500">
+  <option value="1000"><option value="2000">
+</datalist>
+<datalist id="dl-daily-churn">
+  <option value="2" label="Low (2%)">
+  <option value="5" label="Average (5%)">
+  <option value="10" label="High (10%)">
+  <option value="15" label="Very High (15%)">
+</datalist>
+<datalist id="dl-retention">
+  <option value="14"><option value="30"><option value="60">
+  <option value="90"><option value="180"><option value="365">
+</datalist>
+<datalist id="dl-vm-size">
+  <option value="50" label="Small (50 GB)">
+  <option value="100" label="Medium (100 GB)">
+  <option value="250" label="Large (250 GB)">
+  <option value="500" label="XL (500 GB)">
+</datalist>
+<datalist id="dl-wan">
+  <option value="10"><option value="50"><option value="100">
+  <option value="250"><option value="500"><option value="1000">
+  <option value="10000">
+</datalist>
+<datalist id="dl-window">
+  <option value="4"><option value="6"><option value="8">
+  <option value="10"><option value="12">
+</datalist>
+<datalist id="dl-shares">
+  <option value="10"><option value="50"><option value="100">
+  <option value="250"><option value="500"><option value="1000">
+</datalist>
+<datalist id="dl-files">
+  <option value="0.1"><option value="0.5"><option value="1">
+  <option value="5"><option value="10"><option value="50">
+</datalist>
+<datalist id="dl-rpo-hrs">
+  <option value="0.25" label="15 min">
+  <option value="1" label="1 hour">
+  <option value="4" label="4 hours">
+  <option value="8" label="8 hours">
+  <option value="24" label="24 hours">
+</datalist>
+<datalist id="dl-lto-gen">
+  <option value="7" label="LTO-7 (15 TB compressed)">
+  <option value="8" label="LTO-8 (30 TB compressed)">
+  <option value="9" label="LTO-9 (45 TB compressed)">
+</datalist>
   <div class="max-w-7xl mx-auto py-6 px-4">
     <header class="mb-6 flex items-center justify-between">
       <div>
@@ -146,6 +197,18 @@
               </div>
             </div>
 
+            <!-- Workload Type tabs -->
+            <div class="mb-4">
+              <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Workload Type</label>
+              <div class="flex flex-wrap gap-2" id="workload-tabs">
+                <button type="button" data-wtype="vm" class="wtype-tab px-3 py-1.5 rounded text-sm font-medium bg-green-600 text-white border border-green-500">VM Backup</button>
+                <button type="button" data-wtype="nas" class="wtype-tab px-3 py-1.5 rounded text-sm font-medium bg-slate-700 text-slate-300 border border-slate-600 hover:bg-slate-600">NAS / Unstructured</button>
+                <button type="button" data-wtype="physical" class="wtype-tab px-3 py-1.5 rounded text-sm font-medium bg-slate-700 text-slate-300 border border-slate-600 hover:bg-slate-600">Physical / Agent</button>
+                <button type="button" data-wtype="replication" class="wtype-tab px-3 py-1.5 rounded text-sm font-medium bg-slate-700 text-slate-300 border border-slate-600 hover:bg-slate-600">Replication</button>
+              </div>
+            </div>
+            <input type="hidden" id="active-workload-type" name="active_workload_type" value="vm">
+
             <!-- Sites -->
             <div id="sites-container" class="space-y-4">
               <!-- Site 1 -->
@@ -173,7 +236,7 @@
                 <div class="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <label class="block text-slate-300 mb-1">Total data (TB)</label>
-                    <input id="site1-data" type="number" step="any" min="0"
+                    <input id="site1-data" type="number" step="any" min="0" list="dl-tb"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="200" />
                   </div>
@@ -185,13 +248,13 @@
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Daily change (%)</label>
-                    <input id="site1-daily" type="number" step="any" min="0"
+                    <input id="site1-daily" type="number" step="any" min="0" list="dl-daily-churn"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="5" />
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Primary retention (days)</label>
-                    <input id="site1-retention" type="number" step="any" min="0"
+                    <input id="site1-retention" type="number" step="any" min="0" list="dl-retention"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="30" />
                   </div>
@@ -203,19 +266,19 @@
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Avg VM size (GB)</label>
-                    <input id="site1-vmsize" type="number" step="any" min="0"
+                    <input id="site1-vmsize" type="number" step="any" min="0" list="dl-vm-size"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="250" />
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">WAN bandwidth (Mbps)</label>
-                    <input id="site1-wan" type="number" step="any" min="0"
+                    <input id="site1-wan" type="number" step="any" min="0" list="dl-wan"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
-                      value="500" />
+                      value="1000" />
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Backup window (hrs)</label>
-                    <input id="site1-window" type="number" step="any" min="0"
+                    <input id="site1-window" type="number" step="any" min="0" list="dl-window"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="8" />
                   </div>
@@ -358,7 +421,7 @@
                 <div id="site2-fields" class="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <label class="block text-slate-300 mb-1">Total data (TB)</label>
-                    <input id="site2-data" type="number" step="any" min="0"
+                    <input id="site2-data" type="number" step="any" min="0" list="dl-tb"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="120" />
                   </div>
@@ -370,13 +433,13 @@
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Daily change (%)</label>
-                    <input id="site2-daily" type="number" step="any" min="0"
+                    <input id="site2-daily" type="number" step="any" min="0" list="dl-daily-churn"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="4" />
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Primary retention (days)</label>
-                    <input id="site2-retention" type="number" step="any" min="0"
+                    <input id="site2-retention" type="number" step="any" min="0" list="dl-retention"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="30" />
                   </div>
@@ -388,19 +451,19 @@
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Avg VM size (GB)</label>
-                    <input id="site2-vmsize" type="number" step="any" min="0"
+                    <input id="site2-vmsize" type="number" step="any" min="0" list="dl-vm-size"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
-                      value="220" />
+                      value="150" />
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">WAN bandwidth (Mbps)</label>
-                    <input id="site2-wan" type="number" step="any" min="0"
+                    <input id="site2-wan" type="number" step="any" min="0" list="dl-wan"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="500" />
                   </div>
                   <div>
                     <label class="block text-slate-300 mb-1">Backup window (hrs)</label>
-                    <input id="site2-window" type="number" step="any" min="0"
+                    <input id="site2-window" type="number" step="any" min="0" list="dl-window"
                       class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
                       value="8" />
                   </div>
@@ -804,12 +867,12 @@
       msp: {
         site1: {
           name: "HQ",
-          data: 200,
+          data: 50,
           growth: 15,
           daily: 5,
           retention: 30,
-          vms: 600,
-          vmsize: 250,
+          vms: 200,
+          vmsize: 150,
           wan: 500,
           window: 8,
           gfsWeekly: 4,
@@ -828,7 +891,7 @@
           daily: 4,
           retention: 30,
           vms: 350,
-          vmsize: 220,
+          vmsize: 150,
           wan: 500,
           window: 8,
           gfsWeekly: 4,
@@ -847,11 +910,11 @@
           name: "Primary",
           data: 20,
           growth: 10,
-          daily: 2,
-          retention: 21,
-          vms: 40,
-          vmsize: 200,
-          wan: 200,
+          daily: 3,
+          retention: 14,
+          vms: 50,
+          vmsize: 100,
+          wan: 100,
           window: 8,
           gfsWeekly: 1,
           gfsMonthly: 6,
@@ -886,13 +949,13 @@
       enterprise: {
         site1: {
           name: "HQ",
-          data: 800,
+          data: 500,
           growth: 15,
           daily: 5,
-          retention: 30,
-          vms: 1800,
-          vmsize: 250,
-          wan: 5000,
+          retention: 90,
+          vms: 2000,
+          vmsize: 300,
+          wan: 10000,
           window: 10,
           gfsWeekly: 4,
           gfsMonthly: 12,
@@ -905,13 +968,13 @@
         },
         site2: {
           name: "DR",
-          data: 400,
+          data: 250,
           growth: 10,
           daily: 4,
-          retention: 30,
-          vms: 900,
+          retention: 90,
+          vms: 1000,
           vmsize: 250,
-          wan: 3000,
+          wan: 5000,
           window: 10,
           gfsWeekly: 4,
           gfsMonthly: 12,
@@ -1528,8 +1591,10 @@ ${extraLines()}${notesLine}`;
 ${extraLines()}`;
       }
 
+      const activeWtype = document.getElementById('active-workload-type')?.value || 'vm';
       const yaml =
 `profile: ${profile}
+workload_type: ${activeWtype}
 sites:
 ${sitesYaml}`;
 
@@ -1629,6 +1694,20 @@ function restoreFormState() {
       switchMode(mode);
       validateDesignForm();
     }
+    // Workload type tab switching
+    document.querySelectorAll('.wtype-tab').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.wtype-tab').forEach(function(b) {
+          b.classList.remove('bg-green-600', 'text-white', 'border-green-500');
+          b.classList.add('bg-slate-700', 'text-slate-300', 'border-slate-600');
+        });
+        btn.classList.remove('bg-slate-700', 'text-slate-300', 'border-slate-600');
+        btn.classList.add('bg-green-600', 'text-white', 'border-green-500');
+        var wtype = btn.getAttribute('data-wtype');
+        document.getElementById('active-workload-type').value = wtype;
+        saveFormState();
+      });
+    });
   </script>
 </body>
 </html>

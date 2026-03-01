@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 from .models import VeeamInput, NasInput, AgentInput, ReplicationInput
 from .config import CONFIG, select_profile
@@ -34,7 +34,7 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         has_san_access=d.get("has_san_access", False),
         on_host_proxy=d.get("on_host_proxy", True),
         # Round 2
-        workload_count=d.get("workload_count", 0),
+        workload_count=d.get("workload_count") or d.get("vm_count", 0),
         concurrent_jobs=d.get("concurrent_jobs", 5),
         indexing_enabled=d.get("indexing_enabled", False),
         v13_appliance=d.get("v13_appliance", True),
