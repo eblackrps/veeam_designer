@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veeam-designer"
+version = "1.0.0"
+description = "Veeam backup environment sizing and architecture designer"
+authors = [{name = "E. Black"}]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = ["pyyaml"]
+keywords = ["veeam", "backup", "sizing", "infrastructure", "architecture", "disaster-recovery"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/eblackrps/veeam_designer"
+Repository = "https://github.com/eblackrps/veeam_designer"
+Issues = "https://github.com/eblackrps/veeam_designer/issues"
+
+[project.scripts]
+veeam-designer = "veeam_designer.cli:main"
+
+[project.optional-dependencies]
+web = ["fastapi", "uvicorn", "jinja2", "python-multipart"]
+dev = ["flake8", "pytest"]

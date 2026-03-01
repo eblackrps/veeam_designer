@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Veeam Designer UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div class="max-w-7xl mx-auto py-6 px-4">
+    <header class="mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Veeam Designer UI</h1>
+      </div>
+    </header>
+
+    <form id="design-form" method="post" action="/run" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- LEFT: Form + YAML -->
+      <div class="flex flex-col space-y-4">
+        <div class="bg-slate-800/70 border border-slate-700 rounded-2xl shadow p-4 h-full">
+          <!-- Tabs -->
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                id="tab-form"
+                class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-900 text-slate-100 border border-slate-600"
+                onclick="switchMode('form')"
+              >
+                Simple form
+              </button>
+              <button
+                type="button"
+                id="tab-yaml"
+                class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 text-slate-300 border border-slate-700"
+                onclick="switchMode('yaml')"
+              >
+                YAML
+              </button>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-400 mb-3" id="mode-help-form">
+            Fill in basic inputs below. YAML is generated automatically when you run the design.
+          </p>
+          <p class="text-xs text-slate-400 mb-3 hidden" id="mode-help-yaml">
+            Edit YAML directly. This is fed straight to the sizing engine.
+          </p>
+
+          <!-- FORM MODE -->
+          <div id="form-mode">
+            <!-- Global settings -->
+            <div class="mb-4 space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">
+                  Profile
+                </label>
+                <select
+                  id="profile"
+                  class="w-full rounded-lg bg-slate-900 border border-slate-700 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  onchange="onProfileChange(this)"
+                >
+                  <option value="msp" selected>MSP (multi-site provider)</option>
+                  <option value="smb">SMB</option>
+                  <option value="enterprise">Enterprise</option>
+                  <option value="custom">Custom (no defaults)</option>
+                </select>
+                <p class="text-[11px] text-slate-500 mt-1">
+                  Changing profile resets site defaults for data, churn, GFS, VMs, WAN, repo, backup type, etc.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label class="block text-slate-300 mb-1">Hypervisor</label>
+                  <select
+                    id="hypervisor"
+                    class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1 text-sm"
+                  >
+                    <option value="vmware" selected>VMware vSphere</option>
+                    <option value="hyperv">Microsoft Hyper-V</option>
+                    <option value="ahv">Nutanix AHV</option>
+                    <option value="physical">Physical / agents only</option>
+                    <option value="mixed">Mixed environment</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Target RPO (hours)</label>
+                  <input
+                    id="target-rpo"
+                    type="number"
+                    step="any"
+                    min="1"
+                    class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                    value="24"
+                  />
+                  <p class="text-[10px] text-slate-500 mt-1">
+                    Used for WAN sizing / “meets target” checks across all sites.
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label class="block text-slate-300 mb-1">Compression ratio</label>
+                  <input
+                    id="compression-ratio"
+                    type="number"
+                    step="any"
+                    min="0"
+                    class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                    placeholder="e.g. 1.6 (leave blank for default)"
+                  />
+                  <p class="text-[10px] text-slate-500 mt-1">
+                    Optional override. Leave blank to use profile default.
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Dedupe ratio</label>
+                  <input
+                    id="dedupe-ratio"
+                    type="number"
+                    step="any"
+                    min="0"
+                    class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                    placeholder="e.g. 1.0 (leave blank for default)"
+                  />
+                  <p class="text-[10px] text-slate-500 mt-1">
+                    Optional override. Leave blank to use profile default.
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Proxy throughput per core (MB/s)</label>
+                  <input
+                    id="throughput-mb-per-core"
+                    type="number"
+                    step="any"
+                    min="0"
+                    class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                    placeholder="e.g. 15 (leave blank for default)"
+                  />
+                  <p class="text-[10px] text-slate-500 mt-1">
+                    Optional override. Leave blank to use engine default (15 MB/s per core).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sites -->
+            <div id="sites-container" class="space-y-4">
+              <!-- Site 1 -->
+              <div class="site-card border border-slate-700 rounded-xl p-3 bg-slate-900/60" data-site-idx="1">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-slate-200 uppercase tracking-wide">
+                    Site 1
+                  </span>
+                  <button
+                    type="button"
+                    class="remove-site-btn text-[10px] px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:bg-slate-800"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-[11px] text-slate-300 mr-2">Site name</label>
+                  <input
+                    type="text"
+                    id="site1-name"
+                    class="text-xs rounded bg-slate-800 border border-slate-600 px-2 py-1 w-32"
+                    value="HQ"
+                  />
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label class="block text-slate-300 mb-1">Total data (TB)</label>
+                    <input id="site1-data" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="200" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Annual growth (%)</label>
+                    <input id="site1-growth" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="15" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Daily change (%)</label>
+                    <input id="site1-daily" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="5" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Primary retention (days)</label>
+                    <input id="site1-retention" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="30" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">VM count</label>
+                    <input id="site1-vms" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="600" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Avg VM size (GB)</label>
+                    <input id="site1-vmsize" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="250" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">WAN bandwidth (Mbps)</label>
+                    <input id="site1-wan" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="500" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Backup window (hrs)</label>
+                    <input id="site1-window" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="8" />
+                  </div>
+                </div>
+
+                <!-- Site 1 advanced -->
+                <div class="mt-3 text-[11px]">
+                  <div class="text-emerald-300 mb-1">
+                    Advanced: GFS retention & repo/backup options
+                  </div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="inline-flex items-center gap-1 text-slate-300">
+                      <input id="site1-gfs-enabled" type="checkbox"
+                             class="rounded border-slate-600 bg-slate-800" />
+                      Enable GFS retention (weekly/monthly/yearly)
+                    </label>
+                  </div>
+                  <div id="site1-gfs-block" class="grid grid-cols-3 gap-2 mb-2 opacity-40">
+                    <div>
+                      <label class="block text-slate-300 mb-1">GFS weekly</label>
+                      <input id="site1-gfs-weekly" type="number" step="any" min="0"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="4" disabled />
+                    </div>
+                    <div>
+                      <label class="block text-slate-300 mb-1">GFS monthly</label>
+                      <input id="site1-gfs-monthly" type="number" step="any" min="0"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="12" disabled />
+                    </div>
+                    <div>
+                      <label class="block text-slate-300 mb-1">GFS yearly</label>
+                      <input id="site1-gfs-yearly" type="number" step="any" min="0"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="3" disabled />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-slate-300 mb-1">Backup type</label>
+                      <select
+                        id="site1-backup-type"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      >
+                        <option value="synthetic_full_weekly" selected>Synthetic full weekly</option>
+                        <option value="forever_forward_incremental">Forever forward incremental</option>
+                        <option value="reverse_incremental">Reverse incremental</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-slate-300 mb-1">Repo type</label>
+                      <select
+                        id="site1-repo-type"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      >
+                        <option value="sobr" selected>SOBR</option>
+                        <option value="direct">Direct repo</option>
+                        <option value="object">Object-based</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 flex flex-col gap-1 text-[11px]">
+                  <label class="inline-flex items-center gap-1 text-slate-300">
+                    <input id="site1-san" type="checkbox" class="rounded border-slate-600 bg-slate-800" checked />
+                    DirectSAN / FC/iSCSI access to primary storage
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-slate-300">
+                    <input id="site1-onhost" type="checkbox" class="rounded border-slate-600 bg-slate-800" checked />
+                    Use on-host (HotAdd) proxies on the same hosts/clusters
+                  </label>
+                </div>
+              </div>
+
+              <!-- Site 2 -->
+              <div class="site-card border border-slate-700 rounded-xl p-3 bg-slate-900/60" data-site-idx="2">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-200 uppercase tracking-wide">
+                      Site 2
+                    </span>
+                    <label class="inline-flex items-center gap-1 text-[11px] text-slate-300">
+                      <input id="site2-enabled" type="checkbox" class="rounded border-slate-600 bg-slate-800" checked />
+                      Enabled
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    class="remove-site-btn text-[10px] px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:bg-slate-800"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-[11px] text-slate-300 mr-2">Site name</label>
+                  <input
+                    type="text"
+                    id="site2-name"
+                    class="text-xs rounded bg-slate-800 border border-slate-600 px-2 py-1 w-32"
+                    value="DR"
+                  />
+                </div>
+                <div id="site2-fields" class="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label class="block text-slate-300 mb-1">Total data (TB)</label>
+                    <input id="site2-data" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="120" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Annual growth (%)</label>
+                    <input id="site2-growth" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="10" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Daily change (%)</label>
+                    <input id="site2-daily" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="4" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Primary retention (days)</label>
+                    <input id="site2-retention" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="30" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">VM count</label>
+                    <input id="site2-vms" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="350" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Avg VM size (GB)</label>
+                    <input id="site2-vmsize" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="220" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">WAN bandwidth (Mbps)</label>
+                    <input id="site2-wan" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="500" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Backup window (hrs)</label>
+                    <input id="site2-window" type="number" step="any" min="0"
+                      class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      value="8" />
+                  </div>
+                </div>
+
+                <!-- Site 2 advanced -->
+                <div class="mt-3 text-[11px]">
+                  <div class="text-emerald-300 mb-1">
+                    Advanced: GFS retention & repo/backup options
+                  </div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="inline-flex items-center gap-1 text-slate-300">
+                      <input id="site2-gfs-enabled" type="checkbox"
+                             class="rounded border-slate-600 bg-slate-800" />
+                      Enable GFS retention (weekly/monthly/yearly)
+                    </label>
+                  </div>
+                  <div id="site2-gfs-block" class="grid grid-cols-3 gap-2 mb-2 opacity-40">
+                    <div>
+                      <label class="block text-slate-300 mb-1">GFS weekly</label>
+                      <input id="site2-gfs-weekly" type="number" step="any" min="0"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="4" disabled />
+                    </div>
+                    <div>
+                      <label class="block text-slate-300 mb-1">GFS monthly</label>
+                      <input id="site2-gfs-monthly" type="number" step="any" min="0"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="12" disabled />
+                    </div>
+                    <div>
+                      <label class="block text-slate-300 mb-1">GFS yearly</label>
+                      <input id="site2-gfs-yearly" type="number" step="any" min="0"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                        value="3" disabled />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-slate-300 mb-1">Backup type</label>
+                      <select
+                        id="site2-backup-type"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      >
+                        <option value="synthetic_full_weekly" selected>Synthetic full weekly</option>
+                        <option value="forever_forward_incremental">Forever forward incremental</option>
+                        <option value="reverse_incremental">Reverse incremental</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-slate-300 mb-1">Repo type</label>
+                      <select
+                        id="site2-repo-type"
+                        class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1"
+                      >
+                        <option value="sobr" selected>SOBR</option>
+                        <option value="direct">Direct repo</option>
+                        <option value="object">Object-based</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 flex flex-col gap-1 text-[11px]">
+                  <label class="inline-flex items-center gap-1 text-slate-300">
+                    <input id="site2-san" type="checkbox" class="rounded border-slate-600 bg-slate-800" checked />
+                    DirectSAN / FC/iSCSI access to primary storage
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-slate-300">
+                    <input id="site2-onhost" type="checkbox" class="rounded border-slate-600 bg-slate-800" checked />
+                    Use on-host (HotAdd) proxies on the same hosts/clusters
+                  </label>
+                </div>
+                <div class="mt-3">
+                  <label class="block text-slate-300 mb-1 text-[11px]">Site notes</label>
+                  <textarea
+                    id="site2-notes"
+                    class="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] resize-vertical"
+                    rows="2"
+                    placeholder="Notes, assumptions, storage vendor, etc."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button
+                id="add-site-btn"
+                type="button"
+                class="inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-slate-600 text-slate-200 hover:bg-slate-800/80"
+              >
+                + Add site
+              </button>
+            </div>
+          </div>
+
+          <!-- YAML MODE -->
+          <textarea
+            id="yaml-editor"
+            name="yaml_content"
+            class="hidden w-full h-[480px] font-mono text-sm bg-slate-900/80 border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-vertical"
+          >{{ yaml_content | e }}</textarea>
+        </div>
+
+        <div class="flex items-center justify-between gap-4 mt-1">
+          <div class="flex items-center gap-4">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" name="run_blueprint" value="true" checked
+                     class="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500">
+              Blueprint
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" name="run_cost" value="true"
+                     class="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500">
+              Cost
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            class="inline-flex items-center px-4 py-2 rounded-xl bg-emerald-500 text-slate-900 text-sm font-semibold shadow hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-emerald-500"
+          >
+            Run design
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT: Outputs -->
+      <div class="flex flex-col space-y-4">
+
+        {% if dashboard %}
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl shadow p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-semibold text-emerald-300 uppercase tracking-wide">
+              Environment summary
+            </h2>
+            <button
+              id="export-csv"
+              type="button"
+              class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500 text-slate-900 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+            >
+              Export CSV
+            </button>
+          </div>
+
+          <div class="mb-3">
+            <p class="text-xs text-slate-200">
+              Total repo across all sites:
+              <span class="font-semibold text-emerald-300">
+                {{ "%.1f"|format(dashboard.total_repo_tb or 0) }} TB
+              </span>
+            </p>
+            {% if dashboard.sobr_note %}
+            <p class="text-[11px] text-amber-300 mt-1">
+              {{ dashboard.sobr_note }}
+            </p>
+            {% endif %}
+          </div>
+
+          <div class="space-y-3">
+            {% for site in dashboard.sites %}
+            <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-3">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <p class="text-xs font-semibold text-slate-100 uppercase tracking-wide">
+                    {{ site.name }}
+                  </p>
+                  <p class="text-[11px] text-slate-400">
+                    {{ "%.1f"|format(site.total_repo_tb) }} TB repo · {{ site.proxy_count }} proxies · {{ site.total_proxy_cores }} cores
+                  </p>
+                </div>
+
+                <span
+                  class="text-[11px] px-2 py-0.5 rounded-full border
+                  {% if site.risk_level == 'green' %}
+                    bg-emerald-500/15 text-emerald-300 border-emerald-500/40
+                  {% elif site.risk_level == 'yellow' %}
+                    bg-amber-500/15 text-amber-300 border-amber-500/40
+                  {% else %}
+                    bg-rose-500/15 text-rose-300 border-rose-500/40
+                  {% endif %}">
+                  Risk: {{ site.risk_level }} ({{ site.risk_score }})
+                </span>
+              </div>
+
+              <div class="mb-2">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                  <span>Repository footprint</span>
+                  <span>{{ "%.1f"|format(site.primary_repo_tb) }} TB primary · {{ "%.1f"|format(site.gfs_repo_tb) }} TB GFS</span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-300">
+                  Est. cost:
+                  <span class="font-mono">
+                    ${{ "%.0f"|format(site.yearly_onprem_usd or 0) }}/yr on-prem,
+                    ${{ "%.0f"|format((site.monthly_object_usd or 0) * 12) }}/yr object
+                  </span>
+                </p>
+                {% set total = site.total_repo_tb if site.total_repo_tb > 0 else 1 %}
+                {% set primary_pct = (site.primary_repo_tb / total * 100) | round(0) %}
+                {% set gfs_pct = (site.gfs_repo_tb / total * 100) | round(0) %}
+                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                  <div class="h-2 bg-emerald-500/70" style="width: {{ primary_pct }}%"></div>
+                  <div class="h-2 bg-sky-500/70" style="width: {{ gfs_pct }}%"></div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-3 text-[11px] mt-2">
+                <div>
+                  <p class="text-slate-400 mb-0.5">WAN required</p>
+                  <p class="text-slate-100">
+                    {{ "%.1f"|format(site.wan_required_mbps) }} Mbps
+                  </p>
+                  <p class="mt-0.5
+                    {% if site.wan_meets_target %}
+                      text-emerald-300
+                    {% else %}
+                      text-rose-300
+                    {% endif %}">
+                    {% if site.wan_meets_target %}
+                      🟢 Meets target RPO
+                    {% else %}
+                      🔴 RPO not met
+                    {% endif %}
+                  </p>
+                </div>
+
+                <div>
+                  <p class="text-slate-400 mb-0.5">Proxy throughput</p>
+                  <p class="text-slate-100">
+                    Req: {{ "%.1f"|format(site.required_mb_s) }} MB/s
+                  </p>
+                  <p class="text-slate-100">
+                    Cap: {{ "%.1f"|format(site.proxy_capacity_mb_s) }} MB/s
+                  </p>
+                  {% set load = site.proxy_load_ratio %}
+                  <p class="mt-0.5 text-[11px]">
+                    {% if load <= 0.7 %}
+                      <span class="text-emerald-300">Proxies overprovisioned (headroom available)</span>
+                    {% elif load <= 1.0 %}
+                      <span class="text-amber-300">Proxies roughly right-sized</span>
+                    {% else %}
+                      <span class="text-rose-300">Proxies underprovisioned – consider more cores/tasks</span>
+                    {% endif %}
+                  </p>
+                </div>
+
+                <div>
+                  {% set load = site.proxy_load_ratio %}
+                  <p class="text-slate-400 mb-0.5">Proxy load</p>
+                  <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                    <div class="h-2
+                      {% if load <= 0.7 %}
+                        bg-emerald-500/80
+                      {% elif load <= 1.0 %}
+                        bg-amber-500/80
+                      {% else %}
+                        bg-rose-500/80
+                      {% endif %}"
+                      style="width: {{ (load * 100) | round(0) }}%">
+                    </div>
+                  </div>
+                  <p class="mt-0.5 text-slate-300">
+                    {{ (load * 100) | round(0) }}% of capacity
+                  </p>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if blueprint_output %}
+        <div class="bg-slate-800/70 border border-slate-700 rounded-2xl shadow p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-emerald-300 uppercase tracking-wide">
+              Blueprint output
+            </h2>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="px-2 py-1 rounded-lg bg-slate-900/70 border border-slate-600 text-xs text-slate-200 hover:bg-slate-700"
+                onclick="copyOutput('blueprint-output')"
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                class="px-2 py-1 rounded-lg bg-slate-900/70 border border-slate-600 text-xs text-slate-200 hover:bg-slate-700"
+                onclick="downloadOutput('blueprint-output','veeam-blueprint.txt')"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+          <pre id="blueprint-output" class="text-xs font-mono bg-slate-900/70 border border-slate-800 rounded-xl p-3 overflow-auto max-h-[220px] whitespace-pre-wrap">{{ blueprint_output }}</pre>
+        </div>
+        {% endif %}
+
+        {% if cost_output %}
+        <div class="bg-slate-800/70 border border-slate-700 rounded-2xl shadow p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-emerald-300 uppercase tracking-wide">
+              Cost output
+            </h2>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="px-2 py-1 rounded-lg bg-slate-900/70 border border-slate-600 text-xs text-slate-200 hover:bg-slate-700"
+                onclick="copyOutput('cost-output')"
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                class="px-2 py-1 rounded-lg bg-slate-900/70 border border-slate-600 text-xs text-slate-200 hover:bg-slate-700"
+                onclick="downloadOutput('cost-output','veeam-cost.txt')"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+          <pre id="cost-output" class="text-xs font-mono bg-slate-900/70 border border-slate-800 rounded-xl p-3 overflow-auto max-h-[220px] whitespace-pre-wrap">{{ cost_output }}</pre>
+        </div>
+        {% endif %}
+
+        {% if not blueprint_output and not cost_output and not dashboard %}
+        <div class="bg-slate-800/40 border border-dashed border-slate-700 rounded-2xl p-6 flex items-center justify-center h-full">
+          <p class="text-sm text-slate-500 text-center">
+            Use the form on the left or flip to YAML, then hit
+            <span class="font-semibold text-slate-300">Run design</span>.
+          </p>
+        </div>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <footer class="mt-6 border-t border-slate-800 pt-4">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="text-xs text-slate-500 text-right">
+        &copy; E. Black
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    const profileDefaults = {
+      msp: {
+        site1: {
+          name: "HQ",
+          data: 200,
+          growth: 15,
+          daily: 5,
+          retention: 30,
+          vms: 600,
+          vmsize: 250,
+          wan: 500,
+          window: 8,
+          gfsWeekly: 4,
+          gfsMonthly: 12,
+          gfsYearly: 3,
+          gfsEnabled: false,
+          backupType: "synthetic_full_weekly",
+          repoType: "sobr",
+          san: true,
+          onhost: true,
+        },
+        site2: {
+          name: "DR",
+          data: 120,
+          growth: 10,
+          daily: 4,
+          retention: 30,
+          vms: 350,
+          vmsize: 220,
+          wan: 500,
+          window: 8,
+          gfsWeekly: 4,
+          gfsMonthly: 12,
+          gfsYearly: 3,
+          gfsEnabled: false,
+          backupType: "synthetic_full_weekly",
+          repoType: "sobr",
+          san: true,
+          onhost: true,
+          enabled: true,
+        },
+      },
+      smb: {
+        site1: {
+          name: "Primary",
+          data: 20,
+          growth: 10,
+          daily: 2,
+          retention: 21,
+          vms: 40,
+          vmsize: 200,
+          wan: 200,
+          window: 8,
+          gfsWeekly: 1,
+          gfsMonthly: 6,
+          gfsYearly: 1,
+          gfsEnabled: false,
+          backupType: "synthetic_full_weekly",
+          repoType: "direct",
+          san: false,
+          onhost: true,
+        },
+        site2: {
+          name: "DR",
+          data: 0,
+          growth: 0,
+          daily: 0,
+          retention: 30,
+          vms: 0,
+          vmsize: 200,
+          wan: 0,
+          window: 8,
+          gfsWeekly: 0,
+          gfsMonthly: 0,
+          gfsYearly: 0,
+          gfsEnabled: false,
+          backupType: "synthetic_full_weekly",
+          repoType: "direct",
+          san: false,
+          onhost: false,
+          enabled: false,
+        },
+      },
+      enterprise: {
+        site1: {
+          name: "HQ",
+          data: 800,
+          growth: 15,
+          daily: 5,
+          retention: 30,
+          vms: 1800,
+          vmsize: 250,
+          wan: 5000,
+          window: 10,
+          gfsWeekly: 4,
+          gfsMonthly: 12,
+          gfsYearly: 3,
+          gfsEnabled: false,
+          backupType: "synthetic_full_weekly",
+          repoType: "sobr",
+          san: true,
+          onhost: true,
+        },
+        site2: {
+          name: "DR",
+          data: 400,
+          growth: 10,
+          daily: 4,
+          retention: 30,
+          vms: 900,
+          vmsize: 250,
+          wan: 3000,
+          window: 10,
+          gfsWeekly: 4,
+          gfsMonthly: 12,
+          gfsYearly: 3,
+          gfsEnabled: false,
+          backupType: "synthetic_full_weekly",
+          repoType: "sobr",
+          san: true,
+          onhost: true,
+          enabled: true,
+        },
+      },
+    };
+
+    const FORM_STORAGE_KEY = "veeamDesignerFormV1";
+    let currentMode = "form";
+    let lastProfileValue = "msp";
+
+    function onProfileChange(selectEl) {
+      const profile = selectEl.value;
+      if (profile === lastProfileValue) return;
+      if (profile === "custom") {
+        lastProfileValue = profile;
+        return;
+      }
+      const confirmReset = confirm(
+        "Changing profile will reset site defaults (data, churn, GFS, VMs, WAN, repo, backup type, etc). Continue?"
+      );
+      if (!confirmReset) {
+        selectEl.value = lastProfileValue;
+        return;
+      }
+      lastProfileValue = profile;
+      applyProfileDefaults(profile);
+    }
+
+    function applyProfileDefaults(profile) {
+      const def = profileDefaults[profile];
+      if (!def) return;
+
+      function applySite(idx, s) {
+        document.getElementById(`site${idx}-name`).value = s.name;
+        document.getElementById(`site${idx}-data`).value = s.data;
+        document.getElementById(`site${idx}-growth`).value = s.growth;
+        document.getElementById(`site${idx}-daily`).value = s.daily;
+        document.getElementById(`site${idx}-retention`).value = s.retention;
+        document.getElementById(`site${idx}-vms`).value = s.vms;
+        document.getElementById(`site${idx}-vmsize`).value = s.vmsize;
+        document.getElementById(`site${idx}-wan`).value = s.wan;
+        document.getElementById(`site${idx}-window`).value = s.window;
+
+        document.getElementById(`site${idx}-gfs-weekly`).value = s.gfsWeekly;
+        document.getElementById(`site${idx}-gfs-monthly`).value = s.gfsMonthly;
+        document.getElementById(`site${idx}-gfs-yearly`).value = s.gfsYearly;
+
+        document.getElementById(`site${idx}-backup-type`).value = s.backupType;
+        document.getElementById(`site${idx}-repo-type`).value = s.repoType;
+
+        document.getElementById(`site${idx}-san`).checked = !!s.san;
+        document.getElementById(`site${idx}-onhost`).checked = !!s.onhost;
+
+        const gfsCheckbox = document.getElementById(`site${idx}-gfs-enabled`);
+        gfsCheckbox.checked = s.gfsEnabled === true;
+        toggleGfs(idx);
+
+        if (idx === 2) {
+          const enabledCheckbox = document.getElementById("site2-enabled");
+          enabledCheckbox.checked = s.enabled !== false;
+          toggleSite2Enabled();
+        }
+      }
+
+      applySite(1, def.site1);
+      applySite(2, def.site2);
+    }
+
+    function saveFormState() {
+      if (!window.localStorage) return;
+
+      const form = document.getElementById("design-form");
+      if (!form) return;
+
+      const elements = form.elements;
+      const data = {};
+
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        const key = el.id || el.name;
+        if (!key) continue;
+
+        if (el.type === "checkbox" || el.type === "radio") {
+          data[key] = { type: el.type, checked: el.checked };
+        } else {
+          data[key] = { type: el.type || "text", value: el.value };
+        }
+      }
+
+      const state = {
+        mode: currentMode || "form",
+        data: data,
+      };
+
+      try {
+        window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
+
+
+    function toggleSite2Enabled() {
+      const enabled = document.getElementById("site2-enabled").checked;
+      const fields = document.getElementById("site2-fields");
+      fields.classList.toggle("opacity-40", !enabled);
+    }
+
+    function toggleGfs(idx) {
+      const checkbox = document.getElementById(`site${idx}-gfs-enabled`);
+      const block = document.getElementById(`site${idx}-gfs-block`);
+      if (!checkbox || !block) return;
+      const enabled = checkbox.checked;
+      block.classList.toggle("opacity-40", !enabled);
+
+      ["weekly", "monthly", "yearly"].forEach(kind => {
+        const el = document.getElementById(`site${idx}-gfs-${kind}`);
+        if (el) el.disabled = !enabled;
+      });
+    }
+
+    document.getElementById("site2-enabled").addEventListener("change", toggleSite2Enabled);
+    document.getElementById("site1-gfs-enabled").addEventListener("change", () => toggleGfs(1));
+    document.getElementById("site2-gfs-enabled").addEventListener("change", () => toggleGfs(2));
+
+    function switchMode(mode) {
+      const formMode = document.getElementById("form-mode");
+      const yamlEditor = document.getElementById("yaml-editor");
+      const tabForm = document.getElementById("tab-form");
+      const tabYaml = document.getElementById("tab-yaml");
+      const helpForm = document.getElementById("mode-help-form");
+      const helpYaml = document.getElementById("mode-help-yaml");
+
+      if (mode === "yaml") {
+        currentMode = "yaml";
+        formMode.classList.add("hidden");
+        yamlEditor.classList.remove("hidden");
+        tabForm.classList.remove("bg-slate-900", "text-slate-100", "border-slate-600");
+        tabForm.classList.add("bg-slate-800", "text-slate-300", "border-slate-700");
+        tabYaml.classList.remove("bg-slate-800", "text-slate-300", "border-slate-700");
+        tabYaml.classList.add("bg-slate-900", "text-slate-100", "border-slate-600");
+        helpForm.classList.add("hidden");
+        helpYaml.classList.remove("hidden");
+      } else {
+        currentMode = "form";
+        formMode.classList.remove("hidden");
+        yamlEditor.classList.add("hidden");
+        tabYaml.classList.remove("bg-slate-900", "text-slate-100", "border-slate-600");
+        tabYaml.classList.add("bg-slate-800", "text-slate-300", "border-slate-700");
+        tabForm.classList.remove("bg-slate-800", "text-slate-300", "border-slate-700");
+        tabForm.classList.add("bg-slate-900", "text-slate-100", "border-slate-600");
+        helpYaml.classList.add("hidden");
+        helpForm.classList.remove("hidden");
+      }
+    }
+
+    function readOptionalNumber(id) {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const raw = parseFloat(el.value);
+      if (isNaN(raw) || !isFinite(raw) || raw <= 0) return null;
+      return raw;
+    }
+
+    function cleanNumber(value, fallback) {
+      const v = parseFloat(value);
+      if (isNaN(v) || !isFinite(v)) return fallback;
+      if (v < 0) return 0;
+      return v;
+    }
+
+    
+
+    
+    const PROFILE_STORAGE_KEY = "veeamDesignerProfilesV1";
+
+    function loadProfiles() {
+      if (!window.localStorage) return {};
+      try {
+        const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveProfiles(profiles) {
+      if (!window.localStorage) return;
+      try {
+        window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+      } catch {}
+    }
+
+    function exportCurrentFormState() {
+      const form = document.getElementById("design-form");
+      if (!form) return null;
+      const data = {};
+      const elements = form.elements;
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        const key = el.id || el.name;
+        if (!key) continue;
+        if (el.type === "checkbox" || el.type === "radio") {
+          data[key] = { type: el.type, checked: el.checked };
+        } else {
+          data[key] = { type: el.type || "text", value: el.value };
+        }
+      }
+      return data;
+    }
+
+    function applyFormStateFromData(data) {
+      const form = document.getElementById("design-form");
+      if (!form || !data) return;
+      Object.entries(data).forEach(([key, info]) => {
+        const el = document.getElementById(key);
+        if (!el) return;
+        if (info.type === "checkbox" || info.type === "radio") {
+          el.checked = !!info.checked;
+        } else {
+          el.value = info.value ?? "";
+        }
+      });
+      validateDesignForm();
+    }
+
+    function initProfilesUI() {
+      const saveInput = document.getElementById("profile-save-name");
+      const saveBtn = document.getElementById("profile-save-btn");
+      const loadSelect = document.getElementById("profile-load-select");
+
+      if (!saveInput || !saveBtn || !loadSelect || !window.localStorage) return;
+
+      function refreshSelect() {
+        const profiles = loadProfiles();
+        loadSelect.innerHTML = '<option value="">Load profile...</option>';
+        Object.keys(profiles).forEach(name => {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          loadSelect.appendChild(opt);
+        });
+      }
+
+      saveBtn.addEventListener("click", () => {
+        const name = (saveInput.value || "").trim();
+        if (!name) return;
+        const data = exportCurrentFormState();
+        if (!data) return;
+        const profiles = loadProfiles();
+        profiles[name] = data;
+        saveProfiles(profiles);
+        refreshSelect();
+      });
+
+      loadSelect.addEventListener("change", () => {
+        const name = loadSelect.value;
+        if (!name) return;
+        const profiles = loadProfiles();
+        const data = profiles[name];
+        if (!data) return;
+        applyFormStateFromData(data);
+      });
+
+      refreshSelect();
+    }
+
+function getCurrentSiteIndices() {
+      const cards = document.querySelectorAll(".site-card");
+      return Array.from(cards)
+        .map(card => parseInt(card.getAttribute("data-site-idx"), 10))
+        .filter(n => !isNaN(n));
+    }
+
+    function getNextSiteIndex() {
+      const indices = getCurrentSiteIndices();
+      if (indices.length === 0) return 1;
+      return Math.max.apply(null, indices) + 1;
+    }
+
+    function updateRemoveButtonsVisibility() {
+      const cards = document.querySelectorAll(".site-card");
+      const buttons = document.querySelectorAll(".site-card .remove-site-btn");
+      if (cards.length <= 1) {
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          btn.classList.add("opacity-40", "cursor-not-allowed");
+        });
+      } else {
+        buttons.forEach(btn => {
+          btn.disabled = false;
+          btn.classList.remove("opacity-40", "cursor-not-allowed");
+        });
+      }
+    }
+
+    function attachRemoveHandlers() {
+      const container = document.getElementById("sites-container");
+      if (!container) return;
+      container.addEventListener("click", function (e) {
+        const target = e.target;
+        if (target && target.classList.contains("remove-site-btn")) {
+          const card = target.closest(".site-card");
+          if (!card) return;
+          const cards = document.querySelectorAll(".site-card");
+          if (cards.length <= 1) return;
+          card.remove();
+          validateDesignForm();
+          updateRemoveButtonsVisibility();
+        }
+      });
+      updateRemoveButtonsVisibility();
+    }
+
+    function initAddSite() {
+      const btn = document.getElementById("add-site-btn");
+      const container = document.getElementById("sites-container");
+      if (!btn || !container) return;
+
+      btn.addEventListener("click", function () {
+        const template = container.querySelector('.site-card[data-site-idx="2"]') ||
+                         container.querySelector(".site-card");
+        if (!template) return;
+
+        const clone = template.cloneNode(true);
+        const newIdx = getNextSiteIndex();
+        clone.setAttribute("data-site-idx", String(newIdx));
+
+        const headerSpan = clone.querySelector(".text-xs.font-semibold.text-slate-200.uppercase.tracking-wide");
+        if (headerSpan) {
+          headerSpan.textContent = `Site ${newIdx}`;
+        }
+
+        const inputs = clone.querySelectorAll("input, select");
+        inputs.forEach(el => {
+          if (el.id && el.id.startsWith("site")) {
+            const parts = el.id.split("-");
+            if (parts.length >= 2) {
+              parts[0] = `site${newIdx}`;
+              const newId = parts.join("-");
+              el.id = newId;
+            }
+          }
+
+          if (el.type === "checkbox" || el.type === "radio") {
+            if (el.id.endsWith("-enabled")) {
+              el.checked = true;
+            } else {
+              el.checked = template.querySelector(`#${el.id}`) ? template.querySelector(`#${el.id}`).checked : el.checked;
+            }
+          } else if (el.tagName.toLowerCase() === "select") {
+            el.selectedIndex = template.querySelector(`#${el.id}`) ? template.querySelector(`#${el.id}`).selectedIndex : 0;
+          } else {
+            const def = el.getAttribute("value") || "";
+            el.value = def;
+          }
+        });
+
+        const nameInput = clone.querySelector("input[id$='-name']");
+        if (nameInput) {
+          nameInput.value = `Site${newIdx}`;
+        }
+
+        const gfsBlock = clone.querySelector("[id$='-gfs-block']");
+        const gfsCheckbox = clone.querySelector("input[id$='-gfs-enabled']");
+        if (gfsBlock && gfsCheckbox) {
+          if (!gfsCheckbox.checked) {
+            gfsBlock.classList.add("opacity-40");
+            gfsBlock.querySelectorAll("input").forEach(inp => (inp.disabled = true));
+          } else {
+            gfsBlock.classList.remove("opacity-40");
+            gfsBlock.querySelectorAll("input").forEach(inp => (inp.disabled = false));
+          }
+        }
+
+        container.appendChild(clone);
+        updateRemoveButtonsVisibility();
+        validateDesignForm();
+      });
+    }
+
+    function validateDesignForm() {
+      let hasError = false;
+
+      function clearState(el) {
+        if (!el) return;
+        el.classList.remove("border-red-500", "border-amber-400");
+        if (el._veeamDesignerTitleBackup) {
+          el.title = el._veeamDesignerTitleBackup;
+          delete el._veeamDesignerTitleBackup;
+        }
+      }
+
+      function setState(el, type, msg) {
+        if (!el) return;
+        clearState(el);
+
+        if (!el._veeamDesignerTitleBackup && el.title) {
+          el._veeamDesignerTitleBackup = el.title;
+        }
+
+        if (type === "error") {
+          el.classList.add("border-red-500");
+          hasError = true;
+        } else if (type === "warning") {
+          el.classList.add("border-amber-400");
+        }
+
+        if (msg) {
+          el.title = msg;
+        }
+      }
+
+      const siteCards = document.querySelectorAll(".site-card");
+      const sites = Array.from(siteCards)
+        .map(card => parseInt(card.getAttribute("data-site-idx"), 10))
+        .filter(n => !isNaN(n));
+
+      sites.forEach(idx => {
+        const wanEl = document.getElementById(`site${idx}-wan`);
+        const vmsEl = document.getElementById(`site${idx}-vms`);
+        const windowEl = document.getElementById(`site${idx}-window`);
+
+        clearState(wanEl);
+        clearState(vmsEl);
+        clearState(windowEl);
+
+        if (wanEl) {
+          const wan = parseFloat(wanEl.value);
+          if (!isNaN(wan) && wan <= 0) {
+            setState(wanEl, "error", "WAN must be greater than 0 Mbps.");
+          }
+        }
+
+        if (vmsEl) {
+          const vms = parseFloat(vmsEl.value);
+          if (!isNaN(vms) && vms < 0) {
+            setState(vmsEl, "error", "VM count cannot be negative.");
+          }
+        }
+
+        if (windowEl) {
+          const win = parseFloat(windowEl.value);
+          if (!isNaN(win) && win <= 0) {
+            setState(windowEl, "error", "Backup window must be greater than 0 hours.");
+          }
+        }
+
+        if (wanEl && vmsEl) {
+          const wan = parseFloat(wanEl.value);
+          const vms = parseFloat(vmsEl.value);
+          if (!isNaN(wan) && !isNaN(vms) && wan > 0 && wan < 50 && vms > 500) {
+            setState(wanEl, "warning", "WAN looks undersized for this many VMs.");
+          }
+        }
+      });
+
+      const rpoEl = document.getElementById("target-rpo");
+      if (rpoEl) {
+        clearState(rpoEl);
+        const rpo = parseFloat(rpoEl.value);
+        if (!isNaN(rpo) && rpo <= 0) {
+          setState(rpoEl, "error", "Target RPO must be greater than 0 hours.");
+        }
+      }
+
+      return !hasError;
+    }
+
+function buildYamlFromForm() {
+      const profile = document.getElementById("profile").value || "msp";
+      const hypervisor = document.getElementById("hypervisor").value || "vmware";
+      const globalRpo = cleanNumber(document.getElementById("target-rpo").value, 24);
+
+      const compression = readOptionalNumber("compression-ratio");
+      const dedupe = readOptionalNumber("dedupe-ratio");
+      const throughputPerCore = readOptionalNumber("throughput-mb-per-core");
+
+      function extraLines() {
+        let lines = "";
+        if (compression !== null) {
+          lines += `      compression_ratio: ${compression}\n`;
+        }
+        if (dedupe !== null) {
+          lines += `      dedupe_ratio: ${dedupe}\n`;
+        }
+        if (throughputPerCore !== null) {
+          lines += `      throughput_mb_per_core: ${throughputPerCore}\n`;
+        }
+        return lines;
+      }
+
+      function siteYaml(idx) {
+        const enabledCheckbox = document.getElementById(`site${idx}-enabled`);
+        const enabled = enabledCheckbox ? enabledCheckbox.checked : true;
+        if (!enabled) return "";
+
+        const name = document.getElementById(`site${idx}-name`).value || (idx === 1 ? "HQ" : "DR");
+        const data = cleanNumber(document.getElementById(`site${idx}-data`).value, 0);
+        const growth = cleanNumber(document.getElementById(`site${idx}-growth`).value, 0);
+        const daily = cleanNumber(document.getElementById(`site${idx}-daily`).value, 0);
+        const retention = cleanNumber(document.getElementById(`site${idx}-retention`).value, 30);
+        const vms = cleanNumber(document.getElementById(`site${idx}-vms`).value, 0);
+        const vmsize = cleanNumber(document.getElementById(`site${idx}-vmsize`).value, 100);
+        const wan = cleanNumber(document.getElementById(`site${idx}-wan`).value, 0);
+        const windowH = cleanNumber(document.getElementById(`site${idx}-window`).value, 8);
+
+        const gfsCheckbox = document.getElementById(`site${idx}-gfs-enabled`);
+        const gfsEnabled = gfsCheckbox ? gfsCheckbox.checked : false;
+
+        let gfsW, gfsM, gfsY;
+        if (gfsEnabled) {
+          gfsW = cleanNumber(document.getElementById(`site${idx}-gfs-weekly`).value, 4);
+          gfsM = cleanNumber(document.getElementById(`site${idx}-gfs-monthly`).value, 12);
+          gfsY = cleanNumber(document.getElementById(`site${idx}-gfs-yearly`).value, 3);
+        } else {
+          gfsW = 0;
+          gfsM = 0;
+          gfsY = 0;
+        }
+
+        const backupType = document.getElementById(`site${idx}-backup-type`).value || "synthetic_full_weekly";
+        const repoType = document.getElementById(`site${idx}-repo-type`).value || "sobr";
+        const san = document.getElementById(`site${idx}-san`).checked ? "true" : "false";
+        const onhost = document.getElementById(`site${idx}-onhost`).checked ? "true" : "false";
+
+        const notesEl = document.getElementById(`site${idx}-notes`);
+        const notes = notesEl ? notesEl.value : "";
+        const notesLine = notes ? `    notes: ${JSON.stringify(notes)}\n` : "";
+
+        return `  - name: ${name}
+    veeam_input:
+      total_data_tb: ${data}
+      annual_growth_percent: ${growth}
+      daily_change_percent: ${daily}
+      backup_type: ${backupType}
+      primary_retention_days: ${retention}
+      gfs_weekly_count: ${gfsW}
+      gfs_monthly_count: ${gfsM}
+      gfs_yearly_count: ${gfsY}
+      backup_window_hours: ${windowH}
+      target_rpo_hours: ${globalRpo}
+      vm_count: ${vms}
+      avg_vm_size_gb: ${vmsize}
+      wan_bandwidth_mbps: ${wan}
+      repo_type: ${repoType}
+      hypervisor: ${hypervisor}
+      has_san_access: ${san}
+      on_host_proxy: ${onhost}
+${extraLines()}${notesLine}`;
+      }
+
+      const siteCards = document.querySelectorAll(".site-card");
+      const indices = Array.from(siteCards)
+        .map(card => parseInt(card.getAttribute("data-site-idx"), 10))
+        .filter(n => !isNaN(n));
+
+      let sitesYaml = "";
+      indices.forEach(idx => {
+        const chunk = siteYaml(idx);
+        if (chunk && chunk.trim()) {
+          sitesYaml += chunk + "\n";
+        }
+      });
+
+      if (!sitesYaml.trim()) {
+        sitesYaml = `  - name: Site1
+    veeam_input:
+      total_data_tb: 0
+      annual_growth_percent: 0
+      daily_change_percent: 0
+      backup_type: synthetic_full_weekly
+      primary_retention_days: 30
+      gfs_weekly_count: 0
+      gfs_monthly_count: 0
+      gfs_yearly_count: 0
+      backup_window_hours: 8
+      target_rpo_hours: ${globalRpo}
+      vm_count: 0
+      avg_vm_size_gb: 100
+      wan_bandwidth_mbps: 0
+      repo_type: sobr
+      hypervisor: ${hypervisor}
+      has_san_access: false
+      on_host_proxy: false
+${extraLines()}`;
+      }
+
+      const yaml =
+`profile: ${profile}
+sites:
+${sitesYaml}`;
+
+      return yaml;
+    }
+
+function restoreFormState() {
+      if (!window.localStorage) return null;
+
+      let raw = null;
+      try {
+        raw = window.localStorage.getItem(FORM_STORAGE_KEY);
+      } catch (e) {
+        return null;
+      }
+      if (!raw) return null;
+
+      let state;
+      try {
+        state = JSON.parse(raw);
+      } catch (e) {
+        return null;
+      }
+
+      const form = document.getElementById("design-form");
+      if (!form || !state.data) return null;
+
+      const data = state.data;
+      Object.keys(data).forEach(key => {
+        const el = document.getElementById(key) || form.elements.namedItem(key);
+        if (!el) return;
+        const entry = data[key];
+
+        if (entry.type === "checkbox" || entry.type === "radio") {
+          el.checked = !!entry.checked;
+        } else if ("value" in entry) {
+          el.value = entry.value;
+        }
+      });
+
+      return state;
+    }
+
+    const designForm = document.getElementById("design-form");
+
+    designForm.addEventListener("submit", function (e) {
+      if (!validateDesignForm()) {
+        e.preventDefault();
+        return;
+      }
+
+      const formMode = document.getElementById("form-mode");
+      const yamlEditor = document.getElementById("yaml-editor");
+      if (!formMode.classList.contains("hidden")) {
+        const yaml = buildYamlFromForm();
+        yamlEditor.value = yaml;
+      }
+
+      saveFormState();
+    });
+
+    designForm.addEventListener("input", function () {
+      saveFormState();
+    });
+
+    designForm.addEventListener("change", function () {
+      saveFormState();
+    });
+
+    const formEl = document.getElementById("design-form");
+    if (formEl) {
+      formEl.addEventListener("input", () => {
+        validateDesignForm();
+      });
+      formEl.addEventListener("change", () => {
+        validateDesignForm();
+      });
+    }
+
+    initAddSite();
+    attachRemoveHandlers();
+    initProfilesUI();
+
+    const restoredState = restoreFormState();
+
+    const csvBtn = document.getElementById("export-csv");
+    if (csvBtn) {
+      csvBtn.addEventListener("click", function () {
+        window.location = "/export/csv";
+      });
+    }
+
+    if (!restoredState) {
+      switchMode("form");
+    } else {
+      const mode = restoredState.mode === "yaml" ? "yaml" : "form";
+      switchMode(mode);
+      validateDesignForm();
+    }
+  </script>
+</body>
+</html>
