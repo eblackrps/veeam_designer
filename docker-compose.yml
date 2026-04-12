@@ -1,0 +1,9 @@
+services:
+  chrome-policy-merge:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      CHROME_POLICY_MERGE_WORKSPACE_ROOT: /workspace
+    volumes:
+      - ./workspace:/workspace

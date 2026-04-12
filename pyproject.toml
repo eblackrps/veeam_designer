@@ -5,16 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chrome-policy-merge"
 dynamic = ["version"]
-description = "Deterministically merge Chrome enterprise policy JSON files with safe backups."
+description = "Merge Chrome enterprise policy JSON files through a polished web UI, CLI, and API."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "E. Black" }]
 requires-python = ">=3.10"
-keywords = ["chrome", "policy", "enterprise", "json", "merge"]
+keywords = ["chrome", "policy", "enterprise", "json", "merge", "web", "fastapi"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
+  "Environment :: Web Environment",
   "Intended Audience :: Information Technology",
   "Intended Audience :: System Administrators",
   "Operating System :: OS Independent",
@@ -24,10 +25,16 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP",
   "Topic :: System :: Systems Administration",
   "Topic :: Utilities",
 ]
-dependencies = []
+dependencies = [
+  "fastapi>=0.120,<1",
+  "jinja2>=3.1,<4",
+  "python-multipart>=0.0.20,<1",
+  "uvicorn>=0.38,<1",
+]
 
 [project.urls]
 Homepage = "https://github.com/eblackrps/veeam_designer"
@@ -39,10 +46,12 @@ Security = "https://github.com/eblackrps/veeam_designer/blob/main/SECURITY.md"
 
 [project.scripts]
 chrome-policy-merge = "chrome_policy_merge.cli:main"
+chrome-policy-merge-web = "chrome_policy_merge.web:run"
 
 [project.optional-dependencies]
 dev = [
   "build>=1.4.3",
+  "httpx>=0.28.1",
   "mypy>=1.20.0",
   "pre-commit>=4.5.1",
   "pytest>=9.0.3",
@@ -57,7 +66,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-chrome_policy_merge = ["py.typed"]
+chrome_policy_merge = ["py.typed", "templates/*.html", "static/*.css", "static/*.js"]
 
 [tool.setuptools.dynamic]
 version = { attr = "chrome_policy_merge.__version__" }

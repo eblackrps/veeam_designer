@@ -117,15 +117,26 @@ def load_policy_file(path: Path) -> JSONObject:
     """Load and validate a single JSON policy file."""
 
     try:
-        raw_payload = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        message = f"invalid JSON ({exc.msg} at line {exc.lineno}, column {exc.colno})"
-        raise InvalidPolicyFileError(path, message) from exc
+        text = path.read_text(encoding="utf-8")
     except OSError as exc:
         raise InvalidPolicyFileError(path, f"unable to read file: {exc.strerror or exc}") from exc
 
+    return load_policy_text(path, text)
+
+
+def load_policy_text(source: str | Path, payload: str) -> JSONObject:
+    """Load and validate a policy object from raw JSON text."""
+
+    source_path = Path(source)
+
+    try:
+        raw_payload = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        message = f"invalid JSON ({exc.msg} at line {exc.lineno}, column {exc.colno})"
+        raise InvalidPolicyFileError(source_path, message) from exc
+
     if not isinstance(raw_payload, dict):
-        raise InvalidPolicyFileError(path, "top-level JSON value must be an object")
+        raise InvalidPolicyFileError(source_path, "top-level JSON value must be an object")
 
     return raw_payload
 

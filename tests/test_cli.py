@@ -41,7 +41,7 @@ def test_cli_version_returns_zero(capsys: pytest.CaptureFixture[str]) -> None:
         main(["--version"])
 
     assert excinfo.value.code == 0
-    assert capsys.readouterr().out.strip() == "chrome-policy-merge 4.0.0"
+    assert capsys.readouterr().out.strip() == "chrome-policy-merge 4.0.1"
 
 
 def test_cli_returns_error_code_for_invalid_merge_input(tmp_path: Path) -> None:

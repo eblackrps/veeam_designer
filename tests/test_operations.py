@@ -162,7 +162,7 @@ def test_manifest_records_merge_metadata(tmp_path: Path) -> None:
     manifest = json.loads((result.backup_snapshot / "manifest.json").read_text(encoding="utf-8"))
 
     assert manifest["schema_version"] == 1
-    assert manifest["tool_version"] == "4.0.0"
+    assert manifest["tool_version"] == "4.0.1"
     assert manifest["merge_keys"] == ["ExtensionSettings"]
     assert manifest["files"] == ["10-policy.json"]
 
@@ -283,7 +283,7 @@ def test_restore_rejects_snapshot_path_traversal(tmp_path: Path) -> None:
         escaped_snapshot / "manifest.json",
         {
             "schema_version": 1,
-            "tool_version": "4.0.0",
+            "tool_version": "4.0.1",
             "created_at": "2026-04-11T00:00:00Z",
             "input_directory": str(input_dir),
             "output_file": "merged-policy.json",

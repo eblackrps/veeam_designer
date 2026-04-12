@@ -4,16 +4,7 @@ Thanks for helping improve Chrome Policy Merge.
 
 ## Development Setup
 
-On Windows:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-pre-commit install
-```
-
-On Linux or macOS:
+Create a virtual environment, install the project in editable mode, and add the developer tools:
 
 ```bash
 python -m venv .venv
@@ -22,17 +13,34 @@ python -m pip install -e ".[dev]"
 pre-commit install
 ```
 
+On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1`.
+
 Use a standard CPython 3.10+ interpreter for development work. Some embedded vendor Python
 distributions on Windows do not support editable installs or isolated build hooks reliably.
 
-## Workflow
+## Local Workflows
 
-1. Create a branch for your work.
-2. Keep changes focused and release-quality.
-3. Update tests and documentation together with behavior changes.
-4. Run the validation commands before opening a pull request.
+Run the web console:
+
+```bash
+chrome-policy-merge-web --reload
+```
+
+Run the CLI:
+
+```bash
+python -m chrome_policy_merge --help
+```
+
+Run the repository source tree directly:
+
+```bash
+python -m uvicorn --app-dir src chrome_policy_merge.web:app --reload
+```
 
 ## Validation
+
+Run the standard validation suite before opening a pull request:
 
 ```bash
 python -m ruff check .
@@ -42,13 +50,13 @@ python -m pytest
 python -m build
 ```
 
-## Code Standards
+## Contribution Expectations
 
-- Keep the CLI, docs, and tests aligned.
-- Preserve deterministic merge behavior.
-- Prefer clear error messages over silent fallbacks.
-- Add type hints and docstrings for user-facing modules and public functions.
-- Avoid adding runtime dependencies unless they materially improve the tool.
+- Keep the web UI, API, CLI, and docs aligned
+- Preserve deterministic merge behavior and safe restore behavior
+- Add tests with any behavior change, especially around merge semantics or filesystem safety
+- Prefer clear errors and explicit behavior over silent fallbacks
+- Keep Docker and local web startup instructions accurate
 
 ## Pull Requests
 
@@ -56,13 +64,14 @@ Include:
 
 - a short summary of the change
 - the validation commands you ran
-- updated documentation when behavior changes
+- updated documentation when behavior or workflow changes
 
 ## Reporting Issues
 
-Open an issue in the repository issue tracker with:
+Open an issue with:
 
-- the command you ran
-- your Python version
-- the relevant policy files or a minimal reproduction
-- the expected result and the actual result
+- the version you are using
+- whether you used the web UI, CLI, API, or Docker deployment
+- the command or workflow that failed
+- your Python version or container image tag
+- a minimal reproduction when possible

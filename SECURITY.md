@@ -2,7 +2,7 @@
 
 ## Supported Release
 
-The actively maintained release line is 4.0.0.
+The actively maintained release line is 4.0.1.
 
 ## Reporting a Vulnerability
 
@@ -16,7 +16,8 @@ Include:
 - a clear description of the issue
 - the impact you observed or expect
 - reproduction steps or a proof of concept
+- whether the issue affects the web UI, API, CLI, or Docker deployment
 - any suggested mitigations
 
-You will receive an acknowledgement as quickly as practical, followed by triage, a fix plan,
-and coordinated disclosure guidance when needed.
+You will receive an acknowledgement as quickly as practical, followed by triage, a fix plan, and
+coordinated disclosure guidance when needed.
