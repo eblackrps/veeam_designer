@@ -1,0 +1,26 @@
+{
+  "ExtensionSettings": {
+    "*": {
+      "blocked_permissions": [
+        "downloads"
+      ]
+    },
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+      "installation_mode": "allowed",
+      "runtime_blocked_hosts": [
+        "https://blocked.example.com",
+        "https://private.example.com"
+      ],
+      "toolbar_pin": "force_pinned"
+    },
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    }
+  },
+  "HomepageLocation": "https://portal.example.com",
+  "URLAllowlist": [
+    "https://portal.example.com",
+    "https://support.example.com"
+  ]
+}

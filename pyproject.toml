@@ -1,40 +1,89 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "veeam-designer"
-version = "3.1.0"
-description = "Veeam backup environment sizing and architecture designer"
-authors = [{name = "E. Black"}]
-license = {text = "MIT"}
+name = "chrome-policy-merge"
+dynamic = ["version"]
+description = "Deterministically merge Chrome enterprise policy JSON files with safe backups."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "E. Black" }]
 requires-python = ">=3.10"
-dependencies = ["pyyaml"]
-keywords = ["veeam", "backup", "sizing", "infrastructure", "architecture", "disaster-recovery"]
+keywords = ["chrome", "policy", "enterprise", "json", "merge"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: System Administrators",
-    "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: System :: Systems Administration",
-    "Topic :: Utilities",
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Utilities",
 ]
+dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/eblackrps/veeam_designer"
 Repository = "https://github.com/eblackrps/veeam_designer"
 Issues = "https://github.com/eblackrps/veeam_designer/issues"
+Changelog = "https://github.com/eblackrps/veeam_designer/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/eblackrps/veeam_designer/blob/main/README.md"
+Security = "https://github.com/eblackrps/veeam_designer/blob/main/SECURITY.md"
 
 [project.scripts]
-veeam-designer = "veeam_designer.cli:main"
+chrome-policy-merge = "chrome_policy_merge.cli:main"
 
 [project.optional-dependencies]
-web = ["fastapi", "uvicorn", "jinja2", "python-multipart"]
-dev = ["flake8", "pytest", "httpx"]
+dev = [
+  "build>=1.4.3",
+  "mypy>=1.20.0",
+  "pre-commit>=4.5.1",
+  "pytest>=9.0.3",
+  "ruff>=0.15.10",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["veeam_designer*"]
+where = ["src"]
+
+[tool.setuptools.package-data]
+chrome_policy_merge = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = { attr = "chrome_policy_merge.__version__" }
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "N", "RUF", "SIM", "UP", "W"]
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src"]
+mypy_path = "src"
+show_error_codes = true
+strict = true
+warn_unused_configs = true

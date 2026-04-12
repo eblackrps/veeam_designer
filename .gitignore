@@ -10,6 +10,7 @@ dist/
 build/
 .eggs/
 *.whl
+MANIFEST
 
 # Virtual environments
 venv/
@@ -24,8 +25,10 @@ share/python-wheels/
 lib/
 lib64/
 
-# Testing
+# Testing and tooling
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .tox/
 htmlcov/
 .coverage
@@ -52,4 +55,4 @@ desktop.ini
 # Temp files
 *.tmp
 *.bak
-temp_*.yml
+*.log

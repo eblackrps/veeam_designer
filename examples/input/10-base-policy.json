@@ -1,0 +1,19 @@
+{
+  "ExtensionSettings": {
+    "*": {
+      "blocked_permissions": [
+        "downloads"
+      ]
+    },
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+      "installation_mode": "allowed",
+      "runtime_blocked_hosts": [
+        "https://blocked.example.com"
+      ]
+    }
+  },
+  "HomepageLocation": "https://intranet.example.com",
+  "URLAllowlist": [
+    "https://portal.example.com"
+  ]
+}

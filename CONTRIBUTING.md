@@ -1,42 +1,68 @@
 # Contributing
 
-## Getting Started
-
-1. Fork the repository and clone your fork.
-2. Create a branch for your change:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. Make your changes and commit with a clear message.
-4. Push your branch and open a Pull Request against `main`.
+Thanks for helping improve Chrome Policy Merge.
 
 ## Development Setup
 
-```bash
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -e ".[dev,web]"
+On Windows:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+pre-commit install
 ```
 
-## Code Style
+On Linux or macOS:
 
-- Python 3.10+ syntax
-- Max line length: 120 characters
-- Run `flake8 veeam_designer/ ui/` before committing
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+pre-commit install
+```
 
-## Pull Request Guidelines
+Use a standard CPython 3.10+ interpreter for development work. Some embedded vendor Python
+distributions on Windows do not support editable installs or isolated build hooks reliably.
 
-- Keep PRs focused — one feature or fix per PR
-- Update `CHANGELOG.md` under `[Unreleased]`
-- Update `README.md` if you add or change user-facing behaviour
-- Reference any related issues in the PR description
+## Workflow
+
+1. Create a branch for your work.
+2. Keep changes focused and release-quality.
+3. Update tests and documentation together with behavior changes.
+4. Run the validation commands before opening a pull request.
+
+## Validation
+
+```bash
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy src
+python -m pytest
+python -m build
+```
+
+## Code Standards
+
+- Keep the CLI, docs, and tests aligned.
+- Preserve deterministic merge behavior.
+- Prefer clear error messages over silent fallbacks.
+- Add type hints and docstrings for user-facing modules and public functions.
+- Avoid adding runtime dependencies unless they materially improve the tool.
+
+## Pull Requests
+
+Include:
+
+- a short summary of the change
+- the validation commands you ran
+- updated documentation when behavior changes
 
 ## Reporting Issues
 
-Open an issue at https://github.com/eblackrps/veeam_designer/issues.
+Open an issue in the repository issue tracker with:
 
-Include:
-- Python version
-- Steps to reproduce
-- Expected vs. actual behaviour
-- Relevant output or error messages
+- the command you ran
+- your Python version
+- the relevant policy files or a minimal reproduction
+- the expected result and the actual result
