@@ -1,17 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict
-
 from .config import CONFIG
-from .models import VeeamDesign
-
-
-@dataclass
-class RiskSummary:
-    level: str  # "green" / "yellow" / "red"
-    total_score: int  # aggregate numeric score
-    details: Dict[str, int]  # {"repo": int, "wan": int, "proxies": int, ...}
+from .models import RiskScore, VeeamDesign
 
 
 def score_repo_risk(total_repo_tb: float) -> int:
@@ -81,10 +71,9 @@ def score_rpo_margin_risk(
     return 1
 
 
-def compute_risk(design: VeeamDesign) -> RiskSummary:
+def compute_risk(design: VeeamDesign) -> RiskScore:
     """
-    Aggregate risk scoring, returning a RiskSummary compatible with
-    models.RiskScore (same fields, used via duck-typing).
+    Aggregate risk scoring for the current design.
     """
     repo_score = score_repo_risk(design.repo.total_repo_tb)
     wan_score = score_wan_risk(design.network.meets_target)
@@ -122,7 +111,7 @@ def compute_risk(design: VeeamDesign) -> RiskSummary:
     else:
         level = "red"
 
-    return RiskSummary(
+    return RiskScore(
         level=level,
         total_score=total_score,
         details=details,

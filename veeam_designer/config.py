@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from importlib import resources
 from pathlib import Path
 from typing import Any, Dict
 
@@ -26,6 +27,17 @@ def _project_root() -> Path:
     return here.parents[1]
 
 
+def _load_packaged_json(filename: str) -> Dict[str, Any]:
+    try:
+        resource_path = resources.files("veeam_designer.resources").joinpath(filename)
+        data = json.loads(resource_path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
+
+
 def _load_json_if_exists(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
@@ -42,14 +54,18 @@ def _load_json_if_exists(path: Path) -> Dict[str, Any]:
 def load_base_config() -> Dict[str, Any]:
     cfg = DEFAULT_CONFIG.copy()
     root = _project_root()
-    cfg.update(_load_json_if_exists(root / "config.json"))
+    override_data = _load_json_if_exists(root / "config.json")
+    if override_data:
+        cfg.update(override_data)
+    else:
+        cfg.update(_load_packaged_json("config.json"))
     return cfg
 
 
 def load_profiles() -> Dict[str, Dict[str, Any]]:
     root = _project_root()
     profiles_path = root / "profiles.json"
-    data = _load_json_if_exists(profiles_path)
+    data = _load_json_if_exists(profiles_path) or _load_packaged_json("profiles.json")
     profiles = data.get("profiles", {}) if isinstance(data, dict) else {}
     clean: Dict[str, Dict[str, Any]] = {}
     for k, v in profiles.items():

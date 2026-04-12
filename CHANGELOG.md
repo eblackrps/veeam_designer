@@ -5,6 +5,30 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [4.0.3] - 2026-04-12
+
+### Added
+
+- Added a GitHub Pages build pipeline that publishes a browser-hosted calculator using the same
+  packaged sizing engine
+- Added packaged fallback configuration resources so wheel installs and the Pages edition carry the
+  same defaults and sizing profiles as the repo checkout
+- Added regression tests for packaged config fallbacks, browser bundles, and the Pages build output
+
+### Changed
+
+- Rewrote the hero copy to present the calculator more clearly and professionally
+- Reworked the main web shell so the local FastAPI app and the Pages edition share the same front
+  end structure and result rendering
+- Updated the README and deployment docs to document the GitHub Pages workflow alongside Docker and
+  local installs
+
+### Fixed
+
+- Fixed dropdown styling so dark-theme select controls and option menus remain readable before and
+  after selection
+- Fixed manual YAML mode so saved hand-edited project files are not overwritten on page load
+
 ## [4.0.2] - 2026-04-12
 
 ### Added

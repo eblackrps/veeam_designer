@@ -8,6 +8,7 @@ __pycache__/
 *.egg
 dist/
 build/
+_site/
 .eggs/
 *.whl
 
@@ -55,3 +56,4 @@ desktop.ini
 *.tmp
 *.bak
 temp_*.yml
+pytest-cache-files-*/

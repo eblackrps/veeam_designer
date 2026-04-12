@@ -1,13 +1,38 @@
 const bootstrap = JSON.parse(document.getElementById("builder-bootstrap").textContent);
+const runtime = bootstrap.runtime || "server";
+const isStaticRuntime = runtime === "static";
+
 const form = document.getElementById("designer-form");
 const yamlEditor = document.getElementById("yaml-editor");
 const sitesContainer = document.getElementById("sites-container");
 const siteTemplate = document.getElementById("site-card-template");
 const workloadButtons = Array.from(document.querySelectorAll(".mode-tab"));
 
-const FORM_STORAGE_KEY = "veeam-designer-form-v401";
-const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v401";
-const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v401";
+const runButton = document.getElementById("run-design");
+const summaryCards = document.getElementById("summary-cards");
+const emptyState = document.getElementById("results-empty-state");
+const dashboardSection = document.getElementById("dashboard-section");
+const dashboardSites = document.getElementById("dashboard-sites");
+const blueprintOutput = document.getElementById("blueprint-output");
+const costOutput = document.getElementById("cost-output");
+const jsonOutput = document.getElementById("json-output");
+const errorAlert = document.getElementById("error-alert");
+const errorMessageText = document.getElementById("error-message-text");
+const runtimeStatus = document.getElementById("runtime-status");
+const downloadJsonButton = document.getElementById("download-json");
+const downloadCsvButton = document.getElementById("download-csv");
+const printReportButton = document.getElementById("print-report");
+
+const FORM_STORAGE_KEY = "veeam-designer-form-v4";
+const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v4";
+const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v4";
+
+const browserEngine = {
+  loadPromise: null,
+  pyodide: null,
+};
+
+let currentResultBundle = bootstrap.resultBundle || null;
 
 const defaultVmSites = [
   {
@@ -113,12 +138,22 @@ document.addEventListener("DOMContentLoaded", () => {
   wireEditorButtons();
   wireSiteButtons();
   wireResetButtons();
+  wireExportButtons();
   restoreState();
   updateEditorModeNote();
-  updateYamlFromBuilder();
+  if (getEditorMode() === "builder") {
+    updateYamlFromBuilder();
+  }
+  renderResultBundle(currentResultBundle);
+  applyError(bootstrap.errorMessage || "");
+  updateRuntimeStatus(isStaticRuntime ? "Initializing browser engine..." : "");
   form.addEventListener("submit", handleSubmit);
   document.addEventListener("input", handleMutation, true);
   document.addEventListener("change", handleMutation, true);
+
+  if (isStaticRuntime) {
+    void prepareStaticEngine();
+  }
 });
 
 function wireWorkloadButtons() {
@@ -175,15 +210,65 @@ function wireResetButtons() {
     localStorage.removeItem(FORM_STORAGE_KEY);
     localStorage.removeItem(EDITOR_STORAGE_KEY);
     localStorage.removeItem(MODE_STORAGE_KEY);
-    window.location = "/run";
+    window.location = isStaticRuntime ? window.location.pathname : "/run";
   });
 }
 
-function handleSubmit() {
+function wireExportButtons() {
+  downloadJsonButton?.addEventListener("click", () => {
+    if (!currentResultBundle?.payload) {
+      return;
+    }
+    downloadTextFile(
+      `veeam-designer-${currentResultBundle.payload.kind || "result"}.json`,
+      `${JSON.stringify(currentResultBundle.payload, null, 2)}\n`,
+      "application/json",
+    );
+  });
+
+  downloadCsvButton?.addEventListener("click", () => {
+    if (!currentResultBundle) {
+      return;
+    }
+
+    if (isStaticRuntime) {
+      downloadTextFile(
+        "veeam-designer-results.csv",
+        currentResultBundle.csv || "",
+        "text/csv;charset=utf-8",
+      );
+      return;
+    }
+
+    window.location.href = "/export/csv";
+  });
+
+  printReportButton?.addEventListener("click", () => {
+    if (!currentResultBundle) {
+      return;
+    }
+
+    if (isStaticRuntime) {
+      printBrowserReport(currentResultBundle);
+      return;
+    }
+
+    window.open("/export/report", "_blank", "noopener");
+  });
+}
+
+function handleSubmit(event) {
   if (getEditorMode() === "builder") {
     updateYamlFromBuilder();
   }
   saveState();
+
+  if (!isStaticRuntime) {
+    return;
+  }
+
+  event.preventDefault();
+  void runStaticDesign();
 }
 
 function handleMutation() {
@@ -224,7 +309,10 @@ function loadStoredState() {
       nas: { ...defaultState.nas, ...(parsed.nas || {}) },
       physical: { ...defaultState.physical, ...(parsed.physical || {}) },
       replication: { ...defaultState.replication, ...(parsed.replication || {}) },
-      vmSites: Array.isArray(parsed.vmSites) && parsed.vmSites.length ? parsed.vmSites : structuredClone(defaultState.vmSites),
+      vmSites:
+        Array.isArray(parsed.vmSites) && parsed.vmSites.length
+          ? parsed.vmSites
+          : structuredClone(defaultState.vmSites),
     };
   } catch {
     return structuredClone(defaultState);
@@ -307,7 +395,9 @@ function setWorkloadType(workload) {
 }
 
 function getEditorMode() {
-  return document.getElementById("editor-mode-builder")?.classList.contains("is-active") ? "builder" : "manual";
+  return document.getElementById("editor-mode-builder")?.classList.contains("is-active")
+    ? "builder"
+    : "manual";
 }
 
 function setEditorMode(mode) {
@@ -323,9 +413,10 @@ function updateEditorModeNote() {
   if (!note) {
     return;
   }
-  note.textContent = getEditorMode() === "builder"
-    ? "Builder Sync keeps the YAML editor generated from the calculator fields."
-    : "Manual YAML leaves the editor writable. Use Rebuild YAML to replace it with the calculator state.";
+  note.textContent =
+    getEditorMode() === "builder"
+      ? "Builder Sync keeps the YAML editor generated from the calculator fields."
+      : "Manual YAML leaves the editor writable. Use Rebuild YAML to replace it with the calculator state.";
 }
 
 function saveState() {
@@ -396,7 +487,10 @@ function buildYamlFromBuilder() {
   const profile = getFieldValue("profile") || "enterprise";
   const compression = optionalNumberLine("compression_ratio", getFieldValue("compression-ratio"));
   const dedupe = optionalNumberLine("dedupe_ratio", getFieldValue("dedupe-ratio"));
-  const throughput = optionalNumberLine("throughput_mb_per_core", getFieldValue("throughput-mb-per-core"));
+  const throughput = optionalNumberLine(
+    "throughput_mb_per_core",
+    getFieldValue("throughput-mb-per-core"),
+  );
 
   if (workload === "nas") {
     return [
@@ -447,7 +541,9 @@ function buildYamlFromBuilder() {
   const targetRpo = numberValue("target-rpo", 24);
   const complianceFramework = getFieldValue("compliance-framework") || "none";
   const hypervisor = getFieldValue("hypervisor") || "vmware";
-  const siteBlocks = collectVmSites().map((site) => buildVmSiteYaml(site, targetRpo, hypervisor, compression, dedupe, throughput));
+  const siteBlocks = collectVmSites().map((site) =>
+    buildVmSiteYaml(site, targetRpo, hypervisor, compression, dedupe, throughput),
+  );
 
   return [
     `profile: ${profile}`,
@@ -517,6 +613,287 @@ function newSiteDefaults(index) {
   };
 }
 
+function renderResultBundle(bundle) {
+  currentResultBundle = bundle || null;
+  const hasBundle = Boolean(bundle?.payload);
+
+  summaryCards.classList.toggle("is-hidden", !hasBundle || !bundle.summary_cards?.length);
+  emptyState.classList.toggle("is-hidden", hasBundle);
+  dashboardSection.classList.toggle("is-hidden", !bundle?.dashboard);
+
+  renderSummaryCards(bundle?.summary_cards || []);
+  renderDashboard(bundle?.dashboard || null);
+
+  blueprintOutput.textContent = bundle?.blueprint || "No blueprint summary yet.";
+  costOutput.textContent = bundle?.cost || "No cost summary yet.";
+  jsonOutput.textContent = hasBundle ? `${JSON.stringify(bundle.payload, null, 2)}\n` : "No payload yet.";
+
+  downloadJsonButton.disabled = !hasBundle;
+  downloadCsvButton.disabled = !hasBundle;
+  printReportButton.disabled = !hasBundle || (!isStaticRuntime && !bundle?.dashboard);
+}
+
+function renderSummaryCards(cards) {
+  summaryCards.innerHTML = "";
+  cards.forEach((card) => {
+    const article = document.createElement("article");
+    article.className = "summary-card";
+    article.innerHTML = `<span>${escapeHtml(card.label)}</span><strong>${escapeHtml(card.value)}</strong>`;
+    summaryCards.appendChild(article);
+  });
+}
+
+function renderDashboard(dashboard) {
+  dashboardSites.innerHTML = "";
+  if (!dashboard?.sites?.length) {
+    return;
+  }
+
+  dashboard.sites.forEach((site) => {
+    const article = document.createElement("article");
+    article.className = "dashboard-site";
+    article.innerHTML = `
+      <div class="dashboard-site-head">
+        <h3>${escapeHtml(site.name)}</h3>
+        <span class="risk-pill risk-${escapeHtml((site.risk_level || "unknown").toLowerCase())}">
+          ${escapeHtml((site.risk_level || "unknown").toUpperCase())}
+        </span>
+      </div>
+      <dl class="metric-list">
+        ${renderMetric("Total Repo", `${formatNumber(site.total_repo_tb, 1)} TB`)}
+        ${renderMetric("Proxies", `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`)}
+        ${renderMetric("Backup Server", `${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB`)}
+        ${renderMetric("Required WAN", `${formatNumber(site.wan_required_mbps, 1)} Mbps`)}
+        ${renderMetric("Yearly On-Prem", formatCurrency(site.yearly_onprem_usd))}
+        ${renderMetric("Break-even", `${formatNumber(site.break_even_years, 1)} years`)}
+      </dl>
+    `;
+    dashboardSites.appendChild(article);
+  });
+}
+
+function renderMetric(label, value) {
+  return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`;
+}
+
+function applyError(message) {
+  const normalized = `${message || ""}`.trim();
+  if (!normalized) {
+    errorAlert.classList.add("is-hidden");
+    errorMessageText.textContent = "";
+    return;
+  }
+  errorAlert.classList.remove("is-hidden");
+  errorMessageText.textContent = normalized;
+}
+
+function updateRuntimeStatus(message) {
+  if (!runtimeStatus) {
+    return;
+  }
+  runtimeStatus.textContent = message || "";
+}
+
+function setBusy(isBusy) {
+  if (!runButton) {
+    return;
+  }
+  runButton.disabled = isBusy;
+  runButton.textContent = isBusy ? "Running Design..." : "Run Full Design";
+}
+
+async function prepareStaticEngine() {
+  try {
+    await ensureBrowserEngine();
+    updateRuntimeStatus("Browser engine ready. Run a design directly in this page.");
+  } catch (error) {
+    applyError(`Unable to initialize the browser engine: ${normalizeError(error)}`);
+    updateRuntimeStatus("Browser engine failed to load.");
+  }
+}
+
+async function runStaticDesign() {
+  setBusy(true);
+  applyError("");
+
+  try {
+    const projectObject = parseProjectInput(yamlEditor.value);
+    const bundle = await designInBrowser(JSON.stringify(projectObject));
+    currentResultBundle = bundle;
+    renderResultBundle(bundle);
+    updateRuntimeStatus(`Browser engine ready. Calculated ${bundle.payload.kind} output locally.`);
+  } catch (error) {
+    applyError(normalizeError(error));
+  } finally {
+    setBusy(false);
+  }
+}
+
+function parseProjectInput(text) {
+  const raw = `${text || ""}`.trim();
+  if (!raw) {
+    throw new Error("Project YAML is empty.");
+  }
+
+  if (window.jsyaml?.load) {
+    const parsed = window.jsyaml.load(raw);
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      throw new Error("Project definition must be a top-level YAML or JSON object.");
+    }
+    return parsed;
+  }
+
+  const parsed = JSON.parse(raw);
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error("Project definition must be a top-level JSON object.");
+  }
+  return parsed;
+}
+
+async function ensureBrowserEngine() {
+  if (browserEngine.loadPromise) {
+    return browserEngine.loadPromise;
+  }
+
+  browserEngine.loadPromise = (async () => {
+    if (typeof loadPyodide !== "function") {
+      throw new Error("Pyodide did not load on this page.");
+    }
+
+    const pyodide = await loadPyodide({ indexURL: bootstrap.pyodideBaseUrl });
+    await pyodide.loadPackage("micropip");
+
+    const wheelHref = new URL(bootstrap.wheelHref, window.location.href).href;
+    pyodide.globals.set("wheel_href", wheelHref);
+    await pyodide.runPythonAsync(`
+import micropip
+await micropip.install(wheel_href, deps=False)
+`);
+
+    await pyodide.runPythonAsync(`
+import json
+from veeam_designer.service import design_browser_bundle_from_project_text
+
+def __veeam_browser_bundle(project_json: str) -> str:
+    bundle = design_browser_bundle_from_project_text(project_json, suffix=".json")
+    return json.dumps(bundle)
+`);
+    browserEngine.pyodide = pyodide;
+    return pyodide;
+  })();
+
+  return browserEngine.loadPromise;
+}
+
+async function designInBrowser(projectJson) {
+  const pyodide = await ensureBrowserEngine();
+  pyodide.globals.set("project_json", projectJson);
+  const bundleJson = await pyodide.runPythonAsync("__veeam_browser_bundle(project_json)");
+  return JSON.parse(bundleJson);
+}
+
+function printBrowserReport(bundle) {
+  const printable = window.open("", "_blank", "noopener,noreferrer,width=1200,height=900");
+  if (!printable) {
+    applyError("The print report window was blocked by the browser.");
+    return;
+  }
+
+  const summaryMarkup = (bundle.summary_cards || [])
+    .map(
+      (card) => `
+        <article class="summary-card">
+          <span>${escapeHtml(card.label)}</span>
+          <strong>${escapeHtml(card.value)}</strong>
+        </article>
+      `,
+    )
+    .join("");
+
+  const dashboardMarkup = (bundle.dashboard?.sites || [])
+    .map(
+      (site) => `
+        <article class="dashboard-site">
+          <h3>${escapeHtml(site.name)}</h3>
+          <p><strong>Total Repo:</strong> ${escapeHtml(`${formatNumber(site.total_repo_tb, 1)} TB`)}</p>
+          <p><strong>Proxies:</strong> ${escapeHtml(`${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`)}</p>
+          <p><strong>Backup Server:</strong> ${escapeHtml(`${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB`)}</p>
+          <p><strong>Required WAN:</strong> ${escapeHtml(`${formatNumber(site.wan_required_mbps, 1)} Mbps`)}</p>
+        </article>
+      `,
+    )
+    .join("");
+
+  printable.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Veeam Designer Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; color: #102224; }
+    h1, h2 { margin-bottom: 0.4rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .summary-card, .dashboard-site { border: 1px solid #d7e7e2; border-radius: 14px; padding: 1rem; background: #f7fbf9; }
+    .summary-card span { display: block; color: #4d6661; font-size: 0.85rem; }
+    .summary-card strong { display: block; margin-top: 0.35rem; font-size: 1.5rem; }
+    pre { background: #091617; color: #eff8f2; padding: 1rem; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>Veeam Designer ${escapeHtml(bootstrap.version || "")}</h1>
+  <p>Generated in the browser-hosted GitHub Pages edition.</p>
+  <div class="summary-grid">${summaryMarkup}</div>
+  ${dashboardMarkup ? `<section><h2>Infrastructure Snapshot</h2>${dashboardMarkup}</section>` : ""}
+  <section><h2>Blueprint Summary</h2><pre>${escapeHtml(bundle.blueprint || "")}</pre></section>
+  <section><h2>Cost Summary</h2><pre>${escapeHtml(bundle.cost || "")}</pre></section>
+</body>
+</html>`);
+  printable.document.close();
+  printable.focus();
+  printable.print();
+}
+
+function downloadTextFile(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function formatNumber(value, digits = 1) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed.toFixed(digits) : "0.0";
+}
+
+function formatInteger(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? `${Math.round(parsed)}` : "0";
+}
+
+function formatCurrency(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return "$0";
+  }
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(parsed);
+}
+
+function normalizeError(error) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return `${error || "Unknown error"}`;
+}
+
 function numberValue(id, fallback) {
   const parsed = parseFloat(getFieldValue(id));
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -573,4 +950,13 @@ function yamlString(value) {
 
 function camelToId(key) {
   return key.replaceAll("_", "-");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Veeam Designer</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+  <link rel="stylesheet" href="{{ static_css_href }}">
 </head>
 <body>
   <div class="page-glow page-glow-left"></div>
@@ -13,31 +13,35 @@
     <header class="hero">
       <div class="hero-copy">
         <span class="eyebrow">Veeam Designer {{ version }}</span>
-        <h1>Plan backup infrastructure with a real calculator, not a worksheet graveyard.</h1>
+        <h1>Design Veeam backup platforms with clear sizing, recovery, and cost decisions.</h1>
         <p>
-          Model multi-site Veeam environments, validate WAN and retention assumptions, compare
-          cost paths, and export the result as structured JSON, CSV, or a printable report.
+          Model multi-site repositories, proxy demand, WAN constraints, retention strategy, and
+          recovery posture from one calculator you can run locally, in Docker, or on GitHub Pages.
         </p>
       </div>
       <div class="hero-panel">
-        <div class="hero-pill">UI-first sizing studio</div>
+        <div class="hero-pill">{{ hero_pill }}</div>
         <div class="hero-meta">
-          <span>Version {{ version }}</span>
-          <span>REST API at <code>/api/design</code></span>
-          <span>Docker-ready via <code>uvicorn ui.main:app</code></span>
+          {% for line in hero_meta_lines %}
+          <span>{{ line }}</span>
+          {% endfor %}
         </div>
+        <p id="runtime-status" class="runtime-status"></p>
       </div>
     </header>
 
-    {% if error_message %}
-    <section class="alert alert-error">
+    <section id="error-alert" class="alert alert-error is-hidden" aria-live="polite">
       <strong>Design run failed.</strong>
-      <span>{{ error_message }}</span>
+      <span id="error-message-text"></span>
     </section>
-    {% endif %}
 
     <section class="workspace-grid">
-      <form id="designer-form" method="post" action="/run" class="builder-shell">
+      <form
+        id="designer-form"
+        method="{{ form_method }}"
+        action="{{ form_action }}"
+        class="builder-shell"
+      >
         <input type="hidden" name="run_blueprint" value="true">
         <input type="hidden" name="run_cost" value="true">
 
@@ -200,7 +204,7 @@
           </section>
 
           <div class="submission-row">
-            <button type="submit" class="button button-primary button-large">Run Full Design</button>
+            <button type="submit" id="run-design" class="button button-primary button-large">Run Full Design</button>
             <p class="submission-hint">Blueprint and cost outputs are calculated together so the results page stays coherent.</p>
           </div>
         </section>
@@ -232,67 +236,35 @@
             <h2>Design outputs</h2>
           </div>
           <div class="panel-actions">
-            {% if result_payload %}
-            <a href="/export/csv" class="button button-secondary">Export CSV</a>
-            {% endif %}
-            {% if dashboard %}
-            <a href="/export/report" class="button button-ghost">Printable Report</a>
-            {% endif %}
+            <button type="button" id="download-json" class="button button-secondary" disabled>Download JSON</button>
+            <button type="button" id="download-csv" class="button button-secondary" disabled>Download CSV</button>
+            <button type="button" id="print-report" class="button button-ghost" disabled>Print Report</button>
           </div>
         </div>
 
-        {% if summary_cards %}
-        <div class="summary-cards">
-          {% for card in summary_cards %}
-          <article class="summary-card">
-            <span>{{ card.label }}</span>
-            <strong>{{ card.value }}</strong>
-          </article>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
+        <div id="summary-cards" class="summary-cards is-hidden"></div>
+        <div id="results-empty-state" class="empty-state">
           Run a design to populate the dashboard, exports, and raw payload.
         </div>
-        {% endif %}
 
-        {% if dashboard %}
-        <section class="results-section">
+        <section id="dashboard-section" class="results-section is-hidden">
           <div class="section-title">Infrastructure Snapshot</div>
-          <div class="dashboard-sites">
-            {% for site in dashboard.sites %}
-            <article class="dashboard-site">
-              <div class="dashboard-site-head">
-                <h3>{{ site.name }}</h3>
-                <span class="risk-pill risk-{{ site.risk_level|lower }}">{{ site.risk_level|upper }}</span>
-              </div>
-              <dl class="metric-list">
-                <div><dt>Total Repo</dt><dd>{{ "%.1f"|format(site.total_repo_tb) }} TB</dd></div>
-                <div><dt>Proxies</dt><dd>{{ site.proxy_count }} / {{ site.total_proxy_cores }} cores</dd></div>
-                <div><dt>Backup Server</dt><dd>{{ site.bs_cores }} cores / {{ site.bs_ram_gb }} GB</dd></div>
-                <div><dt>Required WAN</dt><dd>{{ "%.1f"|format(site.wan_required_mbps) }} Mbps</dd></div>
-                <div><dt>Yearly On-Prem</dt><dd>${{ "{:,.0f}".format(site.yearly_onprem_usd) }}</dd></div>
-                <div><dt>Break-even</dt><dd>{{ "%.1f"|format(site.break_even_years) }} years</dd></div>
-              </dl>
-            </article>
-            {% endfor %}
-          </div>
+          <div id="dashboard-sites" class="dashboard-sites"></div>
         </section>
-        {% endif %}
 
         <section class="results-section">
           <div class="section-title">Blueprint Summary</div>
-          <pre class="output-block">{% if blueprint_output %}{{ blueprint_output }}{% else %}No blueprint summary yet.{% endif %}</pre>
+          <pre id="blueprint-output" class="output-block">No blueprint summary yet.</pre>
         </section>
 
         <section class="results-section">
           <div class="section-title">Cost Summary</div>
-          <pre class="output-block">{% if cost_output %}{{ cost_output }}{% else %}No cost summary yet.{% endif %}</pre>
+          <pre id="cost-output" class="output-block">No cost summary yet.</pre>
         </section>
 
         <section class="results-section">
           <div class="section-title">Structured JSON</div>
-          <pre class="output-block output-json">{% if result_payload_json %}{{ result_payload_json }}{% else %}No payload yet.{% endif %}</pre>
+          <pre id="json-output" class="output-block output-json">No payload yet.</pre>
         </section>
       </aside>
     </section>
@@ -360,8 +332,14 @@
   </template>
 
   <script id="builder-bootstrap" type="application/json">
-    {{ {"yamlContent": yaml_content, "hasResult": result_payload is not none} | tojson }}
+    {{ bootstrap_payload | tojson }}
   </script>
-  <script src="{{ url_for('static', path='app.js') }}"></script>
+  {% if pyodide_script_src %}
+  <script src="{{ pyodide_script_src }}"></script>
+  {% endif %}
+  {% if yaml_library_src %}
+  <script src="{{ yaml_library_src }}"></script>
+  {% endif %}
+  <script type="module" src="{{ app_js_href }}"></script>
 </body>
 </html>

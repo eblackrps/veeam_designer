@@ -30,8 +30,14 @@ jobs:
       - name: Format check
         run: python -m ruff format --check .
 
+      - name: Type check
+        run: python -m mypy .
+
       - name: Test
         run: python -m pytest -q
 
       - name: Build
         run: python -m build
+
+      - name: Build Pages bundle
+        run: python tools/build_pages.py --output _site

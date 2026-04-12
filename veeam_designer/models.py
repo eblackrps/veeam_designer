@@ -203,7 +203,7 @@ class CostEstimate:
     notes: List[str] = field(default_factory=list)
     # Round 9: 3-year TCO + multi-cloud comparison
     cloud_comparison: Dict[str, float] = field(default_factory=dict)
-    three_year_tco: Dict[str, float] = field(default_factory=dict)
+    three_year_tco: Dict[str, float | str] = field(default_factory=dict)
     break_even_years: float = 0.0
 
 

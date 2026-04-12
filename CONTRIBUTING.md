@@ -23,8 +23,10 @@ Run these before opening a pull request:
 ```bash
 python -m ruff check .
 python -m ruff format --check .
+python -m mypy .
 python -m pytest -q
 python -m build
+python tools/build_pages.py --output _site
 ```
 
 ## UI Work
@@ -39,4 +41,5 @@ python -m build
 - Keep changes focused
 - Add or update tests for engine, API, or UI behavior changes
 - Update `README.md` and `CHANGELOG.md` when the user-facing behavior changes
+- Keep the GitHub Pages build working when web UI, templates, or packaged resources change
 - Do not leave stale version strings or release notes behind

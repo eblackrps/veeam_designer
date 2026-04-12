@@ -1,11 +1,11 @@
 # Veeam Designer
 
 Veeam Designer is a web-first sizing and architecture calculator for Veeam backup environments.
-Release `4.0.2` restores the product as a polished browser-based calculator and keeps the CLI,
-REST API, and Docker deployment paths aligned with the same sizing engine. It helps Veeam
+Release `4.0.3` sharpens the web UI, fixes the dark-theme form controls, and adds a real GitHub
+Pages deployment path that runs the same sizing engine in the browser. It helps Veeam
 administrators model repository footprint, proxy and backup server requirements, WAN feasibility,
 replication pressure, NAS protection, licensing, tape, compliance, and high-level cost tradeoffs
-from a guided UI, YAML project files, or the CLI.
+from a guided UI, YAML project files, Docker, GitHub Pages, or the CLI.
 
 ## Why It Exists
 
@@ -71,6 +71,23 @@ Open [http://localhost:8000/run](http://localhost:8000/run).
 The compose file mounts `config.json` and `profiles.json` read-only so local tuning changes are
 picked up without rebuilding the image.
 
+### GitHub Pages
+
+The repository now includes a static Pages build that runs the sizing engine in the browser:
+
+```bash
+python -m build --wheel
+python tools/build_pages.py --output _site
+```
+
+The published Pages URL is:
+
+- [https://eblackrps.github.io/veeam_designer/](https://eblackrps.github.io/veeam_designer/)
+
+The Pages edition keeps the calculator, YAML workflow, JSON export, CSV export, and print view in
+the browser. The local FastAPI app remains the best fit when you want REST endpoints or server-side
+report/export routes.
+
 ## Web UI
 
 The default experience is the browser calculator at `/run`.
@@ -100,7 +117,7 @@ A completed design run produces:
 - operator-facing blueprint and cost summaries
 - the full structured JSON payload used by the REST API
 - CSV export for the last run
-- a printable HTML report for VM-based designs
+- a print-friendly report path in both the local app and the GitHub Pages edition
 
 ## CLI
 
@@ -235,6 +252,7 @@ python -m ruff check .
 python -m ruff format --check .
 python -m pytest -q
 python -m build
+python tools/build_pages.py --output _site
 ```
 
 Run the web app from source:

@@ -56,6 +56,7 @@ def test_run_page_renders_builder():
     client = TestClient(app)
     r = client.get("/run")
     assert r.status_code == 200
+    assert "Design Veeam backup platforms with clear sizing" in r.text
     assert "Interactive design composer" in r.text
     assert "Live YAML workspace" in r.text
 

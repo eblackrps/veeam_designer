@@ -81,13 +81,13 @@ def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostE
         cloud_comparison[provider] = round(cloud_tb * rate * 12, 2)
 
     # Best cloud (lowest year-1 cost)
-    best_provider = min(cloud_comparison, key=cloud_comparison.get)
+    best_provider = min(cloud_comparison, key=lambda provider: cloud_comparison[provider])
     best_rate = _provider_rate(_CLOUD_PROVIDERS[best_provider], object_cost_per_tb_month)
     best_cloud_yr1 = cloud_tb * best_rate * 12
     onprem_residual_yr1 = onprem_tb * onprem_cost_per_tb_year
     tco_best_cloud = _three_year(best_cloud_yr1 + onprem_residual_yr1)
 
-    three_year_tco: dict[str, float] = {
+    three_year_tco: dict[str, float | str] = {
         "onprem": tco_onprem,
         best_provider: tco_best_cloud,
         "provider": best_provider,

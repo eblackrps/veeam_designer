@@ -11,6 +11,7 @@ from .models import (
     LicenseInput,
     MultiSiteDesign,
     RepoSizing,
+    RiskScore,
     SiteDesign,
     VeeamDesign,
     VeeamInput,
@@ -159,7 +160,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
         network=network,
         cost=cost,
         blueprint=blueprint,
-        risk=None,
+        risk=RiskScore(total_score=0, level="green", details={}),
         notes=notes,
         orca=orca,
     )

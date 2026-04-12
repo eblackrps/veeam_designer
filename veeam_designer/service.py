@@ -11,6 +11,13 @@ from .agent import size_agent
 from .models import AgentInput, NasInput, ReplicationInput, VeeamDesign, VeeamInput
 from .nas import size_nas
 from .parser import load_project, load_project_text
+from .presenters import (
+    build_csv_from_payload,
+    build_dashboard_from_payload,
+    build_result_summary,
+    render_blueprint_human,
+    render_cost_human,
+)
 from .replication import size_replication
 from .sizing import design_multi_site, design_veeam_environment
 
@@ -124,3 +131,17 @@ def design_payload_from_input(project_input: Any) -> JSONDict:
         return _vm_payload(design_veeam_environment(project_input))
 
     raise TypeError(f"Unsupported project input type: {type(project_input)!r}")
+
+
+def design_browser_bundle_from_project_text(text: str, *, suffix: str = ".json") -> JSONDict:
+    """Return the full browser-friendly output bundle for a project definition."""
+
+    payload = design_payload_from_project_text(text, suffix=suffix)
+    return {
+        "payload": payload,
+        "summary_cards": build_result_summary(payload),
+        "dashboard": build_dashboard_from_payload(payload),
+        "blueprint": render_blueprint_human(payload),
+        "cost": render_cost_human(payload),
+        "csv": build_csv_from_payload(payload),
+    }

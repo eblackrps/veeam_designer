@@ -35,3 +35,24 @@ or:
 ```bash
 python -m uvicorn --app-dir . ui.main:app --reload
 ```
+
+## GitHub Pages
+
+The repository ships a static Pages edition that runs Veeam Designer entirely in the browser.
+
+Build it locally with:
+
+```bash
+python -m build --wheel
+python tools/build_pages.py --output _site
+```
+
+Then serve the generated `_site/` directory with any static file server, or let
+`.github/workflows/pages.yml` publish it from `main`.
+
+Notes:
+
+- The Pages edition uses the packaged wheel plus Pyodide in the browser.
+- It preserves the calculator UI, YAML workflow, JSON/CSV exports, and print view.
+- The local FastAPI/Docker deployment remains the right choice for `/api/design` and server-side
+  export routes.
