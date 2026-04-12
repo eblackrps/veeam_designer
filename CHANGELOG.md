@@ -5,6 +5,36 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [4.0.4] - 2026-04-12
+
+### Added
+
+- Added [docs/assumptions.md](docs/assumptions.md) to document which formulas are calibrated to
+  published Veeam guidance and which outputs remain planning heuristics
+- Added regression coverage for backup server workload bands, hardened repository host sizing,
+  WAN accelerator digest sizing, and NAS incremental-forever behavior
+- Added refreshed README screenshots so the published docs show the calibrated `4.0.4` UI state
+
+### Changed
+
+- Calibrated VMware proxy sizing around Veeam transport guidance, a conservative NBD heuristic,
+  and explicit effective-capacity reporting in payloads, dashboards, and reports
+- Reworked automatic WAN accelerator sizing to use projected VM source size, carry daily change
+  rate into the accelerator model, and surface digest/free-space requirements in reports
+- Aligned NAS sizing with Veeam unstructured-data guidance by ignoring NAS GFS counts, removing a
+  synthetic disk-cache placeholder for disk targets, and using the configured repository warning
+  threshold consistently
+- Updated deployment docs so `main` pushes refresh GitHub Pages and the `latest` Docker image,
+  while `v4.0.4` publishes the matching versioned container tag
+
+### Fixed
+
+- Fixed dashboard and report proxy-capacity calculations so they no longer rely on stale
+  hardcoded transport values
+- Fixed hypervisor naming drift between the UI and the role-sizing engine for Hyper-V and AHV
+- Fixed profile defaults so legacy proxy-throughput profile values no longer silently change the
+  transport-aware calculator
+
 ## [4.0.3] - 2026-04-12
 
 ### Added

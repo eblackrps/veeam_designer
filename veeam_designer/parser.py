@@ -25,7 +25,9 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         target_rpo_hours=d.get("target_rpo_hours", 24.0),
         compression_ratio=d.get("compression_ratio", CONFIG["compression_ratio_default"]),
         dedupe_ratio=d.get("dedupe_ratio", CONFIG["dedupe_ratio_default"]),
-        throughput_mb_per_core=d.get("throughput_mb_per_core", CONFIG["throughput_mb_per_core"]),
+        throughput_mb_per_core=d.get("throughput_mb_per_core", 0.0),
+        read_write_overhead=d.get("read_write_overhead", CONFIG["read_write_overhead"]),
+        years_to_plan_for=d.get("years_to_plan_for", CONFIG["years_to_plan_for"]),
         vm_count=d.get("vm_count", 0),
         avg_vm_size_gb=d.get("avg_vm_size_gb", 0.0),
         wan_bandwidth_mbps=d.get("wan_bandwidth_mbps", 0.0),
@@ -99,6 +101,7 @@ def _replication_from_dict(d: dict) -> ReplicationInput:
         cdp_enabled=d.get("cdp_enabled", False),
         rpo_seconds=d.get("rpo_seconds", 15),
         compression=d.get("compression", True),
+        daily_change_pct=d.get("daily_change_pct", 5.0),
     )
 
 
@@ -116,6 +119,7 @@ def _replication_input_from_dict(d: dict):
         cdp_enabled=bool(rep_d.get("cdp_enabled", False)),
         rpo_seconds=int(rep_d.get("rpo_seconds", 15)),
         compression=bool(rep_d.get("compression", True)),
+        daily_change_pct=float(rep_d.get("daily_change_pct", 5.0)),
     )
 
 
@@ -167,8 +171,7 @@ def _project_from_data(data: dict[str, Any]):
     """Build the appropriate workload input object(s) from a parsed payload."""
 
     profile = data.get("profile")
-    if profile:
-        select_profile(profile)
+    select_profile(profile if isinstance(profile, str) else None)
 
     workload_type = data.get("workload_type", "vm")
 

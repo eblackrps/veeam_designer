@@ -1,13 +1,19 @@
 from typing import List
 
 from .models import JobSet, RepoPerfModel, RepoSizing, VeeamInput
+from .workload_math import projected_daily_change_tb, projected_total_data_tb, tb_to_mb
 
 
 def estimate_repo_perf(vin: VeeamInput, repo: RepoSizing, jobs: JobSet) -> RepoPerfModel:
     notes: List[str] = []
 
-    daily_change_tb = vin.total_data_tb * vin.daily_change_percent / 100
-    daily_backup_mb = daily_change_tb * 1024 * 1024
+    daily_change_size_tb = projected_daily_change_tb(
+        total_data_tb=vin.total_data_tb,
+        daily_change_percent=vin.daily_change_percent,
+        annual_growth_percent=vin.annual_growth_percent,
+        years_to_plan_for=vin.years_to_plan_for,
+    )
+    daily_backup_mb = tb_to_mb(daily_change_size_tb)
     backup_window_sec = vin.backup_window_hours * 3600 or 1
 
     required_mb_s = daily_backup_mb / backup_window_sec
@@ -15,7 +21,13 @@ def estimate_repo_perf(vin: VeeamInput, repo: RepoSizing, jobs: JobSet) -> RepoP
     if "synthetic" in vin.backup_type:
         # Round 3: spread synthetic full load over block_generation_days windows
         block_days = max(1, vin.block_generation_days)
-        syn_mb = vin.total_data_tb * 1024 * 1024
+        syn_mb = tb_to_mb(
+            projected_total_data_tb(
+                total_data_tb=vin.total_data_tb,
+                annual_growth_percent=vin.annual_growth_percent,
+                years_to_plan_for=vin.years_to_plan_for,
+            )
+        )
         syn_window_sec = block_days * (vin.backup_window_hours * 3600 or 1)
         synthetic_full_mb_s = syn_mb / syn_window_sec
         notes.append(

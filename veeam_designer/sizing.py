@@ -29,17 +29,25 @@ from .sobr import design_sobr
 from .tape import size_tape
 from .veeam_one import size_veeam_one
 from .wan_accel import size_wan_accel
+from .workload_math import projected_daily_change_tb, projected_total_data_tb
 
 
 def size_repository(vin: VeeamInput) -> RepoSizing:
-    effective_total_tb = vin.total_data_tb * (
-        1 + vin.annual_growth_percent / 100 * vin.years_to_plan_for
+    effective_total_tb = projected_total_data_tb(
+        total_data_tb=vin.total_data_tb,
+        annual_growth_percent=vin.annual_growth_percent,
+        years_to_plan_for=vin.years_to_plan_for,
     )
-    daily_change_tb = vin.total_data_tb * vin.daily_change_percent / 100
+    daily_change_size_tb = projected_daily_change_tb(
+        total_data_tb=vin.total_data_tb,
+        daily_change_percent=vin.daily_change_percent,
+        annual_growth_percent=vin.annual_growth_percent,
+        years_to_plan_for=vin.years_to_plan_for,
+    )
 
     weeks_in_retention = vin.primary_retention_days / 7.0
     week_full_tb = effective_total_tb
-    week_incr_tb = daily_change_tb * 6
+    week_incr_tb = daily_change_size_tb * 6
     week_total_tb = week_full_tb + week_incr_tb
 
     primary_logical_tb = week_total_tb * weeks_in_retention
@@ -105,7 +113,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
             "Ensure Cluster Shared Volumes are visible to off-host proxies and coordinate "
             "VSS load on busy hosts.",
         )
-    elif hv == "nutanix_ahv":
+    elif hv in {"nutanix_ahv", "ahv"}:
         notes.setdefault(
             "platform",
             "Nutanix AHV: deploy AHV proxy VMs with direct access to storage. "
@@ -140,10 +148,15 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
         wan_accel_design = size_wan_accel(vin.wan_accel_input)
     elif vin.wan_bandwidth_mbps > 0:
         wa_in = WanAccelInput(
-            source_tb=vin.total_data_tb,
+            source_tb=projected_total_data_tb(
+                total_data_tb=vin.total_data_tb,
+                annual_growth_percent=vin.annual_growth_percent,
+                years_to_plan_for=vin.years_to_plan_for,
+            ),
             wan_mbps=vin.wan_bandwidth_mbps,
             dedupe_ratio=vin.dedupe_ratio,
             compression_ratio=vin.compression_ratio,
+            daily_change_pct=vin.daily_change_percent,
         )
         wan_accel_design = size_wan_accel(wa_in)
 

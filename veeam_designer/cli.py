@@ -50,7 +50,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target-rpo-hours", type=float, default=24.0)
     p.add_argument("--compression-ratio", type=float)
     p.add_argument("--dedupe-ratio", type=float)
-    p.add_argument("--throughput-mb-per-core", type=float)
+    p.add_argument(
+        "--throughput-mb-per-core",
+        type=float,
+        help="Optional proxy throughput override in MB/s per core for custom benchmarking.",
+    )
     p.add_argument("--vm-count", type=int, default=0)
     p.add_argument("--avg-vm-size-gb", type=float, default=0.0)
     p.add_argument("--wan-bandwidth-mbps", type=float, default=0.0)
@@ -271,8 +275,7 @@ def main():
                 target_rpo_hours=args.target_rpo_hours,
                 compression_ratio=args.compression_ratio or CONFIG["compression_ratio_default"],
                 dedupe_ratio=args.dedupe_ratio or CONFIG["dedupe_ratio_default"],
-                throughput_mb_per_core=args.throughput_mb_per_core
-                or CONFIG["throughput_mb_per_core"],
+                throughput_mb_per_core=args.throughput_mb_per_core or 0.0,
                 vm_count=args.vm_count,
                 avg_vm_size_gb=args.avg_vm_size_gb,
                 wan_bandwidth_mbps=args.wan_bandwidth_mbps,

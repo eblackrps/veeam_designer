@@ -2,14 +2,11 @@ name: Docker
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: "Optional extra image tag. latest and the git tag are always published."
-        required: false
-        default: "latest"
 
 jobs:
   build-push:
@@ -19,7 +16,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -34,13 +31,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve image tags
+        id: meta
+        shell: bash
+        run: |
+          tags=(
+            "emb079/veeam-designer:latest"
+            "ghcr.io/eblackrps/veeam-designer:latest"
+          )
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tags+=(
+              "emb079/veeam-designer:${GITHUB_REF_NAME}"
+              "ghcr.io/eblackrps/veeam-designer:${GITHUB_REF_NAME}"
+            )
+          fi
+
+          {
+            echo "tags<<EOF"
+            printf '%s\n' "${tags[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: |
-            emb079/veeam-designer:latest
-            emb079/veeam-designer:${{ github.ref_name }}
-            ghcr.io/eblackrps/veeam-designer:latest
-            ghcr.io/eblackrps/veeam-designer:${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator, Mapping
+from contextvars import ContextVar
 from importlib import resources
 from pathlib import Path
 from typing import Any, Dict
@@ -8,7 +10,6 @@ from typing import Any, Dict
 DEFAULT_CONFIG: Dict[str, Any] = {
     "compression_ratio_default": 1.6,
     "dedupe_ratio_default": 1.0,
-    "throughput_mb_per_core": 15.0,
     "read_write_overhead": 1.3,
     "tasks_per_core": 2,
     "repo_overhead_factor": 1.25,
@@ -75,20 +76,49 @@ def load_profiles() -> Dict[str, Dict[str, Any]]:
 
 
 BASE_CONFIG: Dict[str, Any] = load_base_config()
-CONFIG: Dict[str, Any] = BASE_CONFIG.copy()
 PROFILES: Dict[str, Dict[str, Any]] = load_profiles()
+_CONFIG_STATE: ContextVar[Dict[str, Any]] = ContextVar(
+    "veeam_designer_runtime_config",
+    default=BASE_CONFIG.copy(),
+)
+
+
+class RuntimeConfig(Mapping[str, Any]):
+    """Read-only view of the active profile configuration."""
+
+    def _data(self) -> Dict[str, Any]:
+        return _CONFIG_STATE.get()
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data()[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data())
+
+    def __len__(self) -> int:
+        return len(self._data())
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._data().get(key, default)
+
+    def snapshot(self) -> Dict[str, Any]:
+        return self._data().copy()
+
+
+CONFIG = RuntimeConfig()
 
 
 def select_profile(name: str | None) -> Dict[str, Any]:
-    """Apply a profile on top of the base configuration for the current process."""
-
-    CONFIG.clear()
-    CONFIG.update(BASE_CONFIG)
+    """Apply a profile on top of the base configuration for the current execution context."""
+    config = BASE_CONFIG.copy()
 
     if not name:
-        return CONFIG
+        _CONFIG_STATE.set(config)
+        return config
 
     profile = PROFILES.get(name)
     if profile:
-        CONFIG.update(profile)
-    return CONFIG
+        config.update(profile)
+
+    _CONFIG_STATE.set(config)
+    return config

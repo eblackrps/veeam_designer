@@ -1,7 +1,6 @@
 {
   "profiles": {
     "smb": {
-      "throughput_mb_per_core": 12.0,
       "warn_repo_tb": 200.0
     },
     "enterprise": {

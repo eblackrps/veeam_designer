@@ -390,6 +390,10 @@
     <tr><td class="label">Primary repository</td><td class="value">{{ "%.1f" | format(site.primary_repo_tb | default(0)) }} TB</td></tr>
     <tr><td class="label">GFS / long-term retention</td><td class="value">{{ "%.1f" | format(site.gfs_repo_tb | default(0)) }} TB</td></tr>
     <tr><td class="label">Total on-prem repository</td><td class="value">{{ "%.1f" | format(site.total_repo_tb | default(0)) }} TB</td></tr>
+    {% if site.repo_host_count %}
+    <tr><td class="label">Hardened repo hosts</td><td class="value">{{ site.repo_host_count }}</td></tr>
+    <tr><td class="label">Per repo host target</td><td class="value">{{ site.repo_host_cores }} cores / {{ site.repo_host_ram_gb }} GB / {{ "%.1f" | format(site.repo_host_tb | default(0)) }} TB</td></tr>
+    {% endif %}
     {% if site.capacity_tier_tb %}
     <tr><td class="label">SOBR capacity tier (object)</td><td class="value">{{ "%.1f" | format(site.capacity_tier_tb) }} TB</td></tr>
     {% endif %}
@@ -406,7 +410,8 @@
     <tr><td class="label">Total proxy RAM</td><td class="value">{{ site.proxy_ram_gb | default(0) }} GB</td></tr>
     <tr><td class="label">Transport mode</td><td class="value">{{ site.transport_mode | default("auto") }}</td></tr>
     <tr><td class="label">Required throughput</td><td class="value">{{ "%.1f" | format(site.required_mb_s | default(0)) }} MB/s</td></tr>
-    <tr><td class="label">Proxy capacity</td><td class="value">{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s</td></tr>
+    <tr><td class="label">Estimated effective capacity</td><td class="value">{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s</td></tr>
+    <tr><td class="label">Sizing basis</td><td class="value">{{ site.proxy_throughput_basis | default("auto") }}</td></tr>
     <tr><td class="label">Proxy load ratio</td>
         <td class="value">
           {% set ratio = site.proxy_load_ratio | default(0) %}
@@ -464,7 +469,7 @@
     <div class="card-row"><span class="clabel">CDP journal</span><span class="cval">{{ "%.1f" | format(site.replication.cdp_journal_tb | default(0)) }} TB</span></div>
     {% endif %}
     {% if site.replication.notes %}
-    <p class="note">{{ site.replication.notes }}</p>
+    <p class="note">{{ site.replication.notes | join(" ") }}</p>
     {% endif %}
   </div>
   {% endif %}
@@ -474,12 +479,12 @@
     <div class="card-title">NAS / Unstructured</div>
     <div class="card-row"><span class="clabel">Cache repo</span><span class="cval">{{ "%.1f" | format(site.nas.cache_repo_tb | default(0)) }} TB</span></div>
     <div class="card-row"><span class="clabel">Primary repo</span><span class="cval">{{ "%.1f" | format(site.nas.primary_repo_tb | default(0)) }} TB</span></div>
-    <div class="card-row"><span class="clabel">GFS repo</span><span class="cval">{{ "%.1f" | format(site.nas.gfs_repo_tb | default(0)) }} TB</span></div>
+    <div class="card-row"><span class="clabel">Long-term GFS</span><span class="cval">{% if site.nas.gfs_repo_tb %}{{ "%.1f" | format(site.nas.gfs_repo_tb) }} TB{% else %}Not separately sized{% endif %}</span></div>
     <div class="card-row"><span class="clabel">Total repo</span><span class="cval">{{ "%.1f" | format(site.nas.total_repo_tb | default(0)) }} TB</span></div>
     <div class="card-row"><span class="clabel">File proxy cores</span><span class="cval">{{ site.nas.file_proxy_cores | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">File proxy RAM</span><span class="cval">{{ site.nas.file_proxy_ram_gb | default(0) }} GB</span></div>
     {% if site.nas.notes %}
-    <p class="note">{{ site.nas.notes }}</p>
+    <p class="note">{{ site.nas.notes | join(" ") }}</p>
     {% endif %}
   </div>
   {% endif %}
@@ -490,10 +495,13 @@
     <div class="card-row"><span class="clabel">Source appliances</span><span class="cval">{{ site.wan_accel.source_appliance_count | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">Target appliances</span><span class="cval">{{ site.wan_accel.target_appliance_count | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">Cache / source</span><span class="cval">{{ site.wan_accel.cache_size_gb_per_source | default(0) }} GB</span></div>
+    <div class="card-row"><span class="clabel">Source digest</span><span class="cval">{{ site.wan_accel.source_digest_gb_per_source | default(0) }} GB</span></div>
+    <div class="card-row"><span class="clabel">Target digest</span><span class="cval">{{ site.wan_accel.target_digest_gb_per_target | default(0) }} GB</span></div>
+    <div class="card-row"><span class="clabel">Target free space</span><span class="cval">{{ site.wan_accel.target_total_free_space_gb | default(0) }} GB</span></div>
     <div class="card-row"><span class="clabel">Effective throughput</span><span class="cval">{{ "%.0f" | format(site.wan_accel.effective_mbps | default(0)) }} Mbps</span></div>
     <div class="card-row"><span class="clabel">Meets copy window</span><span class="cval">{{ "Yes" if site.wan_accel.meets_copy_window else "No" }}</span></div>
     {% if site.wan_accel.notes %}
-    <p class="note">{{ site.wan_accel.notes }}</p>
+    <p class="note">{{ site.wan_accel.notes | join(" ") }}</p>
     {% endif %}
   </div>
   {% endif %}
@@ -506,7 +514,7 @@
     <div class="card-row"><span class="clabel">License tier</span><span class="cval">{{ site.license_estimate.tier | default("—") | title }}</span></div>
     <div class="card-row"><span class="clabel">Annual maintenance</span><span class="cval">${{ "{:,.0f}".format(site.license_estimate.annual_maintenance_usd | default(0)) }}</span></div>
     {% if site.license_estimate.notes %}
-    <p class="note">{{ site.license_estimate.notes }}</p>
+    <p class="note">{{ site.license_estimate.notes | join(" ") }}</p>
     {% endif %}
   </div>
   {% endif %}
@@ -521,7 +529,7 @@
     <div class="card-row"><span class="clabel">Library slots</span><span class="cval">{{ site.tape.library_slots_needed | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">Annual media cost</span><span class="cval">${{ "{:,.0f}".format(site.tape.annual_media_cost_usd | default(0)) }}</span></div>
     {% if site.tape.notes %}
-    <p class="note">{{ site.tape.notes }}</p>
+    <p class="note">{{ site.tape.notes | join(" ") }}</p>
     {% endif %}
   </div>
   {% endif %}
@@ -540,7 +548,7 @@
     <div class="card-row"><span class="clabel">VSPC cores</span><span class="cval">{{ site.veeam_one.vspc_cores }}</span></div>
     {% endif %}
     {% if site.veeam_one.notes %}
-    <p class="note">{{ site.veeam_one.notes }}</p>
+    <p class="note">{{ site.veeam_one.notes | join(" ") }}</p>
     {% endif %}
   </div>
   {% endif %}

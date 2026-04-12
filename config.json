@@ -1,7 +1,6 @@
 {
   "compression_ratio_default": 1.6,
   "dedupe_ratio_default": 1.0,
-  "throughput_mb_per_core": 15.0,
   "read_write_overhead": 1.3,
   "tasks_per_core": 2,
   "repo_overhead_factor": 1.25,

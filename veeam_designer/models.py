@@ -21,7 +21,7 @@ class VeeamInput:
 
     compression_ratio: float = CONFIG["compression_ratio_default"]
     dedupe_ratio: float = CONFIG["dedupe_ratio_default"]
-    throughput_mb_per_core: float = CONFIG["throughput_mb_per_core"]
+    throughput_mb_per_core: float = 0.0
     read_write_overhead: float = CONFIG["read_write_overhead"]
 
     years_to_plan_for: int = CONFIG["years_to_plan_for"]
@@ -112,6 +112,8 @@ class ProxySizing:
     total_proxy_cores: int
     total_parallel_tasks: int
     required_throughput_mb_s: float
+    estimated_capacity_mb_s: float = 0.0
+    throughput_basis: str = "auto"
     # Round 6: per-transport sizing
     ram_gb_per_proxy: int = 8
     total_proxy_ram_gb: int = 0
@@ -130,6 +132,8 @@ class BackupServerSizing:
 class HardenedRepoHost:
     count: int
     tb_per_host: float
+    cpu_cores_each: int = 2
+    ram_gb_each: int = 8
     notes: str = ""
 
 
@@ -333,6 +337,7 @@ class WanAccelInput:
     backup_copy_frequency_hours: float = 24.0
     dedupe_ratio: float = 3.0
     compression_ratio: float = 1.6
+    daily_change_pct: float = 5.0
 
 
 @dataclass
@@ -340,6 +345,9 @@ class WanAccelDesign:
     source_appliance_count: int
     target_appliance_count: int
     cache_size_gb_per_source: int
+    source_digest_gb_per_source: int
+    target_digest_gb_per_target: int
+    target_total_free_space_gb: int
     effective_mbps: float
     meets_copy_window: bool
     backup_copy_window_hours: float

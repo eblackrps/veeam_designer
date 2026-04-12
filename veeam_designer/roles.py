@@ -12,30 +12,23 @@ from .models import (
     RolePlan,
     VeeamInput,
 )
+from .workload_math import projected_daily_change_tb, tb_to_mb
 
-# ---------------------------------------------------------------------------
-# Round 6: per-transport throughput and RAM constants
-# ---------------------------------------------------------------------------
-
-TRANSPORT_MB_PER_CORE: dict[str, float] = {
-    "directsan": 20.0,
-    "hotadd": 15.0,
-    "nbd": 5.0,
-    "auto": 15.0,
+VMWARE_INCREMENTAL_MB_PER_CORE: dict[tuple[str, str], float] = {
+    ("virtual", "block"): 80.0,
+    ("virtual", "object"): 80.0,
+    ("physical", "block"): 250.0,
+    ("physical", "object"): 150.0,
 }
-
-TRANSPORT_RAM_GB: dict[str, int] = {
-    "directsan": 8,
-    "hotadd": 8,
-    "nbd": 4,
-    "auto": 8,
-}
+NBD_HEURISTIC_MB_PER_CORE = 40.0
 
 # Recommended transport per hypervisor (for validation notes)
 _HYPERVISOR_TRANSPORT: dict[str, list[str]] = {
     "vmware": ["directsan", "hotadd", "nbd", "auto"],
     "hyper-v": ["hotadd", "nbd", "auto"],
+    "hyperv": ["hotadd", "nbd", "auto"],
     "ahv": ["nbd", "auto"],
+    "nutanix_ahv": ["nbd", "auto"],
     "physical": ["nbd", "auto"],
     "mixed": ["hotadd", "nbd", "auto"],
 }
@@ -61,34 +54,62 @@ def _resolve_transport(vin: VeeamInput) -> str:
     return "nbd"
 
 
+def _proxy_target_storage(vin: VeeamInput) -> str:
+    if vin.repo_type == "object" or vin.direct_to_object:
+        return "object"
+    return "block"
+
+
+def _proxy_type_for_transport(transport: str) -> str:
+    return "physical" if transport == "directsan" else "virtual"
+
+
+def _proxy_throughput_mb_per_core(vin: VeeamInput, transport: str) -> tuple[float, str]:
+    if vin.throughput_mb_per_core > 0:
+        return vin.throughput_mb_per_core, "custom benchmark override"
+    if transport == "nbd":
+        return NBD_HEURISTIC_MB_PER_CORE, "conservative NBD heuristic"
+    return (
+        VMWARE_INCREMENTAL_MB_PER_CORE[
+            (_proxy_type_for_transport(transport), _proxy_target_storage(vin))
+        ],
+        "Veeam VMware incremental proxy guidance",
+    )
+
+
 def size_proxies(vin: VeeamInput) -> ProxySizing:
     """
-    Size proxy concurrency based on daily change rate, backup window,
-    and the effective transport mode (Round 6).
+    Size proxy resources using Veeam published throughput guidance where available.
     """
     transport = _resolve_transport(vin)
-    mb_per_core = TRANSPORT_MB_PER_CORE.get(transport, 15.0)
-    ram_per_proxy = TRANSPORT_RAM_GB.get(transport, 8)
+    mb_per_core, throughput_basis = _proxy_throughput_mb_per_core(vin, transport)
 
-    daily_change_tb = vin.total_data_tb * vin.daily_change_percent / 100
-    daily_backup_mb = daily_change_tb * 1024 * 1024
+    daily_change_size_tb = projected_daily_change_tb(
+        total_data_tb=vin.total_data_tb,
+        daily_change_percent=vin.daily_change_percent,
+        annual_growth_percent=vin.annual_growth_percent,
+        years_to_plan_for=vin.years_to_plan_for,
+    )
+    daily_backup_mb = tb_to_mb(daily_change_size_tb)
 
     backup_window_sec = vin.backup_window_hours * 3600
     if backup_window_sec <= 0:
         raise ValueError("backup_window_hours must be > 0")
 
     required_throughput_mb_s = daily_backup_mb / backup_window_sec
-
-    # Use per-transport MB/s/core (overrides the legacy vin.throughput_mb_per_core)
-    cores_needed = (required_throughput_mb_s / mb_per_core) * vin.read_write_overhead
-
-    cores_per_proxy = 4
-    proxy_count = max(1, math.ceil(cores_needed / cores_per_proxy))
+    total_proxy_cores = max(
+        1,
+        math.ceil((required_throughput_mb_s / mb_per_core) * vin.read_write_overhead),
+    )
 
     tasks_per_core = CONFIG["tasks_per_core"]
+    proxy_count = max(2, math.ceil(total_proxy_cores / 8))
+    cores_per_proxy = max(2, math.ceil(total_proxy_cores / proxy_count))
     total_proxy_cores = proxy_count * cores_per_proxy
     total_parallel_tasks = total_proxy_cores * tasks_per_core
-    total_proxy_ram_gb = proxy_count * ram_per_proxy
+    total_proxy_ram_gb = total_proxy_cores * 2
+    ram_per_proxy = max(4, math.ceil(total_proxy_ram_gb / proxy_count))
+    estimated_capacity_mb_s = total_proxy_cores * mb_per_core / max(vin.read_write_overhead, 1.0)
 
     # Hypervisor-transport compatibility notes
     notes: list[str] = []
@@ -98,6 +119,27 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
             f"Transport '{transport}' is not recommended for hypervisor "
             f"'{vin.hypervisor}'. Recommended: {', '.join(allowed)}."
         )
+    if transport == "nbd":
+        notes.append(
+            "NBD transport throughput is modeled conservatively because Veeam does not publish a "
+            "separate per-core NBD throughput table in the cited sizing guide."
+        )
+    if vin.throughput_mb_per_core > 0:
+        notes.append(
+            "A custom proxy throughput override was supplied. The calculator used that value "
+            "instead of the built-in Veeam transport guidance."
+        )
+    else:
+        notes.append(
+            "Proxy sizing uses Veeam vSphere proxy incremental-throughput guidance and keeps the "
+            "best-practice target of two proxy tasks per CPU core."
+        )
+    if vin.hypervisor.lower() != "vmware" and vin.throughput_mb_per_core <= 0:
+        notes.append(
+            "Hyper-V, AHV, and mixed-environment proxy throughput still reuse the VMware transport "
+            "table as a planning heuristic unless you provide a custom throughput override."
+        )
+    notes.append("The calculator recommends at least two proxy servers per site for availability.")
 
     sizing = ProxySizing(
         proxy_count=proxy_count,
@@ -105,6 +147,8 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
         total_proxy_cores=total_proxy_cores,
         total_parallel_tasks=total_parallel_tasks,
         required_throughput_mb_s=round(required_throughput_mb_s, 1),
+        estimated_capacity_mb_s=round(estimated_capacity_mb_s, 1),
+        throughput_basis=throughput_basis,
         ram_gb_per_proxy=ram_per_proxy,
         total_proxy_ram_gb=total_proxy_ram_gb,
         transport_mode=transport,
@@ -114,36 +158,54 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
 
 def size_backup_server(proxies: ProxySizing, vin: VeeamInput) -> BackupServerSizing:
     """
-    Size the Veeam Backup Server based on workload count, job concurrency,
-    indexing, and v13 appliance mode (Round 2).
+    Size the Veeam backup server from Veeam best-practice workload bands.
     """
     workload_count = (
         vin.workload_count
         if vin.workload_count > 0
         else (vin.vm_count if vin.vm_count > 0 else proxies.total_proxy_cores * 10)
     )
+    workload_bands = [
+        (500, 50, 12, 24),
+        (1000, 100, 24, 32),
+        (5000, 500, 48, 64),
+        (10000, 1000, 56, 128),
+    ]
+    concurrency_hint = max(1, vin.concurrent_jobs)
 
-    base_cores = max(4, math.ceil(workload_count / 100))
-    concurrency_cores = vin.concurrent_jobs * 2
-    total_cores = base_cores + concurrency_cores
+    total_cores = 56
+    ram_gb = 128
+    for max_workloads, max_concurrent_tasks, band_cores, band_ram in workload_bands:
+        if workload_count <= max_workloads and concurrency_hint <= max_concurrent_tasks:
+            total_cores = band_cores
+            ram_gb = band_ram
+            break
+    else:
+        extra_units = math.ceil(max(0, workload_count - 10000) / 2000)
+        total_cores += extra_units * 8
+        ram_gb += extra_units * 16
 
-    if vin.v13_appliance:
-        total_cores = max(8, math.ceil(total_cores * 0.8))
-
-    ram_gb = max(16, total_cores * 2)
     if vin.indexing_enabled:
-        ram_gb += math.ceil(workload_count / 50)
+        ram_gb += 8
 
     notes: list[str] = []
-    if vin.v13_appliance:
-        notes.append("v13 appliance mode: consolidated role reduces core requirement by 20%.")
+    notes.append(
+        "Backup server sizing uses Veeam initial sizing recommendation bands for VMware and "
+        "physical-machine backup environments."
+    )
     if vin.indexing_enabled:
-        notes.append("Indexing enabled: additional RAM allocated per 50 workloads.")
-    if workload_count > 500:
+        notes.append("Guest indexing is enabled; extra RAM was added above the baseline band.")
+    if workload_count > 10000:
         notes.append(
-            f"Large environment ({workload_count} workloads): "
-            "consider dedicated catalog/indexing server."
+            "This environment exceeds the published 10,000-workload backup-server table. The "
+            "calculator extends the largest Veeam band linearly and should be reviewed manually."
         )
+    if vin.nas_input or vin.replication_input or vin.tape_input:
+        notes.append(
+            "Additional workload types are present. Veeam recommends consulting a technical "
+            "advisor when sizing beyond VMware and physical-machine backup alone."
+        )
+    notes.append("Always verify against the current Veeam system requirements minimums.")
 
     return BackupServerSizing(
         cores=total_cores,
@@ -153,31 +215,41 @@ def size_backup_server(proxies: ProxySizing, vin: VeeamInput) -> BackupServerSiz
     )
 
 
-def size_hardened_repo(repo: RepoSizing) -> HardenedRepoHost:
+def size_hardened_repo(
+    repo: RepoSizing, proxy_total_cores: int, refs_xfs: bool
+) -> HardenedRepoHost:
     """
-    Size hardened repository hosts.
-
-    Logic:
-      - Cap per-host repo usage at ~1 PB (configurable)
-      - Recommend 250 TB volumes (configurable)
-      - Count hosts needed to stay under cap
+    Size repository hosts from Veeam repository compute guidance.
     """
     host_cap_tb = float(CONFIG.get("hardened_tb_per_host_cap", 1000.0))
     volume_target_tb = float(CONFIG.get("hardened_volume_tb_target", 250.0))
 
     host_count = max(1, math.ceil(repo.total_repo_tb / host_cap_tb))
     tb_per_host = repo.total_repo_tb / host_count
+    total_repo_cores = max(2, math.ceil(proxy_total_cores / 3))
+    total_repo_ram_gb = max(8, total_repo_cores * 4)
+    cpu_cores_each = max(2, math.ceil(total_repo_cores / host_count))
+    ram_gb_each = max(8, math.ceil(total_repo_ram_gb / host_count))
 
     notes = (
         f"Hardened repo host capped at ~{host_cap_tb:.0f} TB per host. "
         f"Recommended volume/extent size ~{volume_target_tb:.0f} TB. "
+        "Repository compute follows Veeam guidance of one repository core per three proxy cores "
+        "and 4 GB RAM per repository core. "
         "Use XFS/ReFS with immutability, separate mgmt/data NICs, "
         "and avoid domain-joining hardened hosts."
     )
+    if refs_xfs:
+        notes += (
+            " For large ReFS/XFS volumes, review Veeam guidance that recommends additional memory "
+            "for filesystem metadata overhead."
+        )
 
     return HardenedRepoHost(
         count=host_count,
         tb_per_host=round(tb_per_host, 1),
+        cpu_cores_each=cpu_cores_each,
+        ram_gb_each=ram_gb_each,
         notes=notes,
     )
 
@@ -215,7 +287,7 @@ def build_role_plan(vin: VeeamInput, repo: RepoSizing) -> RolePlan:
     """
     proxies = size_proxies(vin)
     backup_server = size_backup_server(proxies, vin)
-    hardened = size_hardened_repo(repo)
+    hardened = size_hardened_repo(repo, proxies.total_proxy_cores, vin.refs_xfs)
 
     # Gateways ONLY for repo_type == object
     gateways = size_gateways(repo) if vin.repo_type == "object" else None

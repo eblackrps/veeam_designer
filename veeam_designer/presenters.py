@@ -178,6 +178,7 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
     roles = design_payload.get("roles") or {}
     proxies = roles.get("proxies") or {}
     backup_server = roles.get("backup_server") or {}
+    hardened_repos = roles.get("hardened_repos") or {}
     network = design_payload.get("network") or {}
     risk = design_payload.get("risk") or {}
     repo_perf = design_payload.get("repo_perf") or {}
@@ -185,10 +186,8 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
     sobr = design_payload.get("sobr") or {}
 
     transport_mode = str(proxies.get("transport_mode", "auto"))
-    mb_per_core = {"direct_san": 20.0, "hotadd": 15.0, "nbd": 5.0, "directsan": 20.0}.get(
-        transport_mode, 15.0
-    )
     total_proxy_cores = int(proxies.get("total_proxy_cores", 0))
+    proxy_capacity_mb_s = float(proxies.get("estimated_capacity_mb_s", 0.0))
 
     return {
         "name": name,
@@ -200,12 +199,17 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "total_proxy_cores": total_proxy_cores,
         "proxy_ram_gb": int(proxies.get("total_proxy_ram_gb", 0)),
         "transport_mode": transport_mode,
+        "proxy_throughput_basis": str(proxies.get("throughput_basis", "auto")),
         "bs_cores": int(backup_server.get("cores", 0)),
         "bs_ram_gb": int(backup_server.get("ram_gb", 0)),
+        "repo_host_count": int(hardened_repos.get("count", 0)) if hardened_repos else 0,
+        "repo_host_tb": float(hardened_repos.get("tb_per_host", 0.0)) if hardened_repos else 0.0,
+        "repo_host_cores": int(hardened_repos.get("cpu_cores_each", 0)) if hardened_repos else 0,
+        "repo_host_ram_gb": int(hardened_repos.get("ram_gb_each", 0)) if hardened_repos else 0,
         "required_mb_s": float(repo_perf.get("required_mb_s", 0.0)),
-        "proxy_capacity_mb_s": total_proxy_cores * mb_per_core,
+        "proxy_capacity_mb_s": proxy_capacity_mb_s,
         "proxy_load_ratio": float(repo_perf.get("required_mb_s", 0.0))
-        / max(total_proxy_cores * mb_per_core, 1.0),
+        / max(proxy_capacity_mb_s, 1.0),
         "wan_required_mbps": float(network.get("required_mbps", 0.0)),
         "wan_meets_target": bool(network.get("meets_target", False)),
         "risk_level": str(risk.get("level", "unknown")),

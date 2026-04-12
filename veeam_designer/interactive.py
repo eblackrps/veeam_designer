@@ -76,7 +76,7 @@ def collect_inputs_interactive() -> VeeamInput:
         CONFIG["dedupe_ratio_default"],
     )
     throughput_mb_per_core = _prompt_float(
-        "Assumed MB/s per proxy core", CONFIG["throughput_mb_per_core"]
+        "Custom proxy throughput override (MB/s per core, 0 = auto)", 0.0
     )
 
     vm_count = _prompt_int("Approximate VM count", 100)
@@ -153,12 +153,15 @@ def print_human_summary(d: VeeamDesign) -> None:
         f"  Proxies               : {d.roles.proxies.proxy_count}x, "
         f"{d.roles.proxies.cores_per_proxy} cores each "
         f"({d.roles.proxies.total_proxy_cores} total cores, "
-        f"{d.roles.proxies.total_parallel_tasks} total tasks)"
+        f"{d.roles.proxies.total_parallel_tasks} total tasks, "
+        f"{d.roles.proxies.estimated_capacity_mb_s:.1f} MB/s effective)"
     )
     if d.roles.hardened_repos:
         print(
             f"  Hardened repo hosts   : {d.roles.hardened_repos.count} "
-            f"(~{d.roles.hardened_repos.tb_per_host:.1f} TB per host)"
+            f"(~{d.roles.hardened_repos.tb_per_host:.1f} TB, "
+            f"{d.roles.hardened_repos.cpu_cores_each} cores, "
+            f"{d.roles.hardened_repos.ram_gb_each} GB each)"
         )
     if d.roles.gateways:
         print(

@@ -15,12 +15,26 @@ By default the compose file:
 - builds the image from the current repository
 - exposes port `8000`
 - mounts `config.json` and `profiles.json` read-only into `/app`
+- uses the same packaged `veeam-designer` application version as the wheel release
 
 ## Direct Docker Build
 
 ```bash
 docker build -t veeam-designer .
 docker run --rm -p 8000:8000 veeam-designer
+```
+
+## Published Docker Image
+
+The published Docker Hub image is:
+
+- `emb079/veeam-designer:latest`
+- `emb079/veeam-designer:v4.0.4`
+
+Run it directly with:
+
+```bash
+docker run --rm -p 8000:8000 emb079/veeam-designer:latest
 ```
 
 ## Source Run
@@ -49,6 +63,13 @@ python tools/build_pages.py --output _site
 
 Then serve the generated `_site/` directory with any static file server, or let
 `.github/workflows/pages.yml` publish it from `main`.
+
+## CI Publishing
+
+- Pushing to `main` runs CI, republishes GitHub Pages, and refreshes the `latest` Docker image.
+- Pushing a version tag such as `v4.0.4` publishes Docker images to
+  `emb079/veeam-designer` and `ghcr.io/eblackrps/veeam-designer`.
+- The package version, Docker tag, and Pages UI version badge should always match the same release.
 
 Notes:
 
