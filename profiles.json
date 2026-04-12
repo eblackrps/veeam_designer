@@ -1,0 +1,20 @@
+{
+  "profiles": {
+    "smb": {
+      "throughput_mb_per_core": 12.0,
+      "warn_repo_tb": 200.0
+    },
+    "enterprise": {
+      "warn_repo_tb": 500.0,
+      "max_vms_per_job": 80
+    },
+    "msp": {
+      "tasks_per_core": 3,
+      "warn_repo_tb": 600.0
+    },
+    "dedupe": {
+      "compression_ratio_default": 1.2,
+      "dedupe_ratio_default": 3.0
+    }
+  }
+}

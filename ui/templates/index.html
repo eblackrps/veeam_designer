@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veeam Designer</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+</head>
+<body>
+  <div class="page-glow page-glow-left"></div>
+  <div class="page-glow page-glow-right"></div>
+  <main class="layout">
+    <header class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Veeam Designer {{ version }}</span>
+        <h1>Plan backup infrastructure with a real calculator, not a worksheet graveyard.</h1>
+        <p>
+          Model multi-site Veeam environments, validate WAN and retention assumptions, compare
+          cost paths, and export the result as structured JSON, CSV, or a printable report.
+        </p>
+      </div>
+      <div class="hero-panel">
+        <div class="hero-pill">UI-first sizing studio</div>
+        <div class="hero-meta">
+          <span>Version {{ version }}</span>
+          <span>REST API at <code>/api/design</code></span>
+          <span>Docker-ready via <code>uvicorn ui.main:app</code></span>
+        </div>
+      </div>
+    </header>
+
+    {% if error_message %}
+    <section class="alert alert-error">
+      <strong>Design run failed.</strong>
+      <span>{{ error_message }}</span>
+    </section>
+    {% endif %}
+
+    <section class="workspace-grid">
+      <form id="designer-form" method="post" action="/run" class="builder-shell">
+        <input type="hidden" name="run_blueprint" value="true">
+        <input type="hidden" name="run_cost" value="true">
+
+        <section class="panel panel-builder">
+          <div class="panel-header">
+            <div>
+              <span class="section-tag">Builder</span>
+              <h2>Interactive design composer</h2>
+            </div>
+            <div class="panel-actions">
+              <button type="button" id="reset-example" class="button button-secondary">Reset Example</button>
+              <button type="button" id="sync-yaml" class="button button-ghost">Rebuild YAML</button>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <label class="field">
+              <span>Profile</span>
+              <select id="profile">
+                {% for profile in available_profiles %}
+                <option value="{{ profile }}"{% if profile == "enterprise" %} selected{% endif %}>{{ profile|title }}</option>
+                {% endfor %}
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Hypervisor</span>
+              <select id="hypervisor">
+                <option value="vmware" selected>VMware vSphere</option>
+                <option value="hyperv">Microsoft Hyper-V</option>
+                <option value="ahv">Nutanix AHV</option>
+                <option value="mixed">Mixed environment</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Target RPO (hours)</span>
+              <input id="target-rpo" type="number" min="0.25" step="0.25" value="24">
+            </label>
+
+            <label class="field">
+              <span>Compliance Framework</span>
+              <select id="compliance-framework">
+                <option value="none" selected>None</option>
+                <option value="hipaa">HIPAA</option>
+                <option value="soc2">SOC 2</option>
+                <option value="gdpr">GDPR</option>
+                <option value="pci_dss">PCI DSS</option>
+                <option value="dora">DORA</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Compression Ratio</span>
+              <input id="compression-ratio" type="number" min="0" step="0.1" placeholder="Use profile default">
+            </label>
+
+            <label class="field">
+              <span>Dedupe Ratio</span>
+              <input id="dedupe-ratio" type="number" min="0" step="0.1" placeholder="Use profile default">
+            </label>
+
+            <label class="field field-wide">
+              <span>Proxy Throughput per Core (MB/s)</span>
+              <input id="throughput-mb-per-core" type="number" min="0" step="0.5" placeholder="Use engine default">
+            </label>
+          </div>
+
+          <div class="mode-strip">
+            <div>
+              <span class="section-tag">Calculator Mode</span>
+              <h3>Choose the sizing path</h3>
+            </div>
+            <div class="tab-row">
+              <button type="button" class="mode-tab is-active" data-workload="vm">VM Backup</button>
+              <button type="button" class="mode-tab" data-workload="nas">NAS</button>
+              <button type="button" class="mode-tab" data-workload="physical">Physical</button>
+              <button type="button" class="mode-tab" data-workload="replication">Replication</button>
+            </div>
+          </div>
+
+          <section id="mode-vm" class="mode-panel is-active">
+            <div class="mode-panel-header">
+              <div>
+                <h3>Multi-site VM planner</h3>
+                <p>Use site cards to model primary repositories, proxy counts, retention, and WAN pressure.</p>
+              </div>
+              <button type="button" id="add-site" class="button button-primary">Add Site</button>
+            </div>
+            <div id="sites-container" class="site-stack"></div>
+          </section>
+
+          <section id="mode-nas" class="mode-panel">
+            <div class="mode-panel-header">
+              <div>
+                <h3>NAS / unstructured sizing</h3>
+                <p>Estimate cache repo, primary repo, and file proxy requirements for file services protection.</p>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <label class="field"><span>Source Data (TB)</span><input id="nas-source-tb" type="number" min="0" step="0.1" value="120"></label>
+              <label class="field"><span>Share Count</span><input id="nas-share-count" type="number" min="1" step="1" value="80"></label>
+              <label class="field"><span>File Count (millions)</span><input id="nas-file-count" type="number" min="0" step="0.1" value="1.5"></label>
+              <label class="field"><span>Compression %</span><input id="nas-compress" type="number" min="0" step="1" value="30"></label>
+              <label class="field"><span>Daily Change %</span><input id="nas-daily" type="number" min="0" step="0.1" value="5"></label>
+              <label class="field"><span>Retention (days)</span><input id="nas-retention" type="number" min="1" step="1" value="30"></label>
+              <label class="field"><span>Backup Window (hours)</span><input id="nas-window" type="number" min="1" step="0.5" value="8"></label>
+              <label class="field"><span>Annual Growth %</span><input id="nas-growth" type="number" min="0" step="0.1" value="10"></label>
+            </div>
+            <div class="toggle-row">
+              <label class="toggle"><input id="nas-cft" type="checkbox"><span>Storage-native CFT</span></label>
+              <label class="toggle"><input id="nas-immutability" type="checkbox"><span>Immutability</span></label>
+              <label class="toggle"><input id="nas-object-storage" type="checkbox"><span>Object storage target</span></label>
+            </div>
+          </section>
+
+          <section id="mode-physical" class="mode-panel">
+            <div class="mode-panel-header">
+              <div>
+                <h3>Physical / agent sizing</h3>
+                <p>Estimate coordinator capacity and repository demand for agent-based workloads.</p>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <label class="field"><span>Machine Count</span><input id="machine-count" type="number" min="1" step="1" value="150"></label>
+              <label class="field"><span>Average Machine Size (GB)</span><input id="avg-machine-size" type="number" min="1" step="1" value="600"></label>
+              <label class="field"><span>Daily Change %</span><input id="agent-daily" type="number" min="0" step="0.1" value="5"></label>
+              <label class="field"><span>Retention (days)</span><input id="agent-retention" type="number" min="1" step="1" value="30"></label>
+              <label class="field"><span>Backup Window (hours)</span><input id="agent-window" type="number" min="1" step="0.5" value="8"></label>
+              <label class="field"><span>Network Bandwidth (Mbps)</span><input id="agent-network" type="number" min="1" step="1" value="1000"></label>
+              <label class="field field-wide">
+                <span>Operating System Mix</span>
+                <select id="agent-os">
+                  <option value="windows" selected>Windows</option>
+                  <option value="linux">Linux</option>
+                  <option value="mixed">Mixed</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section id="mode-replication" class="mode-panel">
+            <div class="mode-panel-header">
+              <div>
+                <h3>Replication and CDP sizing</h3>
+                <p>Validate bandwidth, replica storage, and CDP proxy pressure against the target RPO.</p>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <label class="field"><span>Source Data (TB)</span><input id="rep-source-tb" type="number" min="0" step="0.1" value="100"></label>
+              <label class="field"><span>VM Count</span><input id="rep-vm-count" type="number" min="0" step="1" value="300"></label>
+              <label class="field"><span>WAN to DR (Mbps)</span><input id="rep-wan-mbps" type="number" min="1" step="1" value="1000"></label>
+              <label class="field"><span>Target RPO (hours)</span><input id="rep-rpo-hours" type="number" min="0.25" step="0.25" value="1"></label>
+              <label class="field"><span>CDP RPO (seconds)</span><input id="rep-rpo-seconds" type="number" min="2" step="1" value="15"></label>
+            </div>
+            <div class="toggle-row">
+              <label class="toggle"><input id="rep-cdp" type="checkbox"><span>Enable CDP</span></label>
+              <label class="toggle"><input id="rep-compression" type="checkbox" checked><span>Compression Enabled</span></label>
+            </div>
+          </section>
+
+          <div class="submission-row">
+            <button type="submit" class="button button-primary button-large">Run Full Design</button>
+            <p class="submission-hint">Blueprint and cost outputs are calculated together so the results page stays coherent.</p>
+          </div>
+        </section>
+
+        <section class="panel panel-editor">
+          <div class="panel-header">
+            <div>
+              <span class="section-tag">Project Definition</span>
+              <h2>Live YAML workspace</h2>
+            </div>
+            <div class="editor-toggle">
+              <button type="button" id="editor-mode-builder" class="button button-pill is-active">Builder Sync</button>
+              <button type="button" id="editor-mode-manual" class="button button-pill">Manual YAML</button>
+            </div>
+          </div>
+
+          <p id="editor-mode-note" class="editor-note">
+            Builder Sync keeps the YAML editor generated from the calculator fields. Switch to Manual YAML to hand-edit.
+          </p>
+
+          <textarea id="yaml-editor" name="yaml_content" class="yaml-editor" spellcheck="false">{{ yaml_content }}</textarea>
+        </section>
+      </form>
+
+      <aside class="panel panel-results">
+        <div class="panel-header">
+          <div>
+            <span class="section-tag">Results</span>
+            <h2>Design outputs</h2>
+          </div>
+          <div class="panel-actions">
+            {% if result_payload %}
+            <a href="/export/csv" class="button button-secondary">Export CSV</a>
+            {% endif %}
+            {% if dashboard %}
+            <a href="/export/report" class="button button-ghost">Printable Report</a>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if summary_cards %}
+        <div class="summary-cards">
+          {% for card in summary_cards %}
+          <article class="summary-card">
+            <span>{{ card.label }}</span>
+            <strong>{{ card.value }}</strong>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          Run a design to populate the dashboard, exports, and raw payload.
+        </div>
+        {% endif %}
+
+        {% if dashboard %}
+        <section class="results-section">
+          <div class="section-title">Infrastructure Snapshot</div>
+          <div class="dashboard-sites">
+            {% for site in dashboard.sites %}
+            <article class="dashboard-site">
+              <div class="dashboard-site-head">
+                <h3>{{ site.name }}</h3>
+                <span class="risk-pill risk-{{ site.risk_level|lower }}">{{ site.risk_level|upper }}</span>
+              </div>
+              <dl class="metric-list">
+                <div><dt>Total Repo</dt><dd>{{ "%.1f"|format(site.total_repo_tb) }} TB</dd></div>
+                <div><dt>Proxies</dt><dd>{{ site.proxy_count }} / {{ site.total_proxy_cores }} cores</dd></div>
+                <div><dt>Backup Server</dt><dd>{{ site.bs_cores }} cores / {{ site.bs_ram_gb }} GB</dd></div>
+                <div><dt>Required WAN</dt><dd>{{ "%.1f"|format(site.wan_required_mbps) }} Mbps</dd></div>
+                <div><dt>Yearly On-Prem</dt><dd>${{ "{:,.0f}".format(site.yearly_onprem_usd) }}</dd></div>
+                <div><dt>Break-even</dt><dd>{{ "%.1f"|format(site.break_even_years) }} years</dd></div>
+              </dl>
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+
+        <section class="results-section">
+          <div class="section-title">Blueprint Summary</div>
+          <pre class="output-block">{% if blueprint_output %}{{ blueprint_output }}{% else %}No blueprint summary yet.{% endif %}</pre>
+        </section>
+
+        <section class="results-section">
+          <div class="section-title">Cost Summary</div>
+          <pre class="output-block">{% if cost_output %}{{ cost_output }}{% else %}No cost summary yet.{% endif %}</pre>
+        </section>
+
+        <section class="results-section">
+          <div class="section-title">Structured JSON</div>
+          <pre class="output-block output-json">{% if result_payload_json %}{{ result_payload_json }}{% else %}No payload yet.{% endif %}</pre>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <template id="site-card-template">
+    <article class="site-card">
+      <div class="site-card-head">
+        <div>
+          <span class="site-label">Site</span>
+          <h3 data-site-title>Site</h3>
+        </div>
+        <button type="button" class="button button-ghost remove-site">Remove</button>
+      </div>
+
+      <div class="settings-grid">
+        <label class="field"><span>Site Name</span><input type="text" data-field="name"></label>
+        <label class="field"><span>Total Data (TB)</span><input type="number" min="0" step="0.1" data-field="total_data_tb"></label>
+        <label class="field"><span>Annual Growth %</span><input type="number" min="0" step="0.1" data-field="annual_growth_percent"></label>
+        <label class="field"><span>Daily Change %</span><input type="number" min="0" step="0.1" data-field="daily_change_percent"></label>
+        <label class="field"><span>Primary Retention (days)</span><input type="number" min="1" step="1" data-field="primary_retention_days"></label>
+        <label class="field"><span>VM Count</span><input type="number" min="0" step="1" data-field="vm_count"></label>
+        <label class="field"><span>Average VM Size (GB)</span><input type="number" min="0" step="1" data-field="avg_vm_size_gb"></label>
+        <label class="field"><span>WAN Bandwidth (Mbps)</span><input type="number" min="0" step="1" data-field="wan_bandwidth_mbps"></label>
+        <label class="field"><span>Backup Window (hours)</span><input type="number" min="0.5" step="0.5" data-field="backup_window_hours"></label>
+        <label class="field">
+          <span>Backup Type</span>
+          <select data-field="backup_type">
+            <option value="synthetic_full_weekly">Synthetic full weekly</option>
+            <option value="forever_forward_incremental">Forever-forward incremental</option>
+            <option value="reverse_incremental">Reverse incremental</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Repository Type</span>
+          <select data-field="repo_type">
+            <option value="sobr">SOBR</option>
+            <option value="direct">Direct repository</option>
+            <option value="object">Object storage</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <label class="toggle"><input type="checkbox" data-field="has_san_access"><span>SAN Access</span></label>
+        <label class="toggle"><input type="checkbox" data-field="on_host_proxy"><span>On-host Proxy</span></label>
+        <label class="toggle"><input type="checkbox" data-field="refs_xfs" checked><span>ReFS / XFS</span></label>
+        <label class="toggle"><input type="checkbox" data-field="immutability_enabled"><span>Immutability</span></label>
+        <label class="toggle"><input type="checkbox" data-field="capacity_tier_enabled"><span>Capacity Tier</span></label>
+        <label class="toggle"><input type="checkbox" data-field="direct_to_object"><span>Direct to Object</span></label>
+      </div>
+
+      <details class="advanced-panel">
+        <summary>Advanced retention and concurrency</summary>
+        <div class="settings-grid">
+          <label class="field"><span>GFS Weekly</span><input type="number" min="0" step="1" data-field="gfs_weekly_count"></label>
+          <label class="field"><span>GFS Monthly</span><input type="number" min="0" step="1" data-field="gfs_monthly_count"></label>
+          <label class="field"><span>GFS Yearly</span><input type="number" min="0" step="1" data-field="gfs_yearly_count"></label>
+          <label class="field"><span>Block Generation (days)</span><input type="number" min="1" step="1" data-field="block_generation_days"></label>
+          <label class="field"><span>Concurrent Jobs</span><input type="number" min="1" step="1" data-field="concurrent_jobs"></label>
+          <label class="field field-wide"><span>Notes</span><textarea rows="3" data-field="notes"></textarea></label>
+        </div>
+      </details>
+    </article>
+  </template>
+
+  <script id="builder-bootstrap" type="application/json">
+    {{ {"yamlContent": yaml_content, "hasResult": result_payload is not none} | tojson }}
+  </script>
+  <script src="{{ url_for('static', path='app.js') }}"></script>
+</body>
+</html>

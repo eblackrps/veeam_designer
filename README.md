@@ -1,240 +1,224 @@
-# Chrome Policy Merge
+# Veeam Designer
 
-Chrome Policy Merge 4.0.1 is a web-first tool for safely merging Chrome enterprise policy JSON
-fragments. It ships with a polished browser UI, a CLI, a Python API, and a Docker deployment
-path so teams can run merges interactively or automate them in controlled environments.
+Veeam Designer is a web-first sizing and architecture calculator for Veeam backup environments.
+Release `4.0.2` restores the product as a polished browser-based calculator and keeps the CLI,
+REST API, and Docker deployment paths aligned with the same sizing engine. It helps Veeam
+administrators model repository footprint, proxy and backup server requirements, WAN feasibility,
+replication pressure, NAS protection, licensing, tape, compliance, and high-level cost tradeoffs
+from a guided UI, YAML project files, or the CLI.
 
-## Overview
+## Why It Exists
 
-Chrome enterprise policy rollouts often involve multiple JSON fragments created by different
-teams, packaging steps, or deployment pipelines. Chrome Policy Merge solves that problem with a
-deterministic and safety-focused workflow:
+Sizing Veeam environments by hand usually means stitching together retention math, proxy
+throughput assumptions, WAN constraints, GFS policies, and object storage decisions across
+multiple spreadsheets. Veeam Designer puts those planning paths into one calculator so teams can:
 
-- merges files in natural filename order
-- validates every input before anything is moved
-- writes merged output atomically
-- archives source files into timestamped backup snapshots
-- supports dry-run preview and safe restore workflows
-- exposes the same merge engine through the web UI, CLI, and Python API
+- estimate multi-site repository footprint with growth and GFS retention
+- check proxy sizing, backup server demand, and WAN feasibility
+- evaluate specialist calculators for NAS, physical agents, and replication / CDP
+- export structured JSON, CSV, and printable HTML reports
+- run the same engine in the browser, over REST, from the CLI, or in Docker
 
-## What 4.0.1 Delivers
+## Screenshots
 
-- A production-ready web console for upload previews and mounted workspace operations
-- Docker support for quick self-hosted deployment
-- A packaged CLI and library API for scripting and automation
-- Explicit, documented merge semantics for replacements, deep dict merges, and ordered list unions
-- Backup snapshots with `manifest.json` metadata and restore support
-- Test, lint, type-check, and build automation for the full codebase
+VM planner with multi-site infrastructure inputs and live YAML:
+
+![VM planner overview](docs/screenshots/vm-planner-overview.png)
+
+Replication sizing workflow in the restored calculator UI:
+
+![Replication planner](docs/screenshots/replication-planner.png)
+
+Results dashboard after a design run:
+
+![Results dashboard](docs/screenshots/results-dashboard.png)
 
 ## Quick Start
 
-### Web UI
+### Local Install
 
-Install the package and start the local web server:
+Create a virtual environment, install the package, and launch the web app:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install .
-chrome-policy-merge-web --host 127.0.0.1 --port 8000
+veeam-designer-web --host 127.0.0.1 --port 8000
 ```
 
-On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1`.
+On Windows PowerShell, activate with:
 
-Use a standard CPython 3.10+ interpreter for source installs. Some embedded vendor Python
-distributions on Windows do not support source installs or isolated build hooks reliably. In
-those environments, build the wheel first with `python -m build` and install from `dist/`.
+```powershell
+.venv\Scripts\Activate.ps1
+```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+Open [http://127.0.0.1:8000/run](http://127.0.0.1:8000/run).
 
-By default, the web app uses a local `workspace/` directory as its workspace root. In the UI,
-all workspace paths are relative to that root.
+If you are using an embedded vendor Python build on Windows and editable installs fail because of
+build isolation restrictions, use a standard CPython installation instead. In constrained
+environments, `python -m pip install --no-build-isolation -e .` is also a practical fallback.
 
 ### Docker
 
-Create a workspace directory on the host, place policy files inside it, then start the container:
+Build and run the web UI with Docker Compose:
 
 ```bash
-mkdir -p workspace/policies
-cp examples/input/*.json workspace/policies/
 docker compose up --build
 ```
 
-Open [http://localhost:8000](http://localhost:8000).
+Open [http://localhost:8000/run](http://localhost:8000/run).
 
-The supplied [`docker-compose.yml`](docker-compose.yml) mounts `./workspace` to `/workspace`
-inside the container and sets `CHROME_POLICY_MERGE_WORKSPACE_ROOT=/workspace`.
+The compose file mounts `config.json` and `profiles.json` read-only so local tuning changes are
+picked up without rebuilding the image.
 
-## Web Console Workflows
+## Web UI
 
-### Workspace Mode
+The default experience is the browser calculator at `/run`.
 
-Workspace mode is intended for real operations on a mounted directory:
+### Calculator Modes
 
-1. Set an input directory relative to the workspace root, such as `policies`.
-2. Optionally change the output file and backup directory names.
-3. Add merge keys such as `ExtensionSettings` or `URLAllowlist`.
-4. Run a merge, dry-run, or restore a selected snapshot.
+- `VM Backup` for multi-site infrastructure planning with site cards, GFS retention, capacity tier,
+  WAN, and proxy assumptions
+- `NAS` for unstructured data sizing, file proxy estimation, and cache / repository demand
+- `Physical` for agent-based workloads and coordinator sizing
+- `Replication` for replica storage, WAN requirements, and CDP pressure
 
-The UI shows:
+### Builder and YAML Workflow
 
-- eligible JSON files
-- skipped entries
-- snapshot history
-- merged JSON output
-- manifest metadata from the latest merge or preview
+The UI keeps a live YAML workspace next to the calculator:
 
-### Upload Lab
+- `Builder Sync` keeps YAML generated from the form
+- `Manual YAML` lets you hand-edit the project definition directly
+- `Rebuild YAML` replaces manual edits with the current calculator state
 
-Upload Lab is for quick browser-based previews:
+### Results
 
-- upload multiple `.json` files
-- preview the merged output in memory
-- download a bundle containing `merged-policy.json` and a synthetic backup snapshot
+A completed design run produces:
 
-Upload previews do not mutate the workspace or create on-disk snapshots.
+- a headline summary with repo, proxy, and cost metrics
+- per-site dashboard cards for VM designs
+- operator-facing blueprint and cost summaries
+- the full structured JSON payload used by the REST API
+- CSV export for the last run
+- a printable HTML report for VM-based designs
 
-## Screenshots
+## CLI
 
-Workspace operations on a mounted policy directory:
+The CLI stays available for automation and file-based workflows.
 
-![Workspace overview](docs/screenshots/workspace-overview.png)
-
-Browser-based upload preview and bundle export:
-
-![Upload Lab](docs/screenshots/upload-lab.png)
-
-Merge result summary with output and snapshot details:
-
-![Workspace merge result](docs/screenshots/workspace-merge-result.png)
-
-## CLI Usage
-
-The CLI remains available for scripting and automation.
-
-Top-level help:
-
-```text
-usage: chrome-policy-merge [-h] [--version] {merge,restore} ...
-```
-
-Merge command:
-
-```text
-usage: chrome-policy-merge merge [-h] [--merge-key KEY] [--output-file PATH]
-                                 [--backup-dir PATH] [--dry-run] [--strict]
-                                 [--verbose | --quiet]
-                                 input_directory
-```
-
-Restore command:
-
-```text
-usage: chrome-policy-merge restore [-h] [--backup-dir PATH] [--snapshot NAME]
-                                   [--output-file PATH] [--remove-output]
-                                   [--dry-run] [--verbose | --quiet]
-                                   input_directory
-```
-
-Web server command:
-
-```text
-usage: chrome-policy-merge-web [-h] [--host HOST] [--port PORT] [--reload]
-```
-
-Example merge:
+### Help
 
 ```bash
-chrome-policy-merge merge ./policies \
-  --merge-key ExtensionSettings \
-  --merge-key URLAllowlist \
-  --output-file ./policies/merged-policy.json \
-  --backup-dir ./policies/backup
+veeam-designer --help
+veeam-designer-web --help
 ```
 
-Example restore:
+### Common Examples
+
+Run a project file and print the human summary:
 
 ```bash
-chrome-policy-merge restore ./policies --backup-dir ./policies/backup --remove-output
+veeam-designer --project-file example-project.yml
+```
+
+Return machine-readable JSON:
+
+```bash
+veeam-designer --project-file example-project.yml --json
+```
+
+Launch the web app:
+
+```bash
+veeam-designer-web --reload
+```
+
+## REST API
+
+The web service exposes a compact API alongside the UI:
+
+- `GET /api/health`
+- `GET /api/profiles`
+- `POST /api/design`
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/design \
+  -H "Content-Type: text/plain" \
+  --data-binary @example-project.yml
+```
+
+`POST /api/design` returns a versioned payload with a `kind` field such as `multi-site`, `vm`,
+`nas`, `physical`, or `replication`.
+
+## Project File Format
+
+The included [example-project.yml](example-project.yml) is the fastest starting point.
+
+Example multi-site VM project:
+
+```yaml
+profile: enterprise
+workload_type: vm
+compliance_framework: hipaa
+
+sites:
+  - name: Primary DC
+    veeam_input:
+      total_data_tb: 500
+      annual_growth_percent: 15
+      daily_change_percent: 5
+      backup_type: synthetic_full_weekly
+      primary_retention_days: 30
+      gfs_weekly_count: 4
+      gfs_monthly_count: 12
+      gfs_yearly_count: 3
+      backup_window_hours: 8
+      target_rpo_hours: 4
+      vm_count: 800
+      avg_vm_size_gb: 400
+      wan_bandwidth_mbps: 1000
+      repo_type: sobr
+      hypervisor: vmware
+      has_san_access: true
+      immutability_enabled: true
+      capacity_tier_enabled: true
+```
+
+Specialist calculator examples:
+
+```yaml
+profile: enterprise
+workload_type: nas
+source_tb: 120
+share_count: 80
+file_count_millions: 1.5
+retention_days: 30
+```
+
+```yaml
+profile: enterprise
+workload_type: replication
+source_tb: 100
+vm_count: 300
+wan_mbps: 1000
+rpo_hours: 1
+cdp_enabled: true
 ```
 
 ## Python API
 
+You can call the same normalized payload generator from Python:
+
 ```python
 from pathlib import Path
 
-from chrome_policy_merge import MergeConfig, RestoreConfig
-from chrome_policy_merge import merge_policy_directory, restore_backup_snapshot
+from veeam_designer.service import design_payload_from_project_file
 
-merge_result = merge_policy_directory(
-    MergeConfig(
-        input_directory=Path("policies"),
-        merge_keys=("ExtensionSettings", "URLAllowlist"),
-    )
-)
-
-restore_result = restore_backup_snapshot(
-    RestoreConfig(input_directory=Path("policies"))
-)
+payload = design_payload_from_project_file(Path("example-project.yml"))
+print(payload["kind"])
 ```
-
-## Merge Semantics
-
-Files are merged in natural filename order, so `policy2.json` is processed before
-`policy10.json`.
-
-Default behavior for keys not listed in `--merge-key`:
-
-- later files replace earlier values for the same top-level key
-- with `--strict`, conflicting replacements become errors instead of silent overrides
-
-Behavior for keys listed in `--merge-key`:
-
-- `dict` + `dict`: recursively deep merged
-- `list` + `list`: ordered union, preserving first-seen order
-- scalar leaf values: later files replace earlier values
-- incompatible container types: replaced by default, rejected with `--strict`
-
-List uniqueness is based on JSON value equality.
-
-## Backup and Restore Behavior
-
-Each successful merge creates a timestamped snapshot directory inside the backup root. Every
-snapshot includes:
-
-- the original source JSON files
-- a `manifest.json` file with merge metadata
-
-Validation happens before files are moved. If an input is invalid, the run stops without writing
-output or modifying the input directory.
-
-Restore behavior:
-
-- copies files back into the input directory
-- refuses to overwrite existing policy files
-- can optionally remove the merged output file
-- accepts only snapshot directory names from the backup root
-
-## API Endpoints
-
-The web service exposes JSON APIs alongside the UI:
-
-- `GET /api/health`
-- `GET /api/config`
-- `GET /api/workspace/scan`
-- `GET /api/workspace/snapshots`
-- `POST /api/workspace/merge`
-- `POST /api/workspace/restore`
-- `POST /api/upload/preview`
-- `POST /api/upload/bundle`
-
-Interactive API documentation is available at [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
-when the server is running.
-
-## Examples
-
-The repository includes sample input policies and expected merged output in [`examples`](examples).
-They can be used with either the web UI or the CLI.
 
 ## Development
 
@@ -242,49 +226,47 @@ Install the development environment:
 
 ```bash
 python -m pip install -e ".[dev]"
-pre-commit install
 ```
-
-On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1`.
 
 Run the validation suite:
 
 ```bash
 python -m ruff check .
 python -m ruff format --check .
-python -m mypy src
-python -m pytest
+python -m pytest -q
 python -m build
 ```
 
-Run the web app locally during development:
+Run the web app from source:
 
 ```bash
-chrome-policy-merge-web --reload
+veeam-designer-web --reload
 ```
 
-Repository source entry point:
+or:
 
 ```bash
-python -m uvicorn --app-dir src chrome_policy_merge.web:app --reload
+python -m uvicorn --app-dir . ui.main:app --reload
 ```
 
-Install the built wheel locally and verify both interfaces:
+## Repository Layout
 
-```bash
-python -m pip install --force-reinstall dist/chrome_policy_merge-4.0.1-py3-none-any.whl
-python -m chrome_policy_merge --help
-chrome-policy-merge-web --help
+```text
+veeam_designer/   core sizing engine and shared services
+ui/               FastAPI app, templates, and static assets
+tests/            pytest suite
+config.json       tuning parameters
+profiles.json     sizing profiles
+example-project.yml
 ```
 
 ## Documentation
 
-- Change history: [CHANGELOG.md](CHANGELOG.md)
-- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Security policy: [SECURITY.md](SECURITY.md)
-- Deployment notes: [docs/deployment.md](docs/deployment.md)
-- Migration guidance: [docs/migration-guide.md](docs/migration-guide.md)
+- [CHANGELOG.md](CHANGELOG.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [docs/deployment.md](docs/deployment.md)
+- [SECURITY.md](SECURITY.md)
 
 ## License
 
-This project is released under the [MIT License](LICENSE).
+Released under the [MIT License](LICENSE).

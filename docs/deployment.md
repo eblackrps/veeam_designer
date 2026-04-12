@@ -1,62 +1,37 @@
-# Deployment Guide
+# Deployment
 
-## Local Web Deployment
+## Docker Compose
 
-Install the project and launch the web console:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install .
-chrome-policy-merge-web --host 127.0.0.1 --port 8000
-```
-
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
-
-The default workspace root is a local `workspace/` directory. The app creates it on startup if it
-does not already exist.
-
-## Docker Deployment
-
-The repository includes a ready-to-run Docker setup:
+Run the local containerized deployment:
 
 ```bash
 docker compose up --build
 ```
 
-The compose file:
+The service listens on `http://localhost:8000/run`.
 
-- builds the included `Dockerfile`
-- exposes the app on port `8000`
-- mounts `./workspace` on the host to `/workspace` in the container
-- sets `CHROME_POLICY_MERGE_WORKSPACE_ROOT=/workspace`
+By default the compose file:
 
-## Health Check
+- builds the image from the current repository
+- exposes port `8000`
+- mounts `config.json` and `profiles.json` read-only into `/app`
 
-The web app exposes:
-
-- `GET /api/health`
-
-The Docker image also includes a container health check against that endpoint.
-
-## Workspace Layout
-
-Recommended host layout:
-
-```text
-workspace/
-  policies/
-    10-base-policy.json
-    20-override-policy.json
-```
-
-Inside the web UI, use `policies` as the input directory. Output and backup paths are relative to
-that directory by default.
-
-## Compatibility Entry Point
-
-For direct source-tree Uvicorn workflows:
+## Direct Docker Build
 
 ```bash
-python -m uvicorn --app-dir src chrome_policy_merge.web:app --host 0.0.0.0 --port 8000
+docker build -t veeam-designer .
+docker run --rm -p 8000:8000 veeam-designer
+```
+
+## Source Run
+
+```bash
+python -m pip install -e ".[dev]"
+veeam-designer-web --reload
+```
+
+or:
+
+```bash
+python -m uvicorn --app-dir . ui.main:app --reload
 ```

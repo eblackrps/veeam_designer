@@ -1,23 +1,16 @@
 # Security Policy
 
-## Supported Release
+## Supported Versions
 
-The actively maintained release line is 4.0.1.
+The latest published release line is supported for security fixes and critical correctness issues.
 
 ## Reporting a Vulnerability
 
-Please avoid filing public issues for suspected security vulnerabilities.
+If you believe you found a security issue in Veeam Designer:
 
-Use a private channel associated with the repository host, such as private vulnerability
-reporting when available or a direct maintainer contact method on the hosting profile.
+1. Do not open a public issue with exploit details.
+2. Email the maintainer or use the repository security advisory flow on GitHub.
+3. Include the affected version, reproduction details, and any relevant logs or payloads.
 
-Include:
-
-- a clear description of the issue
-- the impact you observed or expect
-- reproduction steps or a proof of concept
-- whether the issue affects the web UI, API, CLI, or Docker deployment
-- any suggested mitigations
-
-You will receive an acknowledgement as quickly as practical, followed by triage, a fix plan, and
-coordinated disclosure guidance when needed.
+You can expect an acknowledgement within a reasonable time and a coordinated fix or mitigation plan
+for confirmed issues.

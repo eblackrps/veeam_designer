@@ -1,9 +1,9 @@
 services:
-  chrome-policy-merge:
+  veeam-designer:
     build: .
+    image: emb079/veeam-designer:latest
     ports:
       - "8000:8000"
-    environment:
-      CHROME_POLICY_MERGE_WORKSPACE_ROOT: /workspace
     volumes:
-      - ./workspace:/workspace
+      - ./config.json:/app/config.json:ro
+      - ./profiles.json:/app/profiles.json:ro

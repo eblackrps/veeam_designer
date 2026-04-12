@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veeam Designer Report</title>
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Reset & base                                                         */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 11pt;
+      color: #1a1a1a;
+      background: #ffffff;
+      line-height: 1.5;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Print layout                                                         */
+    /* ------------------------------------------------------------------ */
+    @page {
+      size: A4;
+      margin: 18mm 16mm 22mm 16mm;
+      @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 9pt;
+        color: #888;
+      }
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { font-size: 10pt; }
+      a { color: inherit; text-decoration: none; }
+    }
+
+    /* Page break helpers */
+    .page-break { page-break-after: always; break-after: page; }
+    .avoid-break { page-break-inside: avoid; break-inside: avoid; }
+
+    /* ------------------------------------------------------------------ */
+    /* Colour tokens                                                        */
+    /* ------------------------------------------------------------------ */
+    :root {
+      --green:   #00b336;
+      --green-dk:#008828;
+      --alt-row: #f5f5f5;
+      --border:  #d0d0d0;
+      --hdr-bg:  #00b336;
+      --hdr-fg:  #ffffff;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Cover page                                                           */
+    /* ------------------------------------------------------------------ */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 240mm;
+      padding: 40mm 20mm;
+      text-align: center;
+    }
+
+    .cover-logo {
+      font-size: 28pt;
+      font-weight: 900;
+      color: var(--green);
+      letter-spacing: -1px;
+      margin-bottom: 6mm;
+    }
+
+    .cover-title {
+      font-size: 22pt;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 4mm;
+    }
+
+    .cover-subtitle {
+      font-size: 11pt;
+      color: #555;
+      margin-bottom: 16mm;
+    }
+
+    .cover-meta {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8mm 14mm;
+      background: #f9f9f9;
+    }
+
+    .cover-meta p {
+      font-size: 10.5pt;
+      color: #333;
+      margin-bottom: 2mm;
+    }
+
+    .cover-meta p:last-child { margin-bottom: 0; }
+
+    .cover-meta strong { color: var(--green-dk); }
+
+    /* ------------------------------------------------------------------ */
+    /* Section headings                                                     */
+    /* ------------------------------------------------------------------ */
+    .section-heading {
+      font-size: 14pt;
+      font-weight: 700;
+      color: var(--green-dk);
+      border-bottom: 2px solid var(--green);
+      padding-bottom: 2mm;
+      margin-bottom: 5mm;
+      margin-top: 8mm;
+    }
+
+    .site-heading {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #ffffff;
+      background: var(--green);
+      padding: 2.5mm 5mm;
+      border-radius: 4px;
+      margin-bottom: 5mm;
+      margin-top: 6mm;
+    }
+
+    .sub-heading {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: var(--green-dk);
+      margin-top: 5mm;
+      margin-bottom: 2mm;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 1mm;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Tables                                                               */
+    /* ------------------------------------------------------------------ */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5pt;
+      margin-bottom: 4mm;
+    }
+
+    table th {
+      background: var(--hdr-bg);
+      color: var(--hdr-fg);
+      text-align: left;
+      padding: 2mm 3mm;
+      font-weight: 600;
+    }
+
+    table td {
+      padding: 1.8mm 3mm;
+      border-bottom: 1px solid #e8e8e8;
+      vertical-align: top;
+    }
+
+    table tr:nth-child(even) td { background: var(--alt-row); }
+
+    table td.label {
+      color: #555;
+      font-weight: 500;
+      width: 46%;
+    }
+
+    table td.value {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    /* Executive summary table */
+    .exec-table th { font-size: 9pt; padding: 2mm 2.5mm; }
+    .exec-table td { font-size: 9pt; padding: 1.5mm 2.5mm; }
+
+    /* ------------------------------------------------------------------ */
+    /* Cards (replication, NAS, etc.)                                      */
+    /* ------------------------------------------------------------------ */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4mm;
+      margin-bottom: 4mm;
+    }
+
+    @media print {
+      .card-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3mm 4mm;
+      background: #fafafa;
+    }
+
+    .card-title {
+      font-size: 9pt;
+      font-weight: 700;
+      color: var(--green-dk);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 2mm;
+      padding-bottom: 1mm;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .card-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9pt;
+      margin-bottom: 1mm;
+    }
+
+    .card-row .clabel { color: #666; }
+    .card-row .cval   { font-weight: 600; }
+
+    /* ------------------------------------------------------------------ */
+    /* Compliance badge                                                     */
+    /* ------------------------------------------------------------------ */
+    .badge {
+      display: inline-block;
+      padding: 1mm 3mm;
+      border-radius: 3px;
+      font-size: 9pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-green  { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .badge-yellow { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .badge-red    { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    /* ------------------------------------------------------------------ */
+    /* Risk level colours                                                   */
+    /* ------------------------------------------------------------------ */
+    .risk-low      { color: #155724; font-weight: 700; }
+    .risk-medium   { color: #856404; font-weight: 700; }
+    .risk-high     { color: #842029; font-weight: 700; }
+    .risk-critical { color: #ffffff; background: #842029; padding: 0 2mm; border-radius: 2px; font-weight: 700; }
+
+    /* ------------------------------------------------------------------ */
+    /* Gaps list                                                            */
+    /* ------------------------------------------------------------------ */
+    ul.gaps {
+      margin: 1mm 0 0 4mm;
+      padding: 0;
+      list-style: disc;
+    }
+
+    ul.gaps li {
+      font-size: 9pt;
+      color: #444;
+      margin-bottom: 0.5mm;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Footer strip (non-print)                                             */
+    /* ------------------------------------------------------------------ */
+    .footer {
+      margin-top: 12mm;
+      border-top: 1px solid var(--border);
+      padding-top: 3mm;
+      font-size: 8.5pt;
+      color: #888;
+      text-align: center;
+    }
+
+    /* Print footer via CSS counters */
+    @media print {
+      body::after {
+        content: "";
+        display: block;
+        position: fixed;
+        bottom: 8mm;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 8.5pt;
+        color: #888;
+      }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Utility                                                              */
+    /* ------------------------------------------------------------------ */
+    .text-muted  { color: #888; font-size: 9pt; }
+    .mt-2 { margin-top: 2mm; }
+    .mt-4 { margin-top: 4mm; }
+    .note { font-size: 9pt; color: #555; font-style: italic; margin-top: 1mm; }
+  </style>
+</head>
+<body>
+
+<!-- ================================================================== -->
+<!-- COVER PAGE                                                          -->
+<!-- ================================================================== -->
+<div class="cover page-break">
+  <div class="cover-logo">VEEAM</div>
+  <div class="cover-title">Environment Design Report</div>
+  <div class="cover-subtitle">Generated by Veeam Designer {{ version }}</div>
+  <div style="display:flex;justify-content:center;">
+    <div class="cover-meta">
+      <p>Generated: <strong>{{ generated_at }}</strong></p>
+      <p>Sites: <strong>{{ dashboard.sites | length }}</strong></p>
+      <p>Total repository: <strong>{{ "%.1f" | format(dashboard.total_repo_tb or 0) }} TB</strong></p>
+      {% if dashboard.sobr_note %}
+      <p style="margin-top:3mm;color:#856404;font-size:9.5pt;">Note: {{ dashboard.sobr_note }}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- EXECUTIVE SUMMARY                                                   -->
+<!-- ================================================================== -->
+<div class="avoid-break">
+  <div class="section-heading">Executive Summary</div>
+
+  <table class="exec-table avoid-break">
+    <thead>
+      <tr>
+        <th>Site</th>
+        <th>Total Repo (TB)</th>
+        <th>Risk Level</th>
+        <th>Proxies</th>
+        <th>Yearly On-Prem Cost</th>
+        <th>Yearly Object Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for site in dashboard.sites %}
+      <tr>
+        <td>{{ site.name }}</td>
+        <td>{{ "%.1f" | format(site.total_repo_tb | default(0)) }}</td>
+        <td>
+          <span class="risk-{{ site.risk_level | lower | default('unknown') }}">
+            {{ site.risk_level | upper | default('UNKNOWN') }}
+          </span>
+        </td>
+        <td>{{ site.proxy_count | default(0) }}</td>
+        <td>${{ "{:,.0f}".format(site.yearly_onprem_usd | default(0)) }}</td>
+        <td>
+          {% if site.monthly_object_usd %}
+            ${{ "{:,.0f}".format(site.monthly_object_usd * 12) }}/yr
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% set ns = namespace(total_onprem=0, total_repo=0) %}
+  {% for site in dashboard.sites %}
+    {% set ns.total_onprem = ns.total_onprem + (site.yearly_onprem_usd | default(0)) %}
+    {% set ns.total_repo   = ns.total_repo   + (site.total_repo_tb   | default(0)) %}
+  {% endfor %}
+  <p style="font-size:9.5pt;color:#444;margin-top:2mm;">
+    Aggregate: <strong>{{ "%.1f" | format(ns.total_repo) }} TB</strong> total repository &nbsp;|&nbsp;
+    <strong>${{ "{:,.0f}".format(ns.total_onprem) }}</strong> estimated yearly on-prem cost across all sites.
+  </p>
+</div>
+
+<!-- ================================================================== -->
+<!-- PER-SITE DETAIL SECTIONS                                            -->
+<!-- ================================================================== -->
+{% for site in dashboard.sites %}
+<div class="page-break"></div>
+
+<!-- Site header -->
+<div class="site-heading">Site: {{ site.name }}</div>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Infrastructure sizing table                                          -->
+<!-- ------------------------------------------------------------------ -->
+<div class="sub-heading">Infrastructure Sizing</div>
+<table class="avoid-break">
+  <thead>
+    <tr><th colspan="2">Repository &amp; Storage</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="label">Primary repository</td><td class="value">{{ "%.1f" | format(site.primary_repo_tb | default(0)) }} TB</td></tr>
+    <tr><td class="label">GFS / long-term retention</td><td class="value">{{ "%.1f" | format(site.gfs_repo_tb | default(0)) }} TB</td></tr>
+    <tr><td class="label">Total on-prem repository</td><td class="value">{{ "%.1f" | format(site.total_repo_tb | default(0)) }} TB</td></tr>
+    {% if site.capacity_tier_tb %}
+    <tr><td class="label">SOBR capacity tier (object)</td><td class="value">{{ "%.1f" | format(site.capacity_tier_tb) }} TB</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+
+<table class="avoid-break">
+  <thead>
+    <tr><th colspan="2">Proxy Servers</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="label">Proxy count</td><td class="value">{{ site.proxy_count | default(0) }}</td></tr>
+    <tr><td class="label">Total proxy cores</td><td class="value">{{ site.total_proxy_cores | default(0) }}</td></tr>
+    <tr><td class="label">Total proxy RAM</td><td class="value">{{ site.proxy_ram_gb | default(0) }} GB</td></tr>
+    <tr><td class="label">Transport mode</td><td class="value">{{ site.transport_mode | default("auto") }}</td></tr>
+    <tr><td class="label">Required throughput</td><td class="value">{{ "%.1f" | format(site.required_mb_s | default(0)) }} MB/s</td></tr>
+    <tr><td class="label">Proxy capacity</td><td class="value">{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s</td></tr>
+    <tr><td class="label">Proxy load ratio</td>
+        <td class="value">
+          {% set ratio = site.proxy_load_ratio | default(0) %}
+          {{ "%.0f" | format(ratio * 100) }}%
+          {% if ratio > 0.85 %} <span style="color:#842029;"> — over-loaded</span>{% endif %}
+        </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="avoid-break">
+  <thead>
+    <tr><th colspan="2">Backup Server</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="label">Cores</td><td class="value">{{ site.bs_cores | default(0) }}</td></tr>
+    <tr><td class="label">RAM</td><td class="value">{{ site.bs_ram_gb | default(0) }} GB</td></tr>
+  </tbody>
+</table>
+
+<table class="avoid-break">
+  <thead>
+    <tr><th colspan="2">Network / WAN</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="label">Required bandwidth</td><td class="value">{{ "%.1f" | format(site.wan_required_mbps | default(0)) }} Mbps</td></tr>
+    <tr><td class="label">Meets WAN target</td>
+        <td class="value">
+          {% if site.wan_meets_target %}
+            <span style="color:#155724;">Yes</span>
+          {% else %}
+            <span style="color:#842029;">No — bandwidth may be insufficient</span>
+          {% endif %}
+        </td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Optional feature cards                                              -->
+<!-- ------------------------------------------------------------------ -->
+{% set has_cards = site.replication or site.nas or site.wan_accel or site.license_estimate or site.tape or site.veeam_one %}
+{% if has_cards %}
+<div class="sub-heading">Optional Features &amp; Add-ons</div>
+<div class="card-grid">
+
+  {% if site.replication %}
+  <div class="card avoid-break">
+    <div class="card-title">VM Replication</div>
+    <div class="card-row"><span class="clabel">Required bandwidth</span><span class="cval">{{ "%.1f" | format(site.replication.required_mbps | default(0)) }} Mbps</span></div>
+    <div class="card-row"><span class="clabel">Meets RPO</span><span class="cval">{{ "Yes" if site.replication.meets_rpo else "No" }}</span></div>
+    <div class="card-row"><span class="clabel">Replica storage</span><span class="cval">{{ "%.1f" | format(site.replication.replica_storage_tb | default(0)) }} TB</span></div>
+    {% if site.replication.cdp_proxy_cores %}
+    <div class="card-row"><span class="clabel">CDP proxy cores</span><span class="cval">{{ site.replication.cdp_proxy_cores }}</span></div>
+    <div class="card-row"><span class="clabel">CDP journal</span><span class="cval">{{ "%.1f" | format(site.replication.cdp_journal_tb | default(0)) }} TB</span></div>
+    {% endif %}
+    {% if site.replication.notes %}
+    <p class="note">{{ site.replication.notes }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if site.nas %}
+  <div class="card avoid-break">
+    <div class="card-title">NAS / Unstructured</div>
+    <div class="card-row"><span class="clabel">Cache repo</span><span class="cval">{{ "%.1f" | format(site.nas.cache_repo_tb | default(0)) }} TB</span></div>
+    <div class="card-row"><span class="clabel">Primary repo</span><span class="cval">{{ "%.1f" | format(site.nas.primary_repo_tb | default(0)) }} TB</span></div>
+    <div class="card-row"><span class="clabel">GFS repo</span><span class="cval">{{ "%.1f" | format(site.nas.gfs_repo_tb | default(0)) }} TB</span></div>
+    <div class="card-row"><span class="clabel">Total repo</span><span class="cval">{{ "%.1f" | format(site.nas.total_repo_tb | default(0)) }} TB</span></div>
+    <div class="card-row"><span class="clabel">File proxy cores</span><span class="cval">{{ site.nas.file_proxy_cores | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">File proxy RAM</span><span class="cval">{{ site.nas.file_proxy_ram_gb | default(0) }} GB</span></div>
+    {% if site.nas.notes %}
+    <p class="note">{{ site.nas.notes }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if site.wan_accel %}
+  <div class="card avoid-break">
+    <div class="card-title">WAN Accelerator</div>
+    <div class="card-row"><span class="clabel">Source appliances</span><span class="cval">{{ site.wan_accel.source_appliance_count | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Target appliances</span><span class="cval">{{ site.wan_accel.target_appliance_count | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Cache / source</span><span class="cval">{{ site.wan_accel.cache_size_gb_per_source | default(0) }} GB</span></div>
+    <div class="card-row"><span class="clabel">Effective throughput</span><span class="cval">{{ "%.0f" | format(site.wan_accel.effective_mbps | default(0)) }} Mbps</span></div>
+    <div class="card-row"><span class="clabel">Meets copy window</span><span class="cval">{{ "Yes" if site.wan_accel.meets_copy_window else "No" }}</span></div>
+    {% if site.wan_accel.notes %}
+    <p class="note">{{ site.wan_accel.notes }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if site.license_estimate %}
+  <div class="card avoid-break">
+    <div class="card-title">VUL Licensing</div>
+    <div class="card-row"><span class="clabel">Protected workloads</span><span class="cval">{{ site.license_estimate.protected_workloads | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Estimated sockets</span><span class="cval">{{ site.license_estimate.estimated_sockets | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">License tier</span><span class="cval">{{ site.license_estimate.tier | default("—") | title }}</span></div>
+    <div class="card-row"><span class="clabel">Annual maintenance</span><span class="cval">${{ "{:,.0f}".format(site.license_estimate.annual_maintenance_usd | default(0)) }}</span></div>
+    {% if site.license_estimate.notes %}
+    <p class="note">{{ site.license_estimate.notes }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if site.tape %}
+  <div class="card avoid-break">
+    <div class="card-title">LTO Tape Archive</div>
+    <div class="card-row"><span class="clabel">LTO generation</span><span class="cval">LTO-{{ site.tape.lto_generation | default(9) }}</span></div>
+    <div class="card-row"><span class="clabel">TB per cartridge</span><span class="cval">{{ site.tape.tb_per_cartridge | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Cartridges needed</span><span class="cval">{{ site.tape.cartridge_count | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Drives recommended</span><span class="cval">{{ site.tape.drive_count_recommended | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Library slots</span><span class="cval">{{ site.tape.library_slots_needed | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Annual media cost</span><span class="cval">${{ "{:,.0f}".format(site.tape.annual_media_cost_usd | default(0)) }}</span></div>
+    {% if site.tape.notes %}
+    <p class="note">{{ site.tape.notes }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if site.veeam_one %}
+  <div class="card avoid-break">
+    <div class="card-title">Veeam ONE / EM</div>
+    <div class="card-row"><span class="clabel">ONE server cores</span><span class="cval">{{ site.veeam_one.server_cores | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">ONE server RAM</span><span class="cval">{{ site.veeam_one.server_ram_gb | default(0) }} GB</span></div>
+    <div class="card-row"><span class="clabel">Database size</span><span class="cval">{{ site.veeam_one.database_size_gb | default(0) }} GB</span></div>
+    {% if site.veeam_one.em_cores %}
+    <div class="card-row"><span class="clabel">Enterprise Mgr cores</span><span class="cval">{{ site.veeam_one.em_cores }}</span></div>
+    <div class="card-row"><span class="clabel">Enterprise Mgr RAM</span><span class="cval">{{ site.veeam_one.em_ram_gb | default(0) }} GB</span></div>
+    {% endif %}
+    {% if site.veeam_one.vspc_cores %}
+    <div class="card-row"><span class="clabel">VSPC cores</span><span class="cval">{{ site.veeam_one.vspc_cores }}</span></div>
+    {% endif %}
+    {% if site.veeam_one.notes %}
+    <p class="note">{{ site.veeam_one.notes }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Compliance                                                           -->
+<!-- ------------------------------------------------------------------ -->
+{% if site.compliance %}
+<div class="sub-heading">Compliance Status</div>
+<div class="avoid-break" style="margin-bottom:4mm;">
+  <p style="margin-bottom:2mm;">
+    Framework: <strong>{{ site.compliance.framework | upper | default("NONE") }}</strong>
+    &nbsp;&nbsp;
+    {% if site.compliance.compliant %}
+      <span class="badge badge-green">Compliant</span>
+    {% elif site.compliance.gaps and site.compliance.gaps | length > 0 %}
+      <span class="badge badge-yellow">Gaps Identified</span>
+    {% else %}
+      <span class="badge badge-red">Non-Compliant</span>
+    {% endif %}
+  </p>
+
+  {% if site.compliance.recommended_retention_days %}
+  <p style="font-size:9.5pt;color:#444;">
+    Recommended retention: <strong>{{ site.compliance.recommended_retention_days }} days</strong>
+  </p>
+  {% endif %}
+
+  {% if site.compliance.risk_level %}
+  <p style="font-size:9.5pt;color:#444;margin-top:1mm;">
+    Compliance risk level: <strong>{{ site.compliance.risk_level | title }}</strong>
+  </p>
+  {% endif %}
+
+  {% if site.compliance.gaps and site.compliance.gaps | length > 0 %}
+  <p style="font-size:9.5pt;color:#444;margin-top:2mm;font-weight:600;">Gaps to remediate:</p>
+  <ul class="gaps">
+    {% for gap in site.compliance.gaps %}
+    <li>{{ gap }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Cost summary                                                         -->
+<!-- ------------------------------------------------------------------ -->
+<div class="sub-heading">Cost Overview</div>
+<div class="card-grid avoid-break">
+  <div class="card">
+    <div class="card-title">On-Premises</div>
+    <div class="card-row">
+      <span class="clabel">Yearly cost (est.)</span>
+      <span class="cval">${{ "{:,.0f}".format(site.yearly_onprem_usd | default(0)) }}</span>
+    </div>
+    {% if site.three_year_tco %}
+    <div class="card-row">
+      <span class="clabel">3-year TCO</span>
+      <span class="cval">${{ "{:,.0f}".format(site.three_year_tco.get("on_prem", 0) if site.three_year_tco else 0) }}</span>
+    </div>
+    {% endif %}
+    {% if site.break_even_years %}
+    <div class="card-row">
+      <span class="clabel">Break-even vs cloud</span>
+      <span class="cval">{{ "%.1f" | format(site.break_even_years) }} years</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Object Storage</div>
+    {% if site.monthly_object_usd %}
+    <div class="card-row">
+      <span class="clabel">Monthly</span>
+      <span class="cval">${{ "{:,.0f}".format(site.monthly_object_usd) }}</span>
+    </div>
+    <div class="card-row">
+      <span class="clabel">Yearly</span>
+      <span class="cval">${{ "{:,.0f}".format(site.monthly_object_usd * 12) }}</span>
+    </div>
+    {% else %}
+    <p class="text-muted">No object storage configured</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if site.cloud_comparison %}
+<table class="avoid-break" style="margin-top:2mm;">
+  <thead>
+    <tr><th>Cloud Provider</th><th>Monthly Cost</th><th>Yearly Cost</th></tr>
+  </thead>
+  <tbody>
+    {% for provider, info in site.cloud_comparison.items() %}
+    <tr>
+      <td>{{ provider | title }}</td>
+      <td>
+        {% if info is mapping %}${{ "{:,.0f}".format(info.get("monthly_usd", 0)) }}{% else %}—{% endif %}
+      </td>
+      <td>
+        {% if info is mapping %}${{ "{:,.0f}".format(info.get("yearly_usd", 0)) }}{% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% endfor %}
+
+<!-- ================================================================== -->
+<!-- FOOTER                                                              -->
+<!-- ================================================================== -->
+<div class="footer no-print">
+  Veeam Environment Design Report &mdash; Generated {{ generated_at }}
+</div>
+
+</body>
+</html>
