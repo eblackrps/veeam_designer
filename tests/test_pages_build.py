@@ -11,8 +11,14 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     build_pages.build_pages(output_dir)
 
     index_html = (output_dir / "index.html").read_text(encoding="utf-8")
+    app_js = (output_dir / "assets" / "app.js").read_text(encoding="utf-8")
+
     assert "GitHub Pages browser edition" in index_html
     assert "pyodide.js" in index_html
+    assert "Action failed." in index_html
     assert (output_dir / "assets" / "app.css").exists()
     assert (output_dir / "assets" / "app.js").exists()
     assert (output_dir / "assets" / fake_wheel.name).exists()
+    assert "veeam-designer-print-frame" in app_js
+    assert 'frame.srcdoc = markup;' in app_js
+    assert 'window.open("", "_blank"' not in app_js

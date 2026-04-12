@@ -26,6 +26,7 @@ const printReportButton = document.getElementById("print-report");
 const FORM_STORAGE_KEY = "veeam-designer-form-v4";
 const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v4";
 const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v4";
+const PRINT_FRAME_ID = "veeam-designer-print-frame";
 
 const browserEngine = {
   loadPromise: null,
@@ -793,12 +794,55 @@ async function designInBrowser(projectJson) {
 }
 
 function printBrowserReport(bundle) {
-  const printable = window.open("", "_blank", "noopener,noreferrer,width=1200,height=900");
-  if (!printable) {
-    applyError("The print report window was blocked by the browser.");
-    return;
+  applyError("");
+  const frame = getPrintFrame();
+  const markup = buildBrowserReportMarkup(bundle);
+  const onLoad = () => {
+    const frameWindow = frame.contentWindow;
+    if (!frameWindow) {
+      applyError("Unable to prepare the printable report in this browser.");
+      return;
+    }
+
+    window.setTimeout(() => {
+      try {
+        frameWindow.focus();
+        frameWindow.print();
+      } catch (error) {
+        applyError(`Unable to open the printable report: ${normalizeError(error)}`);
+      }
+    }, 50);
+  };
+
+  frame.addEventListener("load", onLoad, { once: true });
+  frame.srcdoc = markup;
+}
+
+function getPrintFrame() {
+  const existingFrame = document.getElementById(PRINT_FRAME_ID);
+  if (existingFrame instanceof HTMLIFrameElement) {
+    return existingFrame;
   }
 
+  const frame = document.createElement("iframe");
+  frame.id = PRINT_FRAME_ID;
+  frame.title = "Printable Veeam Designer report";
+  frame.setAttribute("aria-hidden", "true");
+  Object.assign(frame.style, {
+    position: "fixed",
+    width: "1px",
+    height: "1px",
+    right: "0",
+    bottom: "0",
+    border: "0",
+    opacity: "0",
+    pointerEvents: "none",
+  });
+  document.body.appendChild(frame);
+  return frame;
+}
+
+function buildBrowserReportMarkup(bundle) {
   const summaryMarkup = (bundle.summary_cards || [])
     .map(
       (card) => `
@@ -824,7 +868,7 @@ function printBrowserReport(bundle) {
     )
     .join("");
 
-  printable.document.write(`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -847,10 +891,7 @@ function printBrowserReport(bundle) {
   <section><h2>Blueprint Summary</h2><pre>${escapeHtml(bundle.blueprint || "")}</pre></section>
   <section><h2>Cost Summary</h2><pre>${escapeHtml(bundle.cost || "")}</pre></section>
 </body>
-</html>`);
-  printable.document.close();
-  printable.focus();
-  printable.print();
+</html>`;
 }
 
 function downloadTextFile(filename, content, mimeType) {
