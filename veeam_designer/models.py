@@ -125,6 +125,10 @@ class ProxySizing:
     ram_gb_per_proxy: int = 8
     total_proxy_ram_gb: int = 0
     transport_mode: str = "auto"
+    disk_gb_per_proxy: float = 0.0
+    sizing_basis: str = ""
+    source_url: str = ""
+    notes: List[str] = field(default_factory=list)
 
 
 @dataclass
