@@ -8,9 +8,11 @@ def projected_total_data_tb(
     annual_growth_percent: float,
     years_to_plan_for: int,
 ) -> float:
-    """Return total protected data after applying simple linear growth planning."""
+    """Return protected data after compounding the configured annual growth rate."""
 
-    growth_factor = max(0.0, 1.0 + (annual_growth_percent / 100.0) * years_to_plan_for)
+    years = max(0, years_to_plan_for)
+    annual_rate = max(-1.0, annual_growth_percent / 100.0)
+    growth_factor = (1.0 + annual_rate) ** years
     return total_data_tb * growth_factor
 
 
