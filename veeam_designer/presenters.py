@@ -210,23 +210,16 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
             proxies.get("total_allocated_proxy_cores", 0) or total_proxy_cores
         ),
         "proxy_allocated_ram_gb": int(
-            proxies.get("total_allocated_proxy_ram_gb", 0)
-            or proxies.get("total_proxy_ram_gb", 0)
+            proxies.get("total_allocated_proxy_ram_gb", 0) or proxies.get("total_proxy_ram_gb", 0)
         ),
         "proxy_allocated_cores_each": int(
-            proxies.get("allocated_cores_per_proxy", 0)
-            or proxies.get("cores_per_proxy", 0)
+            proxies.get("allocated_cores_per_proxy", 0) or proxies.get("cores_per_proxy", 0)
         ),
         "proxy_allocated_ram_each": int(
-            proxies.get("allocated_ram_gb_per_proxy", 0)
-            or proxies.get("ram_gb_per_proxy", 0)
+            proxies.get("allocated_ram_gb_per_proxy", 0) or proxies.get("ram_gb_per_proxy", 0)
         ),
-        "proxy_infra_system_disk_gb": int(
-            proxies.get("infrastructure_system_disk_gb", 0)
-        ),
-        "proxy_infra_data_disk_gb": int(
-            proxies.get("infrastructure_data_disk_gb", 0)
-        ),
+        "proxy_infra_system_disk_gb": int(proxies.get("infrastructure_system_disk_gb", 0)),
+        "proxy_infra_data_disk_gb": int(proxies.get("infrastructure_data_disk_gb", 0)),
         "platform_worker_count": int(platform_workers.get("worker_count", 0)),
         "platform_worker_platform": str(platform_workers.get("platform", "")),
         "platform_worker_tasks": int(platform_workers.get("total_concurrent_tasks", 0)),
