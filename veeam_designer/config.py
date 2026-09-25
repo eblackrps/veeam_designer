@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import Any, Dict
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "compression_ratio_default": 1.6,
+    "compression_ratio_default": 1.0,
     "dedupe_ratio_default": 1.0,
-    "read_write_overhead": 1.3,
+    "read_write_overhead": 1.0,
     "tasks_per_core": 2,
-    "repo_overhead_factor": 1.25,
-    "gfs_overhead_factor": 1.1,
+    "repo_overhead_factor": 1.0,
+    "gfs_overhead_factor": 1.0,
     "years_to_plan_for": 1,
     "warn_repo_tb": 300.0,
     "max_vms_per_job": 50,
