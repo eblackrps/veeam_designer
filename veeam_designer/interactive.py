@@ -55,7 +55,7 @@ def collect_inputs_interactive() -> VeeamInput:
     daily_change_percent = _prompt_float("Average daily change (%)", 5.0)
 
     backup_type = _prompt_str(
-        "Backup type (synthetic_full_weekly / forever_forward / active_full_weekly)",
+        "Backup type (synthetic_full_weekly / forever_forward_incremental / reverse_incremental)",
         "synthetic_full_weekly",
     )
 
@@ -89,6 +89,16 @@ def collect_inputs_interactive() -> VeeamInput:
 
     wan_bandwidth_mbps = _prompt_float("WAN bandwidth for copy/replication (Mbps, 0 = none)", 500.0)
     repo_type = _prompt_str("Repo type (local_disk / san / sobr / object)", "sobr")
+    object_storage_provider = "generic"
+    objectfirst_node_tb = 0.0
+    if repo_type.lower() == "object":
+        object_storage_provider = _prompt_str(
+            "Object provider (generic / objectfirst)", "generic"
+        )
+        if object_storage_provider.lower() == "objectfirst":
+            objectfirst_node_tb = _prompt_float(
+                "Object First node capacity TB (0 = auto-select current SKU)", 0.0
+            )
 
     hypervisor = _prompt_str(
         "Hypervisor (vmware / hyperv / nutanix_ahv / proxmox / agent)", "vmware"
@@ -107,9 +117,21 @@ def collect_inputs_interactive() -> VeeamInput:
     platform_cluster_count = 1
     platform_concurrent_tasks = 0
     worker_task_limit = 4
-    if hypervisor.lower() in {"nutanix_ahv", "ahv", "proxmox", "proxmox_ve", "pve"}:
+    if hypervisor.lower() in {
+        "hyperv",
+        "hyper-v",
+        "nutanix_ahv",
+        "ahv",
+        "proxmox",
+        "proxmox_ve",
+        "pve",
+    }:
         platform_host_count = _prompt_int("Platform host count", 3)
-        platform_cluster_count = _prompt_int("Platform cluster count", 1)
+        platform_cluster_count = (
+            _prompt_int("Platform cluster count", 1)
+            if hypervisor.lower() not in {"hyperv", "hyper-v"}
+            else 1
+        )
         platform_concurrent_tasks = _prompt_int("Desired concurrent worker tasks", 8)
         worker_task_limit = _prompt_int("Maximum tasks per worker", 4)
 
@@ -133,6 +155,26 @@ def collect_inputs_interactive() -> VeeamInput:
         has_san_access = False
         on_host_proxy = False
 
+    immutability_enabled = _prompt_str("Enable immutability (yes / no)", "no").lower() in {
+        "yes",
+        "y",
+        "true",
+        "1",
+    }
+    immutability_days = (
+        _prompt_int("Immutability period (days)", primary_retention_days)
+        if immutability_enabled
+        else 0
+    )
+    capacity_tier_enabled = _prompt_str(
+        "Enable capacity tier estimate (yes / no)", "no"
+    ).lower() in {"yes", "y", "true", "1"}
+    capacity_tier_fraction = (
+        _prompt_float("Capacity tier fraction (0.0-1.0)", 0.0)
+        if capacity_tier_enabled
+        else 0.0
+    )
+
     return VeeamInput(
         total_data_tb=total_data_tb,
         annual_growth_percent=annual_growth_percent,
@@ -151,6 +193,8 @@ def collect_inputs_interactive() -> VeeamInput:
         avg_vm_size_gb=avg_vm_size_gb,
         wan_bandwidth_mbps=wan_bandwidth_mbps,
         repo_type=repo_type,
+        object_storage_provider=object_storage_provider,
+        objectfirst_node_tb=objectfirst_node_tb,
         hypervisor=hypervisor,
         has_san_access=has_san_access,
         on_host_proxy=on_host_proxy,
@@ -160,6 +204,10 @@ def collect_inputs_interactive() -> VeeamInput:
         platform_cluster_count=platform_cluster_count,
         platform_concurrent_tasks=platform_concurrent_tasks,
         worker_task_limit=worker_task_limit,
+        immutability_enabled=immutability_enabled,
+        immutability_days=immutability_days,
+        capacity_tier_enabled=capacity_tier_enabled,
+        capacity_tier_fraction=capacity_tier_fraction,
     )
 
 
