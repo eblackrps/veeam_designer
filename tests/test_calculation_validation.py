@@ -54,9 +54,9 @@ def _vm_input(**overrides) -> VeeamInput:
 def test_repository_growth_math_uses_projected_change_rate():
     repo = size_repository(_vm_input())
 
-    assert repo.primary_repo_tb == 478.1
+    assert repo.primary_repo_tb == 382.5
     assert repo.gfs_repo_tb == 0.0
-    assert repo.total_repo_tb == 478.1
+    assert repo.total_repo_tb == 382.5
 
 
 def test_vm_runtime_components_stay_consistent_with_growth_horizon():
@@ -105,7 +105,7 @@ def test_project_payload_honors_years_to_plan_and_read_write_overhead():
     assert payload["kind"] == "vm"
     assert payload["input"]["years_to_plan_for"] == 2
     assert payload["input"]["read_write_overhead"] == 1.0
-    assert payload["repo"]["total_repo_tb"] == 478.1
+    assert payload["repo"]["total_repo_tb"] == 382.5
     assert payload["roles"]["proxies"]["proxy_count"] == 2
     assert payload["roles"]["proxies"]["total_proxy_cores"] == 10
     assert payload["repo_perf"]["required_mb_s"] == 655.4
@@ -167,8 +167,8 @@ def test_annual_growth_is_compounded_not_linear():
     repo = size_repository(vin)
 
     # 100 * 1.5^2 = 225 TB projected source.
-    # Minimum three points have zero changed data, then 25% reserve.
-    assert repo.primary_repo_tb == 281.2
+    # Minimum three points have zero changed data.
+    assert repo.primary_repo_tb == 225.0
 
 
 def test_msp_profile_does_not_raise_proxy_task_density_above_two_per_core():
