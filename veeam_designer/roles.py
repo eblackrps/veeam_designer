@@ -85,39 +85,90 @@ def _size_hyperv_proxies(
     vin: VeeamInput,
     required_throughput_mb_s: float,
 ) -> ProxySizing:
-    """Size Hyper-V proxy resources from current Veeam task-based requirements."""
+    """Size Hyper-V proxies from Veeam throughput guidance plus task minimums."""
 
     requested_tasks = (
         vin.platform_concurrent_tasks
         if vin.platform_concurrent_tasks > 0
         else max(1, vin.concurrent_jobs)
     )
-    tasks_per_proxy = max(1, vin.worker_task_limit or 4)
-    calculated_count = max(1, math.ceil(requested_tasks / tasks_per_proxy))
+    max_tasks_per_proxy = max(1, vin.worker_task_limit or 4)
+
+    # Veeam Best Practice says Hyper-V proxy sizing follows the vSphere proxy sizing
+    # method. Use the virtual-proxy incremental baseline unless the user supplies a
+    # measured override, then enforce Hyper-V task/resource minimums separately.
+    if vin.throughput_mb_per_core > 0:
+        mb_per_core = vin.throughput_mb_per_core
+        throughput_basis = "custom benchmark override"
+    else:
+        mb_per_core = VMWARE_INCREMENTAL_MB_PER_CORE[
+            ("virtual", _proxy_target_storage(vin))
+        ]
+        throughput_basis = (
+            "Veeam Hyper-V BP uses vSphere proxy sizing method; "
+            "virtual incremental throughput baseline"
+        )
+
+    throughput_core_demand = max(
+        1,
+        math.ceil((required_throughput_mb_s / mb_per_core) * vin.read_write_overhead),
+    )
+    task_core_demand = max(1, math.ceil(requested_tasks / 2))
+    aggregate_core_demand = max(throughput_core_demand, task_core_demand)
 
     on_host = vin.on_host_proxy
-    if on_host and vin.platform_host_count > 0:
-        proxy_count = max(calculated_count, vin.platform_host_count)
+    if on_host:
+        proxy_count = (
+            vin.platform_host_count
+            if vin.platform_host_count > 0
+            else max(1, math.ceil(requested_tasks / max_tasks_per_proxy))
+        )
     else:
-        proxy_count = calculated_count
+        proxy_count = max(1, math.ceil(requested_tasks / max_tasks_per_proxy))
 
-    cores_per_proxy = max(2, math.ceil(tasks_per_proxy / 2))
-    ram_gb_per_proxy = max(2, math.ceil(2 + (0.5 * tasks_per_proxy)))
+    cores_per_proxy = max(2, math.ceil(aggregate_core_demand / proxy_count))
+    tasks_per_proxy = max(
+        1,
+        min(max_tasks_per_proxy, math.ceil(requested_tasks / proxy_count)),
+    )
+
+    # Two tasks per core is the documented maximum. If the requested task limit
+    # requires more cores than the throughput calculation, raise the per-proxy floor.
+    cores_per_proxy = max(cores_per_proxy, math.ceil(tasks_per_proxy / 2))
     total_proxy_cores = proxy_count * cores_per_proxy
-    total_proxy_ram_gb = proxy_count * ram_gb_per_proxy
     total_parallel_tasks = proxy_count * tasks_per_proxy
 
+    system_min_ram = math.ceil(2 + (0.5 * tasks_per_proxy))
+    if on_host:
+        # Hyper-V BP notes up to 2 GB RAM per running task on production hosts.
+        ram_gb_per_proxy = max(system_min_ram, math.ceil(2.0 * tasks_per_proxy))
+    else:
+        # Hyper-V BP points to vSphere sizing; retain the 2 GB/core planning
+        # allowance while meeting the Hyper-V system minimum.
+        ram_gb_per_proxy = max(system_min_ram, cores_per_proxy * 2)
+
+    total_proxy_ram_gb = proxy_count * ram_gb_per_proxy
+    estimated_capacity_mb_s = (
+        total_proxy_cores * mb_per_core / max(vin.read_write_overhead, 1.0)
+    )
+
     notes = [
-        "Hyper-V proxy CPU and memory use Veeam 13.1.1 task-based system requirements.",
-        "CPU is sized at a minimum of 2 vCPU with no more than 2 concurrent tasks per CPU core.",
-        "Memory is sized at 2 GB base plus 500 MB for each concurrent task.",
-        "Veeam does not publish a direct Hyper-V throughput-per-core value for this calculator, "
-        "so effective MB/s capacity is not inferred from CPU count.",
+        "Hyper-V proxy sizing uses the vSphere proxy sizing method recommended by Veeam Best "
+        "Practice, then applies Hyper-V-specific task, CPU, and memory minimums.",
+        "Veeam limits backup proxies to no more than 2 concurrent tasks per CPU core.",
+        "Hyper-V system requirements specify 2 GB RAM plus 500 MB per concurrent task.",
     ]
+    if vin.throughput_mb_per_core <= 0:
+        notes.append(
+            "No Hyper-V-specific throughput-per-core table is published; the calculator uses "
+            "Veeam's virtual vSphere incremental proxy baseline because the Hyper-V Best "
+            "Practice Guide explicitly directs proxy sizing to the vSphere method."
+        )
     if on_host:
         notes.append(
-            "On-host mode is selected. Hyper-V hosts performing the proxy role need the additional "
-            "CPU and memory resources shown by this sizing result."
+            "On-host mode is selected. Veeam Best Practice notes that running tasks can require "
+            "up to 2 GB RAM each on the Hyper-V host; the calculator uses that stronger planning "
+            "allowance and spreads aggregate core demand across the supplied hosts."
         )
     elif vin.has_san_access:
         notes.append(
@@ -131,15 +182,16 @@ def _size_hyperv_proxies(
         total_proxy_cores=total_proxy_cores,
         total_parallel_tasks=total_parallel_tasks,
         required_throughput_mb_s=round(required_throughput_mb_s, 1),
-        estimated_capacity_mb_s=0.0,
-        throughput_basis="Veeam Hyper-V task sizing; throughput capacity not inferred",
+        estimated_capacity_mb_s=round(estimated_capacity_mb_s, 1),
+        throughput_basis=throughput_basis,
         ram_gb_per_proxy=ram_gb_per_proxy,
         total_proxy_ram_gb=total_proxy_ram_gb,
         transport_mode="on-host" if on_host else "off-host",
         disk_gb_per_proxy=0.3,
-        sizing_basis="Veeam 13.1.1 Hyper-V backup proxy system requirements",
+        sizing_basis="Veeam Hyper-V BP throughput method plus 13.1.1 system requirements",
         source_url=(
-            "https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html"
+            "https://bp.veeam.com/vbr/2_Design_Structures/D_Veeam_Components/"
+            "D_backup_proxies/hyperv_proxies.html"
         ),
         notes=notes,
     )
