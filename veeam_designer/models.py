@@ -31,6 +31,8 @@ class VeeamInput:
 
     wan_bandwidth_mbps: float = 0.0
     repo_type: str = "sobr"
+    object_storage_provider: str = "generic"
+    objectfirst_node_tb: float = 0.0
 
     hypervisor: str = "vmware"
     has_san_access: bool = False
@@ -58,7 +60,7 @@ class VeeamInput:
 
     # Round 5: capacity tier
     capacity_tier_enabled: bool = False
-    capacity_tier_fraction: float = 0.5
+    capacity_tier_fraction: float = 0.0
     direct_to_object: bool = False
     capacity_tier_immutable: bool = False
 
@@ -104,6 +106,7 @@ class NasDesign:
     total_repo_tb: float
     file_proxy_cores: int
     file_proxy_ram_gb: int
+    file_proxy_count: int = 2
     notes: List[str] = field(default_factory=list)
 
 
@@ -248,6 +251,7 @@ class CostEstimate:
     monthly_object_usd: float
     yearly_object_usd: float
     yearly_onprem_usd: float
+    configured: bool = False
     notes: List[str] = field(default_factory=list)
     # Round 9: 3-year TCO + multi-cloud comparison
     cloud_comparison: Dict[str, float] = field(default_factory=dict)
@@ -363,6 +367,7 @@ class AgentInput:
     retention_days: int = 14
     os_type: str = "windows"
     network_bandwidth_mbps: float = 1000.0
+    concurrent_tasks: int = 4
 
 
 @dataclass
