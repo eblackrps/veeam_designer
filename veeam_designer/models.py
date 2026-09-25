@@ -110,6 +110,8 @@ class NasDesign:
     file_proxy_count: int = 2
     file_proxy_cores_each: int = 0
     file_proxy_ram_gb_each: int = 0
+    cache_repo_cores: int = 0
+    cache_repo_ram_gb: int = 0
     notes: List[str] = field(default_factory=list)
 
 
