@@ -268,6 +268,9 @@ paths.
 - Current backup-server CPU and RAM-per-concurrent-job minimums are enforced on top of the workload
   sizing bands for both Windows and Linux deployments; Software Appliance output also includes both
   240 GB minimum appliance disks.
+- VMware proxies can be modeled on managed Windows/Linux hosts or Veeam Infrastructure Appliance;
+  the calculator keeps proxy-role resources separate from the appliance's additional 2 vCPU,
+  8 GB RAM, and 120 GB + 120 GB minimum disks.
 - Mixed-environment proxy throughput, CDP proxy sizing, Veeam ONE sizing, and cost/licensing
   outputs still include documented heuristics where a direct model is not yet wired into this UI.
 
