@@ -329,7 +329,7 @@
         <th>Site</th>
         <th>Total Repo (TB)</th>
         <th>Risk Level</th>
-        <th>Proxies</th>
+        <th>Data Movers</th>
         <th>Yearly On-Prem Cost</th>
         <th>Yearly Object Cost</th>
       </tr>
@@ -344,7 +344,13 @@
             {{ site.risk_level | upper | default('UNKNOWN') }}
           </span>
         </td>
-        <td>{{ site.proxy_count | default(0) }}</td>
+        <td>
+          {% if site.platform_worker_count %}
+            {{ site.platform_worker_count }} {{ site.platform_worker_platform | upper }} workers
+          {% else %}
+            {{ site.proxy_count | default(0) }} proxies
+          {% endif %}
+        </td>
         <td>${{ "{:,.0f}".format(site.yearly_onprem_usd | default(0)) }}</td>
         <td>
           {% if site.monthly_object_usd %}
@@ -400,6 +406,20 @@
   </tbody>
 </table>
 
+{% if site.platform_worker_count %}
+<table class="avoid-break">
+  <thead>
+    <tr><th colspan="2">{{ site.platform_worker_platform | upper }} Workers</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="label">Worker count</td><td class="value">{{ site.platform_worker_count }}</td></tr>
+    <tr><td class="label">Per worker</td><td class="value">{{ site.platform_worker_cores_each }} vCPU / {{ site.platform_worker_ram_each }} GB RAM / {{ site.platform_worker_disk_each }} GB disk</td></tr>
+    <tr><td class="label">Total concurrent tasks</td><td class="value">{{ site.platform_worker_tasks }}</td></tr>
+    <tr><td class="label">Sizing basis</td><td class="value">{{ site.proxy_throughput_basis | default("Veeam worker task sizing") }}</td></tr>
+    <tr><td class="label">Required data rate</td><td class="value">{{ "%.1f" | format(site.required_mb_s | default(0)) }} MB/s</td></tr>
+  </tbody>
+</table>
+{% else %}
 <table class="avoid-break">
   <thead>
     <tr><th colspan="2">Proxy Servers</th></tr>
@@ -421,6 +441,7 @@
     </tr>
   </tbody>
 </table>
+{% endif %}
 
 <table class="avoid-break">
   <thead>
@@ -429,6 +450,10 @@
   <tbody>
     <tr><td class="label">Cores</td><td class="value">{{ site.bs_cores | default(0) }}</td></tr>
     <tr><td class="label">RAM</td><td class="value">{{ site.bs_ram_gb | default(0) }} GB</td></tr>
+    <tr><td class="label">Deployment</td><td class="value">{{ site.bs_deployment_mode | default("unspecified") }}</td></tr>
+    {% if site.bs_system_disk_gb %}
+    <tr><td class="label">System disk</td><td class="value">{{ site.bs_system_disk_gb }} GB</td></tr>
+    {% endif %}
   </tbody>
 </table>
 
