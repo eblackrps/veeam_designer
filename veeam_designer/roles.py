@@ -281,21 +281,35 @@ def size_backup_server(proxies: ProxySizing, vin: VeeamInput) -> BackupServerSiz
     if not deployment_mode:
         deployment_mode = "software_appliance" if vin.v13_appliance else "windows"
 
+    minimum_ram_gb = max(16, math.ceil(16 + (0.5 * concurrency_hint)))
+    minimum_cores = 8
+    if deployment_mode == "software_appliance" and workload_count <= 5:
+        minimum_cores = 6
+
+    total_cores = max(total_cores, minimum_cores)
+    ram_gb = max(ram_gb, minimum_ram_gb)
+
     system_disk_gb = 0
+    secondary_disk_gb = 0
     if deployment_mode == "software_appliance":
-        appliance_min_cores = 6 if workload_count <= 5 else 8
-        appliance_min_ram = max(16, math.ceil(16 + (0.5 * concurrency_hint)))
-        total_cores = max(total_cores, appliance_min_cores)
-        ram_gb = max(ram_gb, appliance_min_ram)
         system_disk_gb = 240
+        secondary_disk_gb = 240
         notes.append(
             "Veeam Software Appliance minimums are enforced: 8 vCPU (6 for up to 5 workloads), "
-            "16 GB RAM plus 500 MB per concurrent job, and a 240 GB system disk."
+            "16 GB RAM plus 500 MB per concurrent job, a 240 GB minimum system disk, and a "
+            "second 240 GB minimum application-data disk."
+        )
+        notes.append(
+            "Veeam recommends larger SSD system disks as protected workload count grows "
+            "(480 GB for small environments, 960 GB for medium environments, and multi-TB for "
+            "large environments). The calculator reports the vendor minimum and leaves the "
+            "recommended-capacity choice as an architecture review item."
         )
     else:
         notes.append(
-            "Windows backup-server mode selected; workload-band sizing is retained and current "
-            "Windows system requirements must still be validated."
+            "Windows backup-server mode selected. The calculator enforces the current 8 vCPU "
+            "minimum and 16 GB RAM plus 500 MB per concurrent job in addition to the workload "
+            "sizing band."
         )
 
     return BackupServerSizing(
@@ -304,6 +318,7 @@ def size_backup_server(proxies: ProxySizing, vin: VeeamInput) -> BackupServerSiz
         v13_appliance=deployment_mode == "software_appliance",
         deployment_mode=deployment_mode,
         system_disk_gb=system_disk_gb,
+        secondary_disk_gb=secondary_disk_gb,
         notes=notes,
     )
 
