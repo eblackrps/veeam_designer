@@ -14,12 +14,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "tasks_per_core": 2,
     "repo_overhead_factor": 1.25,
     "gfs_overhead_factor": 1.1,
-    "years_to_plan_for": 3,
+    "years_to_plan_for": 1,
     "warn_repo_tb": 300.0,
     "max_vms_per_job": 50,
     "max_tb_per_job": 10.0,
-    "object_cost_usd_per_tb_month": 20.0,
-    "onprem_cost_usd_per_tb_year": 100.0,
+    "object_cost_usd_per_tb_month": 0.0,
+    "onprem_cost_usd_per_tb_year": 0.0,
 }
 
 
