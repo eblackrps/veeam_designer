@@ -456,7 +456,10 @@
     <tr><td class="label">RAM</td><td class="value">{{ site.bs_ram_gb | default(0) }} GB</td></tr>
     <tr><td class="label">Deployment</td><td class="value">{{ site.bs_deployment_mode | default("unspecified") }}</td></tr>
     {% if site.bs_system_disk_gb %}
-    <tr><td class="label">System disk</td><td class="value">{{ site.bs_system_disk_gb }} GB</td></tr>
+    <tr><td class="label">System disk</td><td class="value">{{ site.bs_system_disk_gb }} GB minimum</td></tr>
+    {% endif %}
+    {% if site.bs_secondary_disk_gb %}
+    <tr><td class="label">Application-data disk</td><td class="value">{{ site.bs_secondary_disk_gb }} GB minimum</td></tr>
     {% endif %}
   </tbody>
 </table>
