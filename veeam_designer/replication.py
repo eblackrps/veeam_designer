@@ -116,7 +116,9 @@ def size_replication(rin: ReplicationInput) -> ReplicationDesign:
             )
 
     if rin.wan_mbps <= 0:
-        notes.append("No WAN bandwidth specified; steady-state transfer feasibility was not validated.")
+        notes.append(
+            "No WAN bandwidth specified; steady-state transfer feasibility was not validated."
+        )
     elif not meets_rpo:
         notes.append(
             f"Average changed-data rate requires {required_mbps:.1f} Mbps, above the configured "

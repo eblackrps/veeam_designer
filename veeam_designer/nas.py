@@ -35,9 +35,7 @@ def size_nas(nin: NasInput) -> NasDesign:
 
     full_backup_tb = effective_tb / compression_ratio
     incremental_backup_tb = (
-        full_backup_tb
-        * (max(0.0, nin.daily_change_pct) / 100.0)
-        * max(0, int(nin.retention_days))
+        full_backup_tb * (max(0.0, nin.daily_change_pct) / 100.0) * max(0, int(nin.retention_days))
     )
     backup_size_tb = full_backup_tb + incremental_backup_tb
 

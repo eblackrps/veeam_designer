@@ -18,9 +18,7 @@ def estimate_license(lin: LicenseInput) -> LicenseEstimate:
         raise ValueError("license_type must be instance/vul, capacity, or socket")
 
     machine_instances = (
-        max(0, lin.vm_count)
-        + max(0, lin.physical_count)
-        + max(0, lin.cloud_workloads)
+        max(0, lin.vm_count) + max(0, lin.physical_count) + max(0, lin.cloud_workloads)
     )
 
     # Aggregate estimate only: Veeam rounds each unstructured data source down to 500 GB.

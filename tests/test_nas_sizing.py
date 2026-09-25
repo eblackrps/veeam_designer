@@ -97,9 +97,7 @@ def test_proxy_and_cache_resources_scale_with_explicit_concurrent_sources():
 
 
 def test_single_share_does_not_force_second_proxy():
-    result = size_nas(
-        NasInput(source_tb=10.0, share_count=1, concurrent_sources=1)
-    )
+    result = size_nas(NasInput(source_tb=10.0, share_count=1, concurrent_sources=1))
 
     assert result.file_proxy_count == 1
     assert result.file_proxy_cores_each == 4

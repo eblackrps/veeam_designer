@@ -25,9 +25,7 @@ def size_agent(ain: AgentInput) -> AgentDesign:
     if ain.backup_window_hours <= 0:
         raise ValueError("backup_window_hours must be greater than zero")
 
-    required_mb_s = (daily_change_tb * 1024.0 * 1024.0) / (
-        ain.backup_window_hours * 3600.0
-    )
+    required_mb_s = (daily_change_tb * 1024.0 * 1024.0) / (ain.backup_window_hours * 3600.0)
     required_mbps = required_mb_s * 8.0
     available_mbps = max(0.0, ain.network_bandwidth_mbps)
 
@@ -52,7 +50,9 @@ def size_agent(ain: AgentInput) -> AgentDesign:
     ]
 
     if available_mbps <= 0:
-        notes.append("No network bandwidth was supplied; backup-window feasibility was not validated.")
+        notes.append(
+            "No network bandwidth was supplied; backup-window feasibility was not validated."
+        )
     elif required_mbps > available_mbps:
         notes.append(
             f"Average changed data requires {required_mbps:.1f} Mbps inside the backup window, "

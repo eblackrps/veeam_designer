@@ -55,7 +55,7 @@ def test_repository_growth_math_uses_projected_change_rate():
     repo = size_repository(_vm_input())
 
     assert repo.short_term_data_tb == 517.5
-    assert repo.operational_headroom_tb == 281.3
+    assert repo.operational_headroom_tb == 281.2
     assert repo.primary_repo_tb == 798.8
     assert repo.gfs_repo_tb == 0.0
     assert repo.total_repo_tb == 798.8

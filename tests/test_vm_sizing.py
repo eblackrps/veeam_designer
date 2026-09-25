@@ -44,9 +44,7 @@ def test_v13_minimum_three_restore_points_known_answer():
 
 
 def test_weekly_synthetic_without_fast_clone_chain_overlap_known_answer():
-    result = size_repository(
-        _base_input(backup_type="synthetic_full_weekly", refs_xfs=False)
-    )
+    result = size_repository(_base_input(backup_type="synthetic_full_weekly", refs_xfs=False))
 
     assert result.short_term_data_tb == 320.0
     assert result.operational_headroom_tb == 125.0
@@ -55,18 +53,14 @@ def test_weekly_synthetic_without_fast_clone_chain_overlap_known_answer():
 
 
 def test_weekly_active_full_does_not_receive_fast_clone_capacity_savings():
-    result = size_repository(
-        _base_input(backup_type="active_full_weekly", refs_xfs=True)
-    )
+    result = size_repository(_base_input(backup_type="active_full_weekly", refs_xfs=True))
 
     assert result.short_term_data_tb == 320.0
     assert result.primary_repo_tb == 445.0
 
 
 def test_weekly_synthetic_fast_clone_uses_changed_block_model():
-    result = size_repository(
-        _base_input(backup_type="synthetic_full_weekly", refs_xfs=True)
-    )
+    result = size_repository(_base_input(backup_type="synthetic_full_weekly", refs_xfs=True))
 
     assert result.short_term_data_tb == 230.0
     assert result.operational_headroom_tb == 125.0
@@ -116,9 +110,7 @@ def test_hardened_immutability_rejects_unsupported_chain_types(backup_type):
 
 
 def test_gfs_is_conservative_full_equivalent_upper_bound():
-    result = size_repository(
-        _base_input(gfs_weekly_count=1, gfs_monthly_count=1)
-    )
+    result = size_repository(_base_input(gfs_weekly_count=1, gfs_monthly_count=1))
 
     assert result.primary_repo_tb == 295.0
     assert result.gfs_repo_tb == 200.0

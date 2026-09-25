@@ -17,9 +17,7 @@ def size_tape(tin: TapeInput) -> TapeDesign:
 
     if tin.native_capacity_tb > 0:
         native_tb = float(tin.native_capacity_tb)
-        notes.append(
-            f"Native cartridge capacity is explicitly supplied as {native_tb:.1f} TB."
-        )
+        notes.append(f"Native cartridge capacity is explicitly supplied as {native_tb:.1f} TB.")
     elif lto_gen in LTO_NATIVE_TB:
         native_tb = LTO_NATIVE_TB[lto_gen]
     elif lto_gen == 10:
@@ -40,17 +38,13 @@ def size_tape(tin: TapeInput) -> TapeDesign:
     library_slots = data_carts
 
     initial_media_cost = (
-        data_carts * max(0.0, tin.cost_per_cartridge_usd)
-        if tin.cost_per_cartridge_usd > 0
-        else 0.0
+        data_carts * max(0.0, tin.cost_per_cartridge_usd) if tin.cost_per_cartridge_usd > 0 else 0.0
     )
 
     required_tape_write_mb_s = 0.0
     drive_count = 1 if data_carts > 0 else 0
     if tin.write_window_hours > 0 and tin.drive_native_mb_s > 0 and archive_tb > 0:
-        required_tape_write_mb_s = (
-            archive_tb * 1024.0 * 1024.0 / (tin.write_window_hours * 3600.0)
-        )
+        required_tape_write_mb_s = archive_tb * 1024.0 * 1024.0 / (tin.write_window_hours * 3600.0)
         drive_count = max(1, ceil(required_tape_write_mb_s / tin.drive_native_mb_s))
         notes.append(
             f"Drive count is calculated from the supplied {tin.write_window_hours:g}-hour "

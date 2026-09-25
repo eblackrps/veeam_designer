@@ -34,12 +34,8 @@ def test_agent_minimum_three_restore_points_is_enforced():
 
 
 def test_agent_general_proxy_minimum_scales_with_concurrent_tasks():
-    one_task = size_agent(
-        AgentInput(machine_count=50, avg_size_gb=200.0, concurrent_tasks=1)
-    )
-    four_tasks = size_agent(
-        AgentInput(machine_count=50, avg_size_gb=200.0, concurrent_tasks=4)
-    )
+    one_task = size_agent(AgentInput(machine_count=50, avg_size_gb=200.0, concurrent_tasks=1))
+    four_tasks = size_agent(AgentInput(machine_count=50, avg_size_gb=200.0, concurrent_tasks=4))
 
     assert one_task.coordinator_cores == 2
     assert one_task.coordinator_ram_gb == 3

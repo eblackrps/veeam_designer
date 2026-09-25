@@ -82,8 +82,7 @@ def size_wan_accel(win: WanAccelInput) -> WanAccelDesign:
                 os_recommended_gb,
             )
             target_total_free_space_gb = (
-                source_count * cache_size_gb
-                + target_count * target_digest_gb
+                source_count * cache_size_gb + target_count * target_digest_gb
             )
             reduction_ratio = max(1.0, win.dedupe_ratio * win.compression_ratio)
             notes.append(

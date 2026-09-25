@@ -19,26 +19,20 @@ def test_instance_model_counts_generic_machine_workloads():
 
 
 def test_unstructured_instance_consumption_is_one_per_500_gb():
-    result = estimate_license(
-        LicenseInput(vm_count=0, nas_tb=50.0, license_type="instance")
-    )
+    result = estimate_license(LicenseInput(vm_count=0, nas_tb=50.0, license_type="instance"))
 
     assert result.instance_consumption == 100.0
     assert result.protected_workloads == 100
 
 
 def test_unstructured_instance_consumption_rounds_down():
-    result = estimate_license(
-        LicenseInput(vm_count=0, nas_tb=1.49, license_type="instance")
-    )
+    result = estimate_license(LicenseInput(vm_count=0, nas_tb=1.49, license_type="instance"))
 
     assert result.instance_consumption == 2.0
 
 
 def test_capacity_licensing_rounds_down_to_one_tb_chunks():
-    result = estimate_license(
-        LicenseInput(vm_count=0, nas_tb=50.9, license_type="capacity")
-    )
+    result = estimate_license(LicenseInput(vm_count=0, nas_tb=50.9, license_type="capacity"))
 
     assert result.tier == "capacity"
     assert result.capacity_consumption_tb == 50.0

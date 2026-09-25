@@ -112,17 +112,13 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
     max_forward_points = daily_restore_points + (weekly_chain_days - 1)
 
     if backup_type == "forever_forward_incremental":
-        retained_data_tb = full_physical_tb + incremental_physical_tb * (
-            daily_restore_points - 1
-        )
+        retained_data_tb = full_physical_tb + incremental_physical_tb * (daily_restore_points - 1)
         calculation_basis = (
             f"Forever-forward incremental: 1 full + {daily_restore_points - 1} incremental "
             f"restore points ({daily_restore_points} retained points)."
         )
     elif backup_type == "reverse_incremental":
-        retained_data_tb = full_physical_tb + incremental_physical_tb * (
-            daily_restore_points - 1
-        )
+        retained_data_tb = full_physical_tb + incremental_physical_tb * (daily_restore_points - 1)
         calculation_basis = (
             f"Reverse incremental: latest full + {daily_restore_points - 1} rollback points "
             f"({daily_restore_points} retained points)."
@@ -135,9 +131,7 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
         full_count = ceil(max_forward_points / weekly_chain_days)
         incremental_count = max_forward_points - full_count
         if backup_type == "synthetic_full_weekly" and vin.refs_xfs and vin.repo_type != "object":
-            retained_data_tb = full_physical_tb + incremental_physical_tb * (
-                max_forward_points - 1
-            )
+            retained_data_tb = full_physical_tb + incremental_physical_tb * (max_forward_points - 1)
             calculation_basis = (
                 "Weekly synthetic full with Fast Clone: forward-incremental chain overlap "
                 f"allows up to {max_forward_points} restore points; physical data is modeled "
@@ -149,8 +143,7 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
             )
         else:
             retained_data_tb = (
-                full_physical_tb * full_count
-                + incremental_physical_tb * incremental_count
+                full_physical_tb * full_count + incremental_physical_tb * incremental_count
             )
             full_kind = "active full" if backup_type == "active_full_weekly" else "synthetic full"
             calculation_basis = (
@@ -164,21 +157,22 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
         transformation_factor = max(0.0, float(CONFIG.get("repo_overhead_factor", 1.25)))
         operational_headroom_tb = full_physical_tb * transformation_factor
         notes.append(
-            "Disk-repository operational headroom follows Veeam Best Practice guidance to "
-            f"reserve at least one full backup x {transformation_factor:.2f} for backup-chain "
-            "transformation and one-off full operations."
+            "Disk-repository operational headroom reserves at least one full backup x "
+            f"{transformation_factor:.2f} for backup-chain transformation. One-off full-backup "
+            "headroom is a separate planning consideration because Veeam does not publish one "
+            "universal quantity for it."
         )
 
     primary_repo_tb = retained_data_tb + operational_headroom_tb
 
     gfs_count = (
-        max(0, vin.gfs_weekly_count)
-        + max(0, vin.gfs_monthly_count)
-        + max(0, vin.gfs_yearly_count)
+        max(0, vin.gfs_weekly_count) + max(0, vin.gfs_monthly_count) + max(0, vin.gfs_yearly_count)
     )
     if backup_type == "reverse_incremental" and gfs_count:
         gfs_repo_tb = 0.0
-        notes.append("GFS is not modeled for reverse incremental because that combination is unsupported.")
+        notes.append(
+            "GFS is not modeled for reverse incremental because that combination is unsupported."
+        )
     elif gfs_count:
         gfs_repo_tb = gfs_count * full_physical_tb
         notes.append(
@@ -199,6 +193,7 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
         calculation_basis=calculation_basis,
         notes=notes,
     )
+
 
 def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     repo = size_repository(vin)
