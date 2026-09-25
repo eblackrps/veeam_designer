@@ -55,29 +55,65 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
 
     kind = payload.get("kind")
     if kind == "multi-site":
+        sites = payload.get("sites", [])
+        data_movers = 0
+        wan_targets_met = 0
+        for site in sites:
+            design = site.get("design", {}) or {}
+            roles = design.get("roles", {}) or {}
+            workers = roles.get("platform_workers") or {}
+            proxies = roles.get("proxies") or {}
+            data_movers += int(
+                workers.get("worker_count", 0)
+                if workers
+                else proxies.get("proxy_count", 0)
+            )
+            if bool((design.get("network") or {}).get("meets_target", False)):
+                wan_targets_met += 1
+
         return [
-            {"label": "Sites", "value": str(len(payload.get("sites", [])))},
+            {"label": "Sites", "value": str(len(sites))},
             {"label": "Repository", "value": f"{float(payload.get('total_repo_tb', 0.0)):.1f} TB"},
+            {"label": "Data Movers", "value": str(data_movers)},
+            {"label": "WAN Targets", "value": f"{wan_targets_met}/{len(sites)} met"},
             {
                 "label": "Yearly Cost",
-                "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('yearly_onprem_usd', 0.0)) for site in payload.get('sites', [])):,.0f}",
+                "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('yearly_onprem_usd', 0.0)) for site in sites):,.0f}",
             },
         ]
     if kind == "vm":
         repo = payload.get("repo") or {}
         roles = payload.get("roles") or {}
         cost = payload.get("cost") or {}
+        network = payload.get("network") or {}
+        risk = payload.get("risk") or {}
         proxies = roles.get("proxies") or {}
         platform_workers = roles.get("platform_workers") or {}
-        mover_label = "Workers" if platform_workers else "Proxy Count"
+        backup_server = roles.get("backup_server") or {}
+        mover_label = (
+            f"{str(platform_workers.get('platform', '')).upper()} Workers"
+            if platform_workers
+            else "Proxies"
+        )
         mover_count = (
             int(platform_workers.get("worker_count", 0))
             if platform_workers
             else int(proxies.get("proxy_count", 0))
         )
+        wan_required = float(network.get("required_mbps", 0.0))
+        wan_status = "Pass" if network.get("meets_target") else "Review"
         return [
             {"label": "Repository", "value": f"{float(repo.get('total_repo_tb', 0.0)):.1f} TB"},
             {"label": mover_label, "value": str(mover_count)},
+            {
+                "label": "Backup Server",
+                "value": (
+                    f"{int(backup_server.get('cores', 0))}c / "
+                    f"{int(backup_server.get('ram_gb', 0))} GB"
+                ),
+            },
+            {"label": "WAN / RPO", "value": f"{wan_required:.0f} Mbps · {wan_status}"},
+            {"label": "Risk", "value": str(risk.get("level", "unknown")).upper()},
             {"label": "Yearly Cost", "value": f"${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}"},
         ]
     if kind == "nas":
