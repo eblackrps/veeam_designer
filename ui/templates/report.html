@@ -427,7 +427,13 @@
   <tbody>
     <tr><td class="label">Proxy count</td><td class="value">{{ site.proxy_count | default(0) }}</td></tr>
     <tr><td class="label">Total proxy cores</td><td class="value">{{ site.total_proxy_cores | default(0) }}</td></tr>
-    <tr><td class="label">Total proxy RAM</td><td class="value">{{ site.proxy_ram_gb | default(0) }} GB</td></tr>
+    <tr><td class="label">Total proxy RAM</td><td class="value">{{ site.proxy_ram_gb | default(0) }} GB role requirement</td></tr>
+    <tr><td class="label">Deployment</td><td class="value">{{ site.proxy_deployment_mode | default("managed_os") }}</td></tr>
+    {% if site.proxy_deployment_mode == "infrastructure_appliance" %}
+    <tr><td class="label">Allocated per appliance</td><td class="value">{{ site.proxy_allocated_cores_each }} vCPU / {{ site.proxy_allocated_ram_each }} GB RAM</td></tr>
+    <tr><td class="label">Total allocated proxy compute</td><td class="value">{{ site.proxy_allocated_cores }} vCPU / {{ site.proxy_allocated_ram_gb }} GB RAM</td></tr>
+    <tr><td class="label">Infrastructure Appliance disks</td><td class="value">{{ site.proxy_infra_system_disk_gb }} GB + {{ site.proxy_infra_data_disk_gb }} GB minimum</td></tr>
+    {% endif %}
     <tr><td class="label">Transport mode</td><td class="value">{{ site.transport_mode | default("auto") }}</td></tr>
     <tr><td class="label">Required throughput</td><td class="value">{{ "%.1f" | format(site.required_mb_s | default(0)) }} MB/s</td></tr>
     <tr><td class="label">Estimated effective capacity</td><td class="value">{% if site.proxy_capacity_known %}{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s{% else %}Not modeled{% endif %}</td></tr>
