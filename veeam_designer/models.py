@@ -96,6 +96,7 @@ class NasInput:
     compress_pct: float = 30.0
     growth_rate_pct: float = 0.0
     forecast_years: int = 0
+    concurrent_sources: int = 1
 
 
 @dataclass
@@ -107,6 +108,8 @@ class NasDesign:
     file_proxy_cores: int
     file_proxy_ram_gb: int
     file_proxy_count: int = 2
+    file_proxy_cores_each: int = 0
+    file_proxy_ram_gb_each: int = 0
     notes: List[str] = field(default_factory=list)
 
 
