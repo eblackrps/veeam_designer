@@ -22,8 +22,8 @@ const downloadJsonButton = document.getElementById("download-json");
 const downloadCsvButton = document.getElementById("download-csv");
 const printReportButton = document.getElementById("print-report");
 
-const FORM_STORAGE_KEY = "veeam-designer-form-v5";
-const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v5";
+const FORM_STORAGE_KEY = "veeam-designer-form-v5-hardening";
+const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v5-hardening";
 const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v5";
 const PRINT_FRAME_ID = "veeam-designer-print-frame";
 
@@ -51,8 +51,12 @@ const defaultVmSites = [
     on_host_proxy: false,
     refs_xfs: true,
     immutability_enabled: true,
+    immutability_days: 30,
     capacity_tier_enabled: true,
+    capacity_tier_fraction: 0,
     direct_to_object: false,
+    object_storage_provider: "generic",
+    objectfirst_node_tb: 0,
     gfs_weekly_count: 4,
     gfs_monthly_count: 12,
     gfs_yearly_count: 3,
@@ -80,8 +84,12 @@ const defaultVmSites = [
     on_host_proxy: true,
     refs_xfs: true,
     immutability_enabled: false,
+    immutability_days: 0,
     capacity_tier_enabled: false,
+    capacity_tier_fraction: 0,
     direct_to_object: false,
+    object_storage_provider: "generic",
+    objectfirst_node_tb: 0,
     gfs_weekly_count: 2,
     gfs_monthly_count: 6,
     gfs_yearly_count: 0,
@@ -130,14 +138,17 @@ const defaultState = {
     agent_retention: 30,
     agent_window: 8,
     agent_network: 1000,
+    agent_concurrent_tasks: 4,
     agent_os: "windows",
   },
   replication: {
     rep_source_tb: 100,
     rep_vm_count: 300,
     rep_wan_mbps: 1000,
+    rep_daily_change: 5,
     rep_rpo_hours: 1,
     rep_rpo_seconds: 15,
+    rep_cdp_retention_hours: 24,
     rep_cdp: false,
     rep_compression: true,
   },
@@ -517,8 +528,12 @@ function collectVmSites() {
     on_host_proxy: getCardChecked(card, "on_host_proxy"),
     refs_xfs: getCardChecked(card, "refs_xfs"),
     immutability_enabled: getCardChecked(card, "immutability_enabled"),
+    immutability_days: getCardNumber(card, "immutability_days", 0),
     capacity_tier_enabled: getCardChecked(card, "capacity_tier_enabled"),
+    capacity_tier_fraction: getCardNumber(card, "capacity_tier_fraction", 0),
     direct_to_object: getCardChecked(card, "direct_to_object"),
+    object_storage_provider: getCardValue(card, "object_storage_provider") || "generic",
+    objectfirst_node_tb: getCardNumber(card, "objectfirst_node_tb", 0),
     gfs_weekly_count: getCardNumber(card, "gfs_weekly_count", 0),
     gfs_monthly_count: getCardNumber(card, "gfs_monthly_count", 0),
     gfs_yearly_count: getCardNumber(card, "gfs_yearly_count", 0),
@@ -575,6 +590,7 @@ function buildYamlFromBuilder() {
       `retention_days: ${numberValue("agent-retention", 30)}`,
       `os_type: ${getFieldValue("agent-os") || "windows"}`,
       `network_bandwidth_mbps: ${numberValue("agent-network", 1000)}`,
+      `concurrent_tasks: ${numberValue("agent-concurrent-tasks", 4)}`,
     ].join("\n");
   }
 
@@ -585,9 +601,11 @@ function buildYamlFromBuilder() {
       `source_tb: ${numberValue("rep-source-tb", 0)}`,
       `vm_count: ${numberValue("rep-vm-count", 0)}`,
       `wan_mbps: ${numberValue("rep-wan-mbps", 0)}`,
+      `daily_change_pct: ${numberValue("rep-daily-change", 5)}`,
       `rpo_hours: ${numberValue("rep-rpo-hours", 1)}`,
       `cdp_enabled: ${booleanValue("rep-cdp")}`,
       `rpo_seconds: ${numberValue("rep-rpo-seconds", 15)}`,
+      `cdp_retention_hours: ${numberValue("rep-cdp-retention-hours", 24)}`,
       `compression: ${booleanValue("rep-compression")}`,
     ].join("\n");
   }
@@ -660,8 +678,12 @@ function buildVmSiteYaml(
     `      on_host_proxy: ${site.on_host_proxy}`,
     `      refs_xfs: ${site.refs_xfs}`,
     `      immutability_enabled: ${site.immutability_enabled}`,
+    `      immutability_days: ${site.immutability_days}`,
     `      capacity_tier_enabled: ${site.capacity_tier_enabled}`,
+    `      capacity_tier_fraction: ${site.capacity_tier_fraction}`,
     `      direct_to_object: ${site.direct_to_object}`,
+    `      object_storage_provider: ${site.object_storage_provider}`,
+    `      objectfirst_node_tb: ${site.objectfirst_node_tb}`,
     `      block_generation_days: ${site.block_generation_days}`,
     `      concurrent_jobs: ${site.concurrent_jobs}`,
   ];
