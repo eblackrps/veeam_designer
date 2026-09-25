@@ -18,7 +18,6 @@ const costOutput = document.getElementById("cost-output");
 const jsonOutput = document.getElementById("json-output");
 const errorAlert = document.getElementById("error-alert");
 const errorMessageText = document.getElementById("error-message-text");
-const runtimeStatus = document.getElementById("runtime-status");
 const downloadJsonButton = document.getElementById("download-json");
 const downloadCsvButton = document.getElementById("download-csv");
 const printReportButton = document.getElementById("print-report");
@@ -158,7 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   renderResultBundle(currentResultBundle);
   applyError(bootstrap.errorMessage || "");
-  updateRuntimeStatus(isStaticRuntime ? "Initializing browser engine..." : "");
   form.addEventListener("submit", handleSubmit);
   document.addEventListener("input", handleMutation, true);
   document.addEventListener("change", handleMutation, true);
@@ -806,12 +804,6 @@ function applyError(message) {
   errorMessageText.textContent = normalized;
 }
 
-function updateRuntimeStatus(message) {
-  if (!runtimeStatus) {
-    return;
-  }
-  runtimeStatus.textContent = message || "";
-}
 
 function setBusy(isBusy) {
   if (!runButton) {
@@ -824,10 +816,8 @@ function setBusy(isBusy) {
 async function prepareStaticEngine() {
   try {
     await ensureBrowserEngine();
-    updateRuntimeStatus("Browser engine ready. Run a design directly in this page.");
   } catch (error) {
     applyError(`Unable to initialize the browser engine: ${normalizeError(error)}`);
-    updateRuntimeStatus("Browser engine failed to load.");
   }
 }
 
@@ -840,7 +830,6 @@ async function runStaticDesign() {
     const bundle = await designInBrowser(JSON.stringify(projectObject));
     currentResultBundle = bundle;
     renderResultBundle(bundle);
-    updateRuntimeStatus(`Browser engine ready. Calculated ${bundle.payload.kind} output locally.`);
   } catch (error) {
     applyError(normalizeError(error));
   } finally {
