@@ -1,4 +1,4 @@
-"""NAS / unstructured workload sizing aligned to Veeam published guidance."""
+"""NAS / unstructured workload sizing aligned to current Veeam guidance."""
 
 from __future__ import annotations
 
@@ -16,16 +16,20 @@ def _compress_ratio(compress_pct: float) -> float:
     return 1.0 / (1.0 - pct / 100.0)
 
 
+def _round_up_even(value: int) -> int:
+    return value if value % 2 == 0 else value + 1
+
+
 def size_nas(nin: NasInput) -> NasDesign:
-    """Return NAS capacity and general-purpose proxy resources."""
+    """Return NAS capacity, general-purpose proxy, and cache-repository resources."""
 
     compression_ratio = _compress_ratio(nin.compress_pct)
-
     effective_tb = projected_total_data_tb(
         total_data_tb=nin.source_tb,
         annual_growth_percent=nin.growth_rate_pct,
         years_to_plan_for=nin.forecast_years,
     )
+
     full_backup_tb = effective_tb / compression_ratio
     incremental_backup_tb = (
         full_backup_tb * (max(0.0, nin.daily_change_pct) / 100.0) * max(0, nin.retention_days)
@@ -38,9 +42,7 @@ def size_nas(nin: NasInput) -> NasDesign:
         metadata_tb = backup_size_tb * 0.05
         primary_repo_tb = backup_size_tb + metadata_tb
 
-        # Current Veeam cache-repository guidance: >=1 GB active metadata per 1M file
-        # versions protected by one job. We only know current file count, so expose a
-        # one-version-per-file, one-job minimum rather than inventing a source-capacity ratio.
+        # Current Veeam cache guidance: >=1 GB active metadata per 1M file versions per job.
         active_metadata_gb = max(1, ceil(max(0.0, nin.file_count_millions)))
         cache_repo_tb = active_metadata_gb / 1024.0
         notes.append(
@@ -49,55 +51,86 @@ def size_nas(nin: NasInput) -> NasDesign:
             "and one protecting job. Additional versions or jobs increase cache requirements."
         )
     else:
-        metadata_tb = backup_size_tb * 0.10
-        workspace_tb = backup_size_tb * 0.10
+        metadata_tb = backup_size_tb * 0.05
+        workspace_tb = backup_size_tb * 0.05
         primary_repo_tb = backup_size_tb + metadata_tb + workspace_tb
         cache_repo_tb = 0.0
         notes.append(
-            "Disk-backed NAS repository includes Veeam's 10% metadata and 10% workspace "
-            "planning allowances."
+            "Disk-backed NAS repository includes Veeam Best Practice allowances of 5% metadata "
+            "and 5% workspace."
         )
 
     total_repo_tb = primary_repo_tb + cache_repo_tb
 
-    concurrent_sources = max(1, min(max(1, nin.share_count), nin.concurrent_sources))
+    # Veeam BP proxy sizing:
+    # - 100 MB/s ~= 0.34 TB/h per proxy CPU core
+    # - 5 million files/hour per proxy task
+    # - 2 tasks/core (current VBR planning target)
+    # - 1.33 GB RAM/core/task, plus 2 cores / 4 GB for the OS per proxy.
+    tasks_per_core = 2
+    backup_window_hours = max(0.01, nin.backup_window_hours)
+    incremental_tb_per_hour = (
+        effective_tb * (max(0.0, nin.daily_change_pct) / 100.0) / backup_window_hours
+    )
+    files_m_per_hour = max(0.0, nin.file_count_millions) / backup_window_hours
+
+    throughput_cores = ceil((incremental_tb_per_hour / 0.34) / tasks_per_core)
+    file_processing_cores = ceil((files_m_per_hour / 5.0) / tasks_per_core)
+    processing_cores = _round_up_even(max(2, throughput_cores, file_processing_cores))
+    processing_ram_gb = ceil(processing_cores * 1.33 * tasks_per_core)
+
     proxy_count = 2 if nin.share_count > 1 else 1
-    sources_per_proxy = max(1, ceil(concurrent_sources / proxy_count))
+    concurrent_sources = max(1, min(max(1, nin.share_count), nin.concurrent_sources))
+    tasks_per_proxy = max(1, ceil(concurrent_sources / proxy_count))
 
-    if nin.object_storage:
-        file_proxy_cores_each = 2 + (6 * sources_per_proxy)
-        file_proxy_ram_gb_each = 4 + (16 * sources_per_proxy)
-        target_basis = "object-storage target"
-    else:
-        file_proxy_cores_each = 2 + (4 * sources_per_proxy)
-        file_proxy_ram_gb_each = 4 + (4 * sources_per_proxy)
-        target_basis = "direct/NAS/deduplicating target"
+    bp_cores_each = ceil((processing_cores + (2 * proxy_count)) / proxy_count)
+    bp_ram_each = ceil((processing_ram_gb + (4 * proxy_count)) / proxy_count)
 
+    # Current user-guide minimums for unstructured-data proxy tasks.
+    system_min_cores_each = max(2, 2 * tasks_per_proxy)
+    system_min_ram_each = 4 + (4 * tasks_per_proxy)
+
+    file_proxy_cores_each = max(bp_cores_each, system_min_cores_each)
+    file_proxy_ram_gb_each = max(bp_ram_each, system_min_ram_each)
     file_proxy_cores = proxy_count * file_proxy_cores_each
     file_proxy_ram_gb = proxy_count * file_proxy_ram_gb_each
 
     notes.append(
-        f"General-purpose proxy sizing follows Veeam 13.1 unstructured-data requirements for a "
-        f"{target_basis}: {file_proxy_cores_each} vCPU / {file_proxy_ram_gb_each} GB RAM per "
-        f"proxy at {sources_per_proxy} concurrently processed source(s) per proxy."
+        f"General-purpose proxy processing requires {processing_cores} processing core(s) and "
+        f"{processing_ram_gb} GB processing RAM from the Veeam BP throughput/file-count model; "
+        f"OS and current system minimums produce {proxy_count} proxy/proxies at "
+        f"{file_proxy_cores_each} vCPU / {file_proxy_ram_gb_each} GB RAM each."
     )
     if proxy_count > 1:
         notes.append(
-            "Two proxies are included for production availability, matching Veeam's recommendation "
-            "to select at least two proxies for file-share backup."
+            "Two proxies are included for file-share availability, matching Veeam's recommendation "
+            "to select at least two proxies."
         )
+
+    # Cache-repository compute is target dependent in the current Veeam User Guide.
+    if nin.object_storage:
+        cache_repo_cores = 2 + (6 * concurrent_sources)
+        cache_repo_ram_gb = 4 + (16 * concurrent_sources)
+        cache_basis = "object-storage target"
+    else:
+        cache_repo_cores = 2 + (4 * concurrent_sources)
+        cache_repo_ram_gb = 4 + (4 * concurrent_sources)
+        cache_basis = "direct/NAS/deduplicating target"
     notes.append(
-        f"Concurrent source count is explicit ({concurrent_sources}). File count and backup window "
-        "are not converted into CPU with an unpublished throughput heuristic."
+        f"Cache-repository compute for {concurrent_sources} concurrent source(s) and a "
+        f"{cache_basis}: {cache_repo_cores} vCPU / {cache_repo_ram_gb} GB RAM."
     )
 
     if nin.storage_native_cft:
         notes.append(
-            "Storage-native CFT enabled: scanning behavior can improve on supported filers, but "
-            "proxy throughput and source/storage limits still require validation."
+            "Storage-native CFT can reduce source scanning on supported filers; it does not change "
+            "the published proxy or cache-repository minimums."
         )
     if nin.immutability_enabled:
-        notes.append("Immutability requires a supported immutable target; no arbitrary capacity tax is added.")
+        notes.append(
+            "Immutability requires a supported immutable target; no arbitrary capacity percentage "
+            "is added."
+        )
     if nin.gfs_weekly or nin.gfs_monthly or nin.gfs_yearly:
         notes.append(
             "NAS backup uses an incremental-forever chain. Weekly/monthly/yearly GFS counts are "
@@ -118,5 +151,7 @@ def size_nas(nin: NasInput) -> NasDesign:
         file_proxy_count=proxy_count,
         file_proxy_cores_each=file_proxy_cores_each,
         file_proxy_ram_gb_each=file_proxy_ram_gb_each,
+        cache_repo_cores=cache_repo_cores,
+        cache_repo_ram_gb=cache_repo_ram_gb,
         notes=notes,
     )
