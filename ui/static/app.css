@@ -86,8 +86,24 @@ textarea {
   border-radius: 10px;
   background: var(--accent);
   color: #06120a;
-  font-weight: 900;
-  letter-spacing: -0.04em;
+}
+
+.brand-mark svg {
+  width: 27px;
+  height: 27px;
+}
+
+.brand-mark path:first-child {
+  fill: currentColor;
+  stroke: none;
+}
+
+.brand-mark path:not(:first-child) {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .eyebrow,
@@ -103,12 +119,13 @@ textarea {
 }
 
 .hero h1 {
-  max-width: 830px;
+  max-width: 760px;
   margin: 5px 0 0;
   font-family: var(--title);
-  font-size: clamp(2rem, 3vw, 3rem);
-  line-height: 1.06;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.9rem, 2.7vw, 2.75rem);
+  font-weight: 750;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
 }
 
 .hero-copy > p {
@@ -163,13 +180,6 @@ textarea {
   margin-top: 20px;
   color: var(--muted);
   font-size: 0.85rem;
-}
-
-.runtime-status {
-  min-height: 1.2rem;
-  margin: 12px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
 }
 
 /* Alerts */
@@ -1013,7 +1023,8 @@ textarea {
   }
 
   .brand-row {
-    gap: 12px;
+    flex-direction: column;
+    gap: 14px;
   }
 
   .brand-mark {

@@ -11,16 +11,19 @@
     <header class="hero">
       <div class="hero-copy">
         <div class="brand-row">
-          <div class="brand-mark" aria-hidden="true">VD</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M12 3 3.5 7.25 12 11.5l8.5-4.25L12 3Z"></path>
+              <path d="M5 11.1 12 14.6l7-3.5"></path>
+              <path d="M5 15.25 12 18.75l7-3.5"></path>
+            </svg>
+          </div>
           <div>
             <span class="eyebrow">Veeam Designer {{ version }}</span>
-            <h1>Architecture sizing for Veeam backup and recovery.</h1>
+            <h1>Plan your Veeam architecture.</h1>
           </div>
         </div>
-        <p>
-          Turn workload, retention, platform, and recovery requirements into a defensible infrastructure
-          design with capacity, data-mover, WAN, and cost guidance.
-        </p>
+        <p>Size capacity, data movers, WAN, and cost from your workload, platform, and retention requirements.</p>
       </div>
       <div class="hero-panel">
         <div class="hero-panel-top">
@@ -32,7 +35,6 @@
           <span>{{ line }}</span>
           {% endfor %}
         </div>
-        <p id="runtime-status" class="runtime-status"></p>
       </div>
     </header>
 
