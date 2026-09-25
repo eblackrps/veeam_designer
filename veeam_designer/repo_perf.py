@@ -18,8 +18,7 @@ def estimate_repo_perf(vin: VeeamInput, repo: RepoSizing, jobs: JobSet) -> RepoP
 
     required_mb_s = daily_backup_mb / backup_window_sec
 
-    if "synthetic" in vin.backup_type:
-        # Round 3: spread synthetic full load over block_generation_days windows
+    if "synthetic" in vin.backup_type and not vin.refs_xfs:
         block_days = max(1, vin.block_generation_days)
         syn_mb = tb_to_mb(
             projected_total_data_tb(
@@ -31,23 +30,18 @@ def estimate_repo_perf(vin: VeeamInput, repo: RepoSizing, jobs: JobSet) -> RepoP
         syn_window_sec = block_days * (vin.backup_window_hours * 3600 or 1)
         synthetic_full_mb_s = syn_mb / syn_window_sec
         notes.append(
-            f"Synthetic full rebuilds spread over {block_days}-day block generation period: "
-            f"requires {synthetic_full_mb_s:.1f} MB/s sustained repository I/O during that window."
+            f"Synthetic full byte-copy path without Fast Clone: {synthetic_full_mb_s:.1f} MB/s "
+            f"sustained repository I/O when spread across {block_days} backup window(s)."
+        )
+    elif "synthetic" in vin.backup_type:
+        synthetic_full_mb_s = 0.0
+        notes.append(
+            "ReFS/XFS Fast Clone selected: a synthetic full is block-cloned rather than rewritten "
+            "as a complete byte-copy, so no fake full-copy MB/s requirement is emitted."
         )
     else:
         synthetic_full_mb_s = 0.0
 
-    # Round 3: ReFS/XFS block-clone note
-    if vin.refs_xfs:
-        notes.append(
-            "ReFS/XFS with block cloning enabled: synthetic full I/O cost is significantly "
-            "reduced — clone operations are near-instantaneous on compatible filesystems."
-        )
-    else:
-        notes.append(
-            "ReFS/XFS not selected: synthetic full operations require full byte-copy reads/writes. "
-            "Consider XFS (Linux) or ReFS (Windows) for better synthetic full performance."
-        )
 
     # Round 3: immutability note
     if vin.immutability_enabled and not vin.refs_xfs:
