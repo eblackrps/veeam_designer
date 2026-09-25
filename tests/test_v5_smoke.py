@@ -175,10 +175,7 @@ def test_hyperv_smoke_scales_with_change_rate_and_backup_window():
 
     assert pressured_proxy["required_throughput_mb_s"] > normal_proxy["required_throughput_mb_s"]
     assert pressured_proxy["total_proxy_cores"] > normal_proxy["total_proxy_cores"]
-    assert (
-        pressured_proxy["estimated_capacity_mb_s"]
-        >= pressured_proxy["required_throughput_mb_s"]
-    )
+    assert pressured_proxy["estimated_capacity_mb_s"] >= pressured_proxy["required_throughput_mb_s"]
 
 
 @pytest.mark.parametrize("hypervisor", ["hyperv", "ahv", "proxmox", "mixed"])
