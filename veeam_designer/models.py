@@ -93,7 +93,7 @@ class NasInput:
     object_storage: bool = False
     immutability_enabled: bool = False
     storage_native_cft: bool = False
-    compress_pct: float = 30.0
+    compress_pct: float = 0.0
     growth_rate_pct: float = 0.0
     forecast_years: int = 0
     concurrent_sources: int = 1
