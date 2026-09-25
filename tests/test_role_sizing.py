@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from veeam_designer.models import ProxySizing, RepoSizing, VeeamInput
 from veeam_designer.platforms import size_platform_workers
-from veeam_designer.roles import size_backup_server, size_hardened_repo
+from veeam_designer.roles import size_backup_server, size_hardened_repo, size_proxies
 from veeam_designer.service import design_payload_from_project_text
 
 
@@ -158,3 +158,40 @@ deployment_mode: software_appliance
     assert workers["worker_count"] == 2
     assert payload["roles"]["backup_server"]["deployment_mode"] == "software_appliance"
     assert payload["roles"]["backup_server"]["system_disk_gb"] == 240
+
+
+def test_hyperv_uses_native_task_resource_model():
+    result = size_proxies(
+        _vm_input(
+            hypervisor="hyperv",
+            on_host_proxy=False,
+            platform_concurrent_tasks=8,
+            worker_task_limit=4,
+        )
+    )
+
+    assert result.proxy_count == 2
+    assert result.cores_per_proxy == 2
+    assert result.ram_gb_per_proxy == 4
+    assert result.disk_gb_per_proxy == 0.3
+    assert result.total_parallel_tasks == 8
+    assert result.estimated_capacity_mb_s == 0.0
+    assert "Hyper-V task sizing" in result.throughput_basis
+    assert "system_requirements_hv_proxy.html" in result.source_url
+
+
+def test_hyperv_on_host_mode_accounts_for_supplied_hosts():
+    result = size_proxies(
+        _vm_input(
+            hypervisor="hyper-v",
+            on_host_proxy=True,
+            platform_host_count=4,
+            platform_concurrent_tasks=8,
+            worker_task_limit=4,
+        )
+    )
+
+    assert result.proxy_count == 4
+    assert result.transport_mode == "on-host"
+    assert result.total_parallel_tasks == 16
+    assert any("On-host mode" in note for note in result.notes)
