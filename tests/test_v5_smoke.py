@@ -115,7 +115,7 @@ def test_worker_platforms_smoke_through_browser_bundle(hypervisor: str, expected
     assert workers["disk_gb_per_worker"] == 100
     assert payload["roles"]["proxies"]["estimated_capacity_mb_s"] == 0.0
     assert site["platform_worker_count"] == workers["worker_count"]
-    assert bundle["summary_cards"][1]["label"] == "Workers"
+    assert bundle["summary_cards"][1]["label"] == f"{expected_platform.upper()} Workers"
     assert "workers" in bundle["blueprint"].lower()
     assert bundle["csv"].startswith("field,value")
 
