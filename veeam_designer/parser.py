@@ -44,6 +44,7 @@ def _vin_from_dict(d: dict) -> VeeamInput:
             "deployment_mode",
             "software_appliance" if d.get("v13_appliance", True) else "windows",
         ),
+        proxy_deployment_mode=d.get("proxy_deployment_mode", "managed_os"),
         # Round 2
         workload_count=d.get("workload_count") or d.get("vm_count", 0),
         concurrent_jobs=d.get("concurrent_jobs", 5),
