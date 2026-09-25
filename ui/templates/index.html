@@ -87,6 +87,14 @@
             </label>
 
             <label class="field">
+              <span>VMware Proxy Deployment</span>
+              <select id="proxy-deployment-mode">
+                <option value="managed_os" selected>Managed Windows / Linux</option>
+                <option value="infrastructure_appliance">Veeam Infrastructure Appliance</option>
+              </select>
+            </label>
+
+            <label class="field">
               <span>Target RPO (hours)</span>
               <input id="target-rpo" type="number" min="0.25" step="0.25" value="24">
             </label>
