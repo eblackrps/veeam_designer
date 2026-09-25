@@ -57,9 +57,12 @@ def score_rpo_margin_risk(
     target_rpo_hours: float,
     achievable_rpo_hours: float,
 ) -> int:
+    """Score transfer-window bandwidth margin.
+
+    The legacy target/achievable RPO arguments remain for API compatibility but are not used;
+    bandwidth alone is not sufficient to calculate an achievable RPO.
     """
-    Round 9: weighted RPO achievability based on how far over bandwidth we are.
-    """
+    del target_rpo_hours, achievable_rpo_hours
     if wan_mbps <= 0:
         return 0  # no WAN configured — not penalised
     if required_mbps <= wan_mbps:
@@ -99,7 +102,7 @@ def compute_risk(design: VeeamDesign) -> RiskScore:
         "proxies": proxy_score,
         "growth": growth_score,
         "immutability": immutability_score,
-        "rpo_margin": rpo_score,
+        "wan_margin": rpo_score,
     }
 
     total_score = sum(details.values())
