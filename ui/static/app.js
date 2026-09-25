@@ -103,6 +103,7 @@ const defaultState = {
     profile: "enterprise",
     hypervisor: "vmware",
     deployment_mode: "software_appliance",
+    proxy_deployment_mode: "managed_os",
     target_rpo: 24,
     compliance_framework: "none",
     compression_ratio: "",
@@ -150,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireResetButtons();
   wireExportButtons();
   restoreState();
+  syncProxyDeploymentAvailability();
   updateEditorModeNote();
   if (getEditorMode() === "builder") {
     updateYamlFromBuilder();
@@ -282,6 +284,7 @@ function handleSubmit(event) {
 }
 
 function handleMutation() {
+  syncProxyDeploymentAvailability();
   if (getEditorMode() === "builder") {
     updateYamlFromBuilder();
   }
@@ -333,6 +336,7 @@ function applyGlobalState(globals) {
   setField("profile", globals.profile);
   setField("hypervisor", globals.hypervisor);
   setField("deployment-mode", globals.deployment_mode);
+  setField("proxy-deployment-mode", globals.proxy_deployment_mode || "managed_os");
   setField("target-rpo", globals.target_rpo);
   setField("compliance-framework", globals.compliance_framework);
   setField("compression-ratio", globals.compression_ratio);
@@ -430,6 +434,20 @@ function updateEditorModeNote() {
       : "Manual YAML leaves the editor writable. Use Rebuild YAML to replace it with the calculator state.";
 }
 
+function syncProxyDeploymentAvailability() {
+  const select = document.getElementById("proxy-deployment-mode");
+  if (!(select instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const vmwareSelected = (getFieldValue("hypervisor") || "vmware") === "vmware";
+  select.disabled = !vmwareSelected;
+  if (!vmwareSelected) {
+    select.value = "managed_os";
+  }
+}
+
+
 function saveState() {
   const state = {
     workloadType: getCurrentWorkload(),
@@ -438,6 +456,7 @@ function saveState() {
       profile: getFieldValue("profile"),
       hypervisor: getFieldValue("hypervisor"),
       deployment_mode: getFieldValue("deployment-mode"),
+      proxy_deployment_mode: getFieldValue("proxy-deployment-mode"),
       target_rpo: getFieldValue("target-rpo"),
       compliance_framework: getFieldValue("compliance-framework"),
       compression_ratio: getFieldValue("compression-ratio"),
@@ -558,12 +577,17 @@ function buildYamlFromBuilder() {
   const complianceFramework = getFieldValue("compliance-framework") || "none";
   const hypervisor = getFieldValue("hypervisor") || "vmware";
   const deploymentMode = getFieldValue("deployment-mode") || "software_appliance";
+  const proxyDeploymentMode =
+    hypervisor === "vmware"
+      ? getFieldValue("proxy-deployment-mode") || "managed_os"
+      : "managed_os";
   const siteBlocks = collectVmSites().map((site) =>
     buildVmSiteYaml(
       site,
       targetRpo,
       hypervisor,
       deploymentMode,
+      proxyDeploymentMode,
       compression,
       dedupe,
       throughput,
@@ -584,6 +608,7 @@ function buildVmSiteYaml(
   targetRpo,
   hypervisor,
   deploymentMode,
+  proxyDeploymentMode,
   compression,
   dedupe,
   throughput,
@@ -607,6 +632,7 @@ function buildVmSiteYaml(
     `      repo_type: ${site.repo_type}`,
     `      hypervisor: ${hypervisor}`,
     `      deployment_mode: ${deploymentMode}`,
+    `      proxy_deployment_mode: ${proxyDeploymentMode}`,
     `      platform_host_count: ${site.platform_host_count}`,
     `      platform_cluster_count: ${site.platform_cluster_count}`,
     `      platform_concurrent_tasks: ${site.platform_concurrent_tasks}`,
