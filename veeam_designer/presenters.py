@@ -179,63 +179,82 @@ def render_blueprint_human(payload: JSONDict) -> str:
             "NAS / unstructured sizing\n"
             f"- Total repository: {float(result.get('total_repo_tb', 0.0)):.1f} TB\n"
             f"- Cache repository: {float(result.get('cache_repo_tb', 0.0)):.1f} TB\n"
-            f"- File proxy sizing: {int(result.get('file_proxy_cores', 0))} cores / "
-            f"{int(result.get('file_proxy_ram_gb', 0))} GB RAM\n"
+            f"- File proxies: {int(result.get('file_proxy_count', 0))} / "
+            f"{int(result.get('file_proxy_cores', 0))} total cores / "
+            f"{int(result.get('file_proxy_ram_gb', 0))} GB total RAM\n"
         )
     if kind == "physical":
         result = payload.get("result") or {}
         return (
             "Physical / agent sizing\n"
             f"- Total repository: {float(result.get('total_repo_tb', 0.0)):.1f} TB\n"
-            f"- Coordinator sizing: {int(result.get('coordinator_cores', 0))} cores / "
+            f"- General-purpose proxy minimum: {int(result.get('coordinator_cores', 0))} cores / "
             f"{int(result.get('coordinator_ram_gb', 0))} GB RAM\n"
         )
     if kind == "replication":
         result = payload.get("result") or {}
         return (
             "Replication sizing\n"
-            f"- Required bandwidth: {float(result.get('required_mbps', 0.0)):.1f} Mbps\n"
-            f"- Replica storage: {float(result.get('replica_storage_tb', 0.0)):.1f} TB\n"
-            f"- Meets target RPO: {'yes' if result.get('meets_rpo') else 'no'}\n"
+            f"- Average changed-data rate: {float(result.get('required_mbps', 0.0)):.1f} Mbps\n"
+            f"- Replica storage baseline: {float(result.get('replica_storage_tb', 0.0)):.1f} TB\n"
+            f"- Average WAN rate feasible: {'yes' if result.get('meets_rpo') else 'no'}\n"
         )
     return "No design output available.\n"
 
 
 def render_cost_human(payload: JSONDict) -> str:
-    """Render a compact cost summary."""
+    """Render configured cost output without manufacturing market prices."""
 
     kind = payload.get("kind")
     if kind == "multi-site":
+        lines = ["Cost model"]
+        configured_sites = 0
         total_on_prem = 0.0
         total_object = 0.0
-        lines = ["Cost overview"]
         for site in payload.get("sites", []):
             design = site.get("design") or {}
             cost = design.get("cost") or {}
+            if not cost.get("configured"):
+                continue
+            configured_sites += 1
             yearly_on_prem = float(cost.get("yearly_onprem_usd", 0.0))
-            monthly_object = float(cost.get("monthly_object_usd", 0.0))
+            yearly_object = float(cost.get("yearly_object_usd", 0.0))
             total_on_prem += yearly_on_prem
-            total_object += monthly_object * 12.0
+            total_object += yearly_object
             lines.append(
-                f"- {site.get('name', 'Site')}: "
-                f"on-prem ${yearly_on_prem:,.0f}/yr, "
-                f"object ${monthly_object * 12.0:,.0f}/yr"
+                f"- {site.get('name', 'Site')}: configured on-prem ${yearly_on_prem:,.0f}/yr, "
+                f"configured object ${yearly_object:,.0f}/yr"
             )
-        lines.append(f"- Total on-prem: ${total_on_prem:,.0f}/yr")
-        lines.append(f"- Total object: ${total_object:,.0f}/yr")
+        if not configured_sites:
+            return (
+                "Cost model\n"
+                "- Not configured. Veeam Designer does not embed live cloud, hardware, "
+                "licensing, or contract pricing.\n"
+            )
+        lines.append(f"- Total configured on-prem: ${total_on_prem:,.0f}/yr")
+        lines.append(f"- Total configured object: ${total_object:,.0f}/yr")
         return "\n".join(lines) + "\n"
 
     if kind == "vm":
         cost = payload.get("cost") or {}
-        return (
-            "Cost overview\n"
-            f"- On-prem yearly estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}\n"
-            f"- Object storage yearly estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}\n"
-            f"- Break-even vs cloud: {float(cost.get('break_even_years', 0.0)):.1f} years\n"
-        )
+        if not cost.get("configured"):
+            return (
+                "Cost model\n"
+                "- Not configured. Add explicit rates in config.json if you want planning-cost "
+                "output; no market pricing is assumed.\n"
+            )
+        lines = ["Cost model"]
+        if float(cost.get("yearly_onprem_usd", 0.0)) > 0:
+            lines.append(
+                f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr"
+            )
+        if float(cost.get("yearly_object_usd", 0.0)) > 0:
+            lines.append(
+                f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr"
+            )
+        return "\n".join(lines) + "\n"
 
-    return "Cost projection is not generated for this calculator mode.\n"
-
+    return "Cost model is not used for this calculator mode.\n"
 
 def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
     repo = design_payload.get("repo") or {}
@@ -308,6 +327,7 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "risk_level": str(risk.get("level", "unknown")),
         "risk_score": int(risk.get("total_score", 0)),
         "risk_details": risk.get("details", {}) or {},
+        "cost_configured": bool(cost.get("configured", False)),
         "yearly_onprem_usd": float(cost.get("yearly_onprem_usd", 0.0)),
         "monthly_object_usd": float(cost.get("monthly_object_usd", 0.0)),
         "cloud_comparison": cost.get("cloud_comparison", {}) or {},
@@ -374,7 +394,7 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
                     f"({int(proxies.get('total_proxy_cores', 0))} cores)"
                 )
             lines.append(
-                f"- Required WAN: {float((design.get('network') or {}).get('required_mbps', 0.0)):.1f} Mbps"
+                f"- Average WAN rate: {float((design.get('network') or {}).get('required_mbps', 0.0)):.1f} Mbps"
             )
             lines.append("")
         return "\n".join(lines).strip() + "\n"
@@ -406,5 +426,5 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
         f"- Backup server: {int(backup_server.get('cores', 0))} cores / "
         f"{int(backup_server.get('ram_gb', 0))} GB RAM "
         f"({backup_server.get('deployment_mode', 'unspecified')})\n"
-        f"- Required WAN: {float(network.get('required_mbps', 0.0)):.1f} Mbps\n"
+        f"- Average WAN rate: {float(network.get('required_mbps', 0.0)):.1f} Mbps\n"
     )
