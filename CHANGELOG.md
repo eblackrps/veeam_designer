@@ -11,13 +11,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 - Added native Proxmox VE and Nutanix AHV worker sizing with explicit host, cluster, concurrency,
   per-worker task, compute, memory, and disk outputs
+- Added native Hyper-V proxy CPU, RAM, disk, and concurrent-task sizing without inventing a
+  throughput-per-core estimate
 - Added Veeam Software Appliance deployment sizing and exposed deployment mode in the browser and CLI
 - Added platform-worker details to API payloads, dashboards, browser reports, and human summaries
 - Added Proxmox VE to the web calculator and CLI/interactive workflows
 
 ### Changed
 
-- Stopped applying VMware throughput-per-core assumptions to Proxmox VE and Nutanix AHV worker sizing
+- Stopped applying VMware throughput-per-core assumptions to Proxmox VE, Nutanix AHV, and Hyper-V
+  component sizing
 - Preserved the existing proxy payload as a compatibility adapter while introducing a dedicated
   `platform_workers` role model
 - Updated platform recommendations to distinguish VMware/Hyper-V proxies from AHV/Proxmox workers
