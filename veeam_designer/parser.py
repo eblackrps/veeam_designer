@@ -106,7 +106,7 @@ def _nas_from_dict(d: dict) -> NasInput:
         object_storage=d.get("object_storage", False),
         immutability_enabled=d.get("immutability_enabled", False),
         storage_native_cft=d.get("storage_native_cft", False),
-        compress_pct=d.get("compress_pct", 30.0),
+        compress_pct=d.get("compress_pct", 0.0),
         growth_rate_pct=d.get("growth_rate_pct", 0.0),
         forecast_years=d.get("forecast_years", 0),
         concurrent_sources=int(d.get("concurrent_sources", 1)),
