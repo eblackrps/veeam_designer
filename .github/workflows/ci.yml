@@ -33,6 +33,9 @@ jobs:
       - name: Type check
         run: python -m mypy .
 
+      - name: Browser JS syntax check
+        run: node --check ui/static/app.js
+
       - name: Test
         run: python -m pytest -q
 
