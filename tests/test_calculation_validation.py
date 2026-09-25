@@ -54,9 +54,9 @@ def _vm_input(**overrides) -> VeeamInput:
 def test_repository_growth_math_uses_projected_change_rate():
     repo = size_repository(_vm_input())
 
-    assert repo.primary_repo_tb == 400.0
+    assert repo.primary_repo_tb == 478.1
     assert repo.gfs_repo_tb == 0.0
-    assert repo.total_repo_tb == 400.0
+    assert repo.total_repo_tb == 478.1
 
 
 def test_vm_runtime_components_stay_consistent_with_growth_horizon():
@@ -67,12 +67,14 @@ def test_vm_runtime_components_stay_consistent_with_growth_horizon():
     network = build_network_plan(vin, size_repository(vin))
 
     assert proxies.proxy_count == 2
-    assert proxies.required_throughput_mb_s == 582.5
-    assert proxies.estimated_capacity_mb_s == 640.0
-    assert repo_perf.required_mb_s == 582.5
-    assert repo_perf.synthetic_full_mb_s == 582.5
-    assert network.required_mbps == 4660.3
-    assert network.meets_target is True
+    assert proxies.total_proxy_cores == 10
+    assert proxies.required_throughput_mb_s == 655.4
+    assert proxies.estimated_capacity_mb_s == 800.0
+    assert repo_perf.required_mb_s == 655.4
+    assert repo_perf.synthetic_full_mb_s == 0.0
+    assert network.required_mbps == 5242.9
+    assert network.achievable_rpo_hours == 0.0
+    assert network.meets_target is False
 
 
 def test_project_payload_honors_years_to_plan_and_read_write_overhead():
@@ -103,11 +105,17 @@ def test_project_payload_honors_years_to_plan_and_read_write_overhead():
     assert payload["kind"] == "vm"
     assert payload["input"]["years_to_plan_for"] == 2
     assert payload["input"]["read_write_overhead"] == 1.0
-    assert payload["repo"]["total_repo_tb"] == 400.0
+    assert payload["repo"]["total_repo_tb"] == 478.1
     assert payload["roles"]["proxies"]["proxy_count"] == 2
-    assert payload["repo_perf"]["required_mb_s"] == 582.5
-    assert payload["wan_accel"]["source_digest_gb_per_source"] == 4000
-    assert payload["wan_accel"]["target_total_free_space_gb"] == 5000
+    assert payload["roles"]["proxies"]["total_proxy_cores"] == 10
+    assert payload["repo_perf"]["required_mb_s"] == 655.4
+    assert payload["repo_perf"]["synthetic_full_mb_s"] == 0.0
+    assert payload["network"]["required_mbps"] == 5242.9
+    assert payload["network"]["meets_target"] is False
+    assert payload["wan_accel"]["mode"] == "high"
+    assert payload["wan_accel"]["source_digest_gb_per_source"] == 461
+    assert payload["wan_accel"]["target_total_free_space_gb"] == 2305
+    assert payload["cost"]["configured"] is False
 
 
 def test_replication_project_honors_daily_change_percent():
@@ -145,6 +153,30 @@ def test_replication_project_honors_daily_change_percent():
     assert high_change.daily_change_pct == 20.0
     assert low_result.required_mbps == 485.5
     assert high_result.required_mbps == 1941.8
+
+
+def test_annual_growth_is_compounded_not_linear():
+    vin = _vm_input(
+        total_data_tb=100.0,
+        annual_growth_percent=50.0,
+        daily_change_percent=0.0,
+        years_to_plan_for=2,
+        primary_retention_days=1,
+    )
+
+    repo = size_repository(vin)
+
+    # 100 * 1.5^2 = 225 TB projected source.
+    # Minimum three points have zero changed data, then 25% reserve.
+    assert repo.primary_repo_tb == 281.2
+
+
+def test_msp_profile_does_not_raise_proxy_task_density_above_two_per_core():
+    select_profile("msp")
+    try:
+        assert CONFIG["tasks_per_core"] == 2
+    finally:
+        select_profile(None)
 
 
 def test_projects_without_profile_reset_to_base_configuration():
