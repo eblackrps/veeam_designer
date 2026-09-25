@@ -6,7 +6,7 @@ from math import ceil
 
 from .config import CONFIG
 from .models import NasDesign, NasInput
-from .workload_math import projected_total_data_tb, tb_to_mb
+from .workload_math import projected_total_data_tb
 
 
 def _compress_ratio(compress_pct: float) -> float:
@@ -16,24 +16,16 @@ def _compress_ratio(compress_pct: float) -> float:
     return 1.0 / (1.0 - pct / 100.0)
 
 
-def _round_up_even(value: int) -> int:
-    return value if value % 2 == 0 else value + 1
-
-
 def size_nas(nin: NasInput) -> NasDesign:
     """Return NAS capacity and general-purpose proxy resources."""
 
     compression_ratio = _compress_ratio(nin.compress_pct)
-    tasks_per_core = 2
-    file_proxy_throughput_mb_per_core = 100.0
 
     effective_tb = projected_total_data_tb(
         total_data_tb=nin.source_tb,
         annual_growth_percent=nin.growth_rate_pct,
         years_to_plan_for=nin.forecast_years,
     )
-    daily_change_tb = effective_tb * max(0.0, nin.daily_change_pct) / 100.0
-
     full_backup_tb = effective_tb / compression_ratio
     incremental_backup_tb = (
         full_backup_tb * (max(0.0, nin.daily_change_pct) / 100.0) * max(0, nin.retention_days)
