@@ -146,13 +146,51 @@ def _size_hyperv_proxies(
     )
 
 
+def _apply_proxy_deployment(
+    sizing: ProxySizing,
+    vin: VeeamInput,
+) -> ProxySizing:
+    """Add deployment-platform overhead without changing role throughput capacity."""
+
+    deployment_mode = (vin.proxy_deployment_mode or "managed_os").strip().lower()
+    hypervisor = vin.hypervisor.lower()
+
+    if deployment_mode == "infrastructure_appliance":
+        if hypervisor != "vmware":
+            raise ValueError(
+                "Veeam Infrastructure Appliance proxy deployment is modeled only for VMware "
+                "backup proxies in this calculator."
+            )
+        sizing.deployment_mode = deployment_mode
+        sizing.allocated_cores_per_proxy = sizing.cores_per_proxy + 2
+        sizing.allocated_ram_gb_per_proxy = sizing.ram_gb_per_proxy + 8
+        sizing.total_allocated_proxy_cores = sizing.proxy_count * sizing.allocated_cores_per_proxy
+        sizing.total_allocated_proxy_ram_gb = (
+            sizing.proxy_count * sizing.allocated_ram_gb_per_proxy
+        )
+        sizing.infrastructure_system_disk_gb = 120
+        sizing.infrastructure_data_disk_gb = 120
+        sizing.notes.append(
+            "Veeam Infrastructure Appliance deployment adds the appliance baseline of 2 vCPU "
+            "and 8 GB RAM to each VMware proxy role, plus 120 GB minimum system and "
+            "120 GB minimum application-data disks."
+        )
+        return sizing
+
+    sizing.deployment_mode = "managed_os"
+    sizing.allocated_cores_per_proxy = sizing.cores_per_proxy
+    sizing.allocated_ram_gb_per_proxy = sizing.ram_gb_per_proxy
+    sizing.total_allocated_proxy_cores = sizing.total_proxy_cores
+    sizing.total_allocated_proxy_ram_gb = sizing.total_proxy_ram_gb
+    return sizing
+
+
 def size_proxies(vin: VeeamInput) -> ProxySizing:
     """
     Size data-mover resources.
 
-    VMware and legacy paths retain throughput-based proxy sizing. Proxmox VE and
-    Nutanix AHV use their vendor-published worker task model and expose the
-    compatibility result through the existing proxy payload.
+    VMware retains throughput-based proxy sizing, Hyper-V uses native task-based proxy
+    requirements, and Proxmox VE / Nutanix AHV use their published worker task models.
     """
     daily_change_size_tb = projected_daily_change_tb(
         total_data_tb=vin.total_data_tb,
@@ -169,13 +207,16 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
     required_throughput_mb_s = daily_backup_mb / backup_window_sec
 
     if vin.hypervisor.lower() in {"hyperv", "hyper-v"}:
-        return _size_hyperv_proxies(vin, required_throughput_mb_s)
+        return _apply_proxy_deployment(
+            _size_hyperv_proxies(vin, required_throughput_mb_s),
+            vin,
+        )
 
     if uses_platform_workers(vin.hypervisor):
         workers = size_platform_workers(vin)
         if workers is None:
             raise ValueError(f"Worker sizing unavailable for platform {vin.hypervisor!r}")
-        return ProxySizing(
+        sizing = ProxySizing(
             proxy_count=workers.worker_count,
             cores_per_proxy=workers.cores_per_worker,
             total_proxy_cores=workers.total_worker_cores,
@@ -191,8 +232,19 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
             disk_gb_per_proxy=float(workers.disk_gb_per_worker),
             sizing_basis=workers.sizing_basis,
             source_url=workers.source_url,
+            deployment_mode="platform_worker",
+            allocated_cores_per_proxy=workers.cores_per_worker,
+            allocated_ram_gb_per_proxy=workers.ram_gb_per_worker,
+            total_allocated_proxy_cores=workers.total_worker_cores,
+            total_allocated_proxy_ram_gb=workers.total_worker_ram_gb,
             notes=list(workers.notes),
         )
+        if (vin.proxy_deployment_mode or "managed_os").strip().lower() == "infrastructure_appliance":
+            raise ValueError(
+                "Platform workers are deployed by their virtualization plug-in and are not "
+                "Veeam Infrastructure Appliance proxy roles."
+            )
+        return sizing
 
     transport = _resolve_transport(vin)
     mb_per_core, throughput_basis = _proxy_throughput_mb_per_core(vin, transport)
@@ -206,11 +258,12 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
     cores_per_proxy = max(2, math.ceil(total_proxy_cores / proxy_count))
     total_proxy_cores = proxy_count * cores_per_proxy
     total_parallel_tasks = total_proxy_cores * tasks_per_core
-    total_proxy_ram_gb = total_proxy_cores * 2
-    ram_per_proxy = max(4, math.ceil(total_proxy_ram_gb / proxy_count))
+    tasks_per_proxy = cores_per_proxy * tasks_per_core
+    ram_per_proxy = max(4, math.ceil(2 + tasks_per_proxy))
+    total_proxy_ram_gb = proxy_count * ram_per_proxy
     estimated_capacity_mb_s = total_proxy_cores * mb_per_core / max(vin.read_write_overhead, 1.0)
 
-    return ProxySizing(
+    sizing = ProxySizing(
         proxy_count=proxy_count,
         cores_per_proxy=cores_per_proxy,
         total_proxy_cores=total_proxy_cores,
@@ -224,6 +277,7 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
         sizing_basis="Veeam VMware incremental proxy guidance",
         source_url="https://bp.veeam.com/vbr/Support/configurations/vmware_proxy.html",
     )
+    return _apply_proxy_deployment(sizing, vin)
 
 
 def size_backup_server(proxies: ProxySizing, vin: VeeamInput) -> BackupServerSizing:
