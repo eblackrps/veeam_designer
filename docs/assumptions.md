@@ -109,10 +109,17 @@ backup environments:
 Above that range, Veeam Designer extends the largest band linearly and marks the result as a
 manual-review case.
 
-For the Linux-based Veeam Software Appliance deployment, the workload-band result is then checked
-against the current appliance minimums. The calculator enforces `8 vCPU` for normal environments
-(`6 vCPU` for up to five workloads), `16 GB RAM + 500 MB per concurrent job`, and a `240 GB`
-system disk.
+The workload-band result is then checked against the current backup-server system requirements for
+the selected deployment:
+
+- both Windows and Linux-based backup servers require at least `16 GB RAM + 500 MB per concurrent job`
+- Windows requires at least `8 vCPU`
+- Veeam Software Appliance requires `8 vCPU`, with `6 vCPU / 16 GB RAM` sufficient for up to five workloads
+- Veeam Software Appliance requires a minimum `240 GB` system disk and a second `240 GB`
+  application-data disk
+- Veeam documents larger SSD system-disk recommendations as protected workload count grows; the
+  calculator reports the vendor minimum and leaves that capacity choice visible as an architecture
+  review item rather than inventing a hard workload threshold for "small", "medium", or "large"
 
 References:
 
