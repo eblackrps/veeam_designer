@@ -56,12 +56,16 @@ def test_run_page_renders_builder():
     client = TestClient(app)
     r = client.get("/run")
     assert r.status_code == 200
-    assert "Architecture sizing for Veeam backup and recovery." in r.text
+    assert "Plan your Veeam architecture." in r.text
+    assert "Size capacity, data movers, WAN, and cost" in r.text
     assert "Protection architecture builder" in r.text
     assert "YAML and API project definition" in r.text
     assert "Recommended design" in r.text
     assert 'data-platforms="vmware"' in r.text
     assert 'data-workload-scope="vm"' in r.text
+    assert '<svg viewBox="0 0 24 24"' in r.text
+    assert 'id="runtime-status"' not in r.text
+    assert "Browser engine ready." not in r.text
 
 
 @pytest.mark.skipif(not HAS_FASTAPI, reason="FastAPI not installed")
