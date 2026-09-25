@@ -5,6 +5,33 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a4] - 2026-09-25
+
+### Fixed
+
+- Replaced the one-size-fits-all repository formula with backup-chain-aware retention sizing for
+  weekly synthetic full, forever-forward incremental, and reverse incremental jobs
+- Replaced the arbitrary 5% immutability capacity tax with an explicit immutability-retention window
+- Corrected annual growth from linear to compounded growth
+- Separated CDP short-term retention from CDP RPO and sized CDP proxy resources from published tiers
+- Corrected WAN accelerator mode, digest, global-cache, and pair-count behavior
+- Switched LTO sizing to native cartridge capacity by default and removed invented scratch/slot/price assumptions
+- Replaced heuristic Veeam ONE tiers and database estimates with current published resource ranges
+- Replaced invented VUL/socket pricing and socket estimates with explicit license-consumption output
+- Corrected NAS file-proxy CPU/RAM task math and object-cache metadata sizing
+- Replaced physical Agent coordinator heuristics with current general-purpose proxy requirements
+- Removed fake Fast Clone full-copy I/O, bandwidth-derived achievable RPO, and invented SOBR extent counts
+- Made Object First sizing explicit instead of treating every object repository as Ootbi
+- Removed embedded market pricing from default cost output and neutralized packaged fallback rates
+- Removed the MSP profile's unsupported 3-tasks-per-core VMware proxy override
+
+### Changed
+
+- Added explicit inputs for immutability days, capacity-tier fraction, Object First node size,
+  Agent concurrency, replication daily change, and CDP retention
+- Relabeled WAN output as transfer-window/average-rate feasibility rather than RPO calculation
+- Updated reports, CLI, browser summaries, and YAML parsing to match the hardened calculation model
+
 ## [5.0.0a3] - 2026-09-25
 
 ### Changed
