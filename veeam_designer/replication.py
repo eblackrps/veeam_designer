@@ -1,17 +1,4 @@
-"""
-VM Replication and CDP sizing module.
-
-Mirrors the Veeam Calculator – Machines / VM Replication and CDP Replication tabs.
-
-Standard replication:
-  - Bandwidth requirement driven by change rate and RPO window
-  - Replica storage = full copy (no compression by default; optional ~10% with compression)
-
-CDP (Continuous Data Protection):
-  - Near-zero RPO (target seconds, not hours)
-  - Dedicated CDP proxy required (separate from backup proxies)
-  - Journal storage: rolling 24-hour window of I/O changes
-"""
+"""VM replication and CDP sizing."""
 
 from __future__ import annotations
 
@@ -20,63 +7,135 @@ from math import ceil
 from .models import ReplicationDesign, ReplicationInput
 
 
-def size_replication(rin: ReplicationInput) -> ReplicationDesign:
-    """Size replication infrastructure for the given ReplicationInput."""
-    daily_change_tb = rin.source_tb * rin.daily_change_pct / 100.0
+def _cdp_proxy_resources(
+    processing_mb_s: float,
+    network_encryption: bool,
+) -> tuple[int, int, int]:
+    """Return proxy count per side, vCPU per proxy, and RAM GB per proxy."""
 
-    # Data that must transfer within one RPO window
-    change_per_rpo_tb = daily_change_tb * (rin.rpo_hours / 24.0)
-    window_seconds = rin.rpo_hours * 3600.0
-    if window_seconds > 0:
-        required_mb_s = (change_per_rpo_tb * 1024.0 * 1024.0) / window_seconds
+    max_per_proxy = 720.0 if network_encryption else 960.0
+    proxy_count = max(1, ceil(max(0.0, processing_mb_s) / max_per_proxy))
+    per_proxy_mb_s = processing_mb_s / proxy_count if proxy_count else 0.0
+
+    if network_encryption:
+        if per_proxy_mb_s <= 360.0:
+            cores, ram_gb = 4, 8
+        elif per_proxy_mb_s <= 540.0:
+            cores, ram_gb = 6, 12
+        else:
+            cores, ram_gb = 8, 16
     else:
-        required_mb_s = 0.0
+        if per_proxy_mb_s <= 480.0:
+            cores, ram_gb = 4, 8
+        elif per_proxy_mb_s <= 720.0:
+            cores, ram_gb = 6, 12
+        else:
+            cores, ram_gb = 8, 16
 
+    return proxy_count, cores, ram_gb
+
+
+def size_replication(rin: ReplicationInput) -> ReplicationDesign:
+    """Size steady-state replication bandwidth and optional CDP infrastructure."""
+
+    source_tb = max(0.0, rin.source_tb)
+    daily_change_tb = source_tb * max(0.0, rin.daily_change_pct) / 100.0
+    daily_change_mb = daily_change_tb * 1024.0 * 1024.0
+
+    # Average bandwidth required to prevent backlog. RPO changes the restore-point cadence,
+    # not the average number of changed bytes produced per day.
+    required_mb_s = daily_change_mb / 86400.0
     required_mbps = required_mb_s * 8.0
     meets_rpo = rin.wan_mbps > 0 and required_mbps <= rin.wan_mbps
 
-    # Replica storage: full VM copy on target side.
-    # With source-side compression: ~10% smaller than source (0.9×).
-    # Without compression: close to source size with ~10% overhead for metadata (1.1×).
-    replica_storage_tb = rin.source_tb * (0.9 if rin.compression else 1.1)
+    # Transport compression affects bytes on the wire, not provisioned replica VM capacity.
+    replica_storage_tb = source_tb
 
+    cdp_proxy_count = 0
     cdp_proxy_cores = 0
+    cdp_proxy_ram_gb = 0
+    cdp_proxy_cache_gb = 0
     cdp_journal_tb = 0.0
 
-    notes: list = []
+    notes: list[str] = [
+        "Replication bandwidth is a steady-state average from the configured daily change rate. "
+        "It does not guarantee the requested RPO during bursts, backlog, or latency events.",
+        "Replica storage is reported as the source VM footprint. Extra standard-replication "
+        "restore-point delta space is not estimated because replica retention is not an input.",
+    ]
 
     if rin.cdp_enabled:
-        # CDP journal: 24 hours of change data per target RPO tier
-        # Journal size = daily_change × journal_hours / 24
-        journal_hours = max(1.0, rin.rpo_seconds / 3600.0 * 24)
-        cdp_journal_tb = daily_change_tb * (journal_hours / 24.0)
-        cdp_journal_tb = max(cdp_journal_tb, 0.01)
+        if not 2 <= rin.rpo_seconds <= 3600:
+            raise ValueError("CDP RPO must be between 2 seconds and 60 minutes.")
 
-        # CDP proxies are dedicated — sized by VM density
-        cdp_proxy_cores = max(4, ceil(rin.vm_count / 50) * 2)
-        notes.append(
-            f"CDP proxy required: {cdp_proxy_cores} cores (dedicated, not shared with backup proxies)."
-        )
-        notes.append(
-            f"CDP journal storage: {cdp_journal_tb:.2f} TB "
-            f"(rolling {journal_hours:.0f}h window at RPO {rin.rpo_seconds}s)."
-        )
+        retention_hours = max(0.0, rin.cdp_retention_hours)
+        raw_short_term_tb = daily_change_tb * (retention_hours / 24.0)
 
-    if not meets_rpo and rin.wan_mbps > 0:
-        bandwidth_deficit = required_mbps - rin.wan_mbps
-        notes.append(
-            f"WAN bandwidth insufficient for target RPO {rin.rpo_hours:.1f}h. "
-            f"Need {required_mbps:.0f} Mbps, have {rin.wan_mbps:.0f} Mbps "
-            f"(deficit {bandwidth_deficit:.0f} Mbps). Consider WAN optimisation or relaxing RPO."
+        # Veeam documents that CDP short-term retention can occupy up to 25% longer than
+        # configured because of chain transformations.
+        cdp_journal_tb = raw_short_term_tb * 1.25
+
+        if rin.cdp_write_io_mb_s > 0:
+            cdp_processing_mb_s = rin.cdp_write_io_mb_s
+            processing_basis = "measured vSphere cluster write I/O"
+        else:
+            cdp_processing_mb_s = required_mb_s
+            processing_basis = (
+                "average changed-data rate assumption; supply measured cluster write I/O "
+                "for production CDP proxy sizing"
+            )
+
+        cdp_proxy_count, cdp_proxy_cores, cdp_proxy_ram_gb = _cdp_proxy_resources(
+            cdp_processing_mb_s,
+            rin.cdp_network_encryption,
         )
-    elif rin.wan_mbps == 0:
-        notes.append("No WAN bandwidth specified – RPO feasibility could not be validated.")
+        cdp_proxy_cache_gb = 50
+
+        notes.append(
+            f"CDP RPO ({rin.rpo_seconds}s) controls restore-point cadence; short-term retention "
+            f"is independently modeled from {retention_hours:g} hour(s)."
+        )
+        notes.append(
+            f"Short-term CDP change data is {raw_short_term_tb:.2f} TB; planned capacity is "
+            f"{cdp_journal_tb:.2f} TB including Veeam's documented allowance for retention "
+            "lasting up to 25% longer during chain transformation."
+        )
+        notes.append(
+            f"CDP proxy sizing uses {processing_basis}. Source and target each require "
+            f"{cdp_proxy_count} proxy/proxies at {cdp_proxy_cores} vCPU / "
+            f"{cdp_proxy_ram_gb} GB RAM per proxy."
+        )
+        notes.append(
+            "Each CDP proxy is planned with the Veeam-recommended minimum 50 GB disk-based "
+            "write-I/O cache."
+        )
+        if rin.rpo_seconds < 15:
+            notes.append(
+                "The selected CDP RPO is supported, but Veeam documents 15 seconds or more as "
+                "the generally optimal target for higher-write workloads."
+            )
+
+    if rin.wan_mbps <= 0:
+        notes.append("No WAN bandwidth specified; steady-state transfer feasibility was not validated.")
+    elif not meets_rpo:
+        notes.append(
+            f"Average changed-data rate requires {required_mbps:.1f} Mbps, above the configured "
+            f"{rin.wan_mbps:.1f} Mbps. Backlog will grow even before burst/latency effects."
+        )
+    else:
+        notes.append(
+            f"Configured WAN bandwidth exceeds the {required_mbps:.1f} Mbps average changed-data "
+            "rate. Validate burst behavior and latency against the requested RPO."
+        )
 
     return ReplicationDesign(
         required_mbps=round(required_mbps, 1),
         meets_rpo=meets_rpo,
         replica_storage_tb=round(replica_storage_tb, 1),
+        cdp_proxy_count_per_side=cdp_proxy_count,
         cdp_proxy_cores=cdp_proxy_cores,
+        cdp_proxy_ram_gb=cdp_proxy_ram_gb,
+        cdp_proxy_cache_gb=cdp_proxy_cache_gb,
         cdp_journal_tb=round(cdp_journal_tb, 2),
         notes=notes,
     )

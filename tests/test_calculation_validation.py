@@ -108,8 +108,9 @@ def test_project_payload_honors_years_to_plan_and_read_write_overhead():
     assert payload["repo"]["total_repo_tb"] == 798.8
     assert payload["roles"]["proxies"]["proxy_count"] == 2
     assert payload["repo_perf"]["required_mb_s"] == 655.4
-    assert payload["wan_accel"]["source_digest_gb_per_source"] == 4500
-    assert payload["wan_accel"]["target_total_free_space_gb"] == 5500
+    assert payload["wan_accel"]["mode"] == "direct"
+    assert payload["wan_accel"]["source_digest_gb_per_source"] == 0
+    assert payload["wan_accel"]["target_total_free_space_gb"] == 0
 
 
 def test_replication_project_honors_daily_change_percent():

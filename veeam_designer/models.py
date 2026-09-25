@@ -333,6 +333,9 @@ class ReplicationInput:
     rpo_hours: float = 1.0
     cdp_enabled: bool = False
     rpo_seconds: int = 15
+    cdp_retention_hours: float = 24.0
+    cdp_write_io_mb_s: float = 0.0
+    cdp_network_encryption: bool = False
     compression: bool = True
     daily_change_pct: float = 5.0
 
@@ -342,7 +345,10 @@ class ReplicationDesign:
     required_mbps: float
     meets_rpo: bool
     replica_storage_tb: float
+    cdp_proxy_count_per_side: int = 0
     cdp_proxy_cores: int = 0
+    cdp_proxy_ram_gb: int = 0
+    cdp_proxy_cache_gb: int = 0
     cdp_journal_tb: float = 0.0
     notes: List[str] = field(default_factory=list)
 
@@ -381,9 +387,12 @@ class WanAccelInput:
     source_tb: float
     wan_mbps: float
     backup_copy_frequency_hours: float = 24.0
-    dedupe_ratio: float = 3.0
-    compression_ratio: float = 1.6
+    dedupe_ratio: float = 1.0
+    compression_ratio: float = 1.0
     daily_change_pct: float = 5.0
+    mode: str = "auto"
+    os_type_count: int = 0
+    cache_size_gb_per_source: int = 100
 
 
 @dataclass
@@ -397,6 +406,7 @@ class WanAccelDesign:
     effective_mbps: float
     meets_copy_window: bool
     backup_copy_window_hours: float
+    mode: str = "low"
     notes: List[str] = field(default_factory=list)
 
 
