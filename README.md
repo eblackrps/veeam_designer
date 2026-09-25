@@ -265,8 +265,9 @@ paths.
 - Hyper-V proxy CPU, memory, disk, and concurrency sizing follows Veeam's native task-based
   requirements; required data rate is reported separately because no throughput-per-core value is
   inferred.
-- Veeam Software Appliance minimum CPU, RAM-per-concurrent-job, and system-disk requirements are
-  enforced on top of the workload sizing bands.
+- Current backup-server CPU and RAM-per-concurrent-job minimums are enforced on top of the workload
+  sizing bands for both Windows and Linux deployments; Software Appliance output also includes both
+  240 GB minimum appliance disks.
 - Mixed-environment proxy throughput, CDP proxy sizing, Veeam ONE sizing, and cost/licensing
   outputs still include documented heuristics where a direct model is not yet wired into this UI.
 
