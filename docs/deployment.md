@@ -68,9 +68,10 @@ Pushing to `main`:
 - runs the full CI matrix on Python 3.10, 3.11, and 3.12
 - validates browser JavaScript syntax
 - rebuilds and deploys GitHub Pages
-- rebuilds and pushes the `latest` Docker images
+- rebuilds and pushes Docker images to both registries as `latest` and the package version
+  (for example, `5.0.0a4`)
 
-Pushing a version tag such as `v5.0.0` also publishes matching versioned Docker tags to:
+Pushing a version tag such as `v5.0.0` also publishes the Git tag as an additional Docker tag to:
 
 - `emb079/veeam-designer`
 - `ghcr.io/eblackrps/veeam-designer`
