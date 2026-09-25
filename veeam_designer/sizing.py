@@ -33,6 +33,8 @@ from .workload_math import projected_daily_change_tb, projected_total_data_tb
 
 
 def size_repository(vin: VeeamInput) -> RepoSizing:
+    """Size provisioned repository capacity from the selected Veeam backup-chain model."""
+
     effective_total_tb = projected_total_data_tb(
         total_data_tb=vin.total_data_tb,
         annual_growth_percent=vin.annual_growth_percent,
@@ -45,30 +47,111 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
         years_to_plan_for=vin.years_to_plan_for,
     )
 
-    weeks_in_retention = vin.primary_retention_days / 7.0
-    week_full_tb = effective_total_tb
-    week_incr_tb = daily_change_size_tb * 6
-    week_total_tb = week_full_tb + week_incr_tb
+    reduction_ratio = max(0.01, vin.compression_ratio * vin.dedupe_ratio)
+    full_physical_tb = effective_total_tb / reduction_ratio
+    incremental_physical_tb = daily_change_size_tb / reduction_ratio
 
-    primary_logical_tb = week_total_tb * weeks_in_retention
-    primary_physical_tb = primary_logical_tb / (vin.compression_ratio * vin.dedupe_ratio)
-    primary_repo_tb = primary_physical_tb * CONFIG["repo_overhead_factor"]
+    retention_days = max(0, int(vin.primary_retention_days))
+    if vin.immutability_enabled:
+        configured_lock_days = (
+            vin.immutability_days if vin.immutability_days > 0 else retention_days
+        )
+        retention_days = max(retention_days, configured_lock_days)
 
-    gfs_weekly_tb = vin.gfs_weekly_count * effective_total_tb / vin.compression_ratio
-    gfs_monthly_tb = vin.gfs_monthly_count * effective_total_tb / vin.compression_ratio
-    gfs_yearly_tb = vin.gfs_yearly_count * effective_total_tb / vin.compression_ratio
-    gfs_repo_tb = (gfs_weekly_tb + gfs_monthly_tb + gfs_yearly_tb) * CONFIG["gfs_overhead_factor"]
+    # VBR v13 daily retention retains N+1 days and never fewer than three restore points.
+    restore_points = max(3, retention_days + 1)
+    backup_type = (vin.backup_type or "synthetic_full_weekly").strip().lower()
+    notes: list[str] = []
+
+    if backup_type == "forever_forward_incremental":
+        chain_tb = full_physical_tb + incremental_physical_tb * (restore_points - 1)
+        calculation_basis = (
+            f"Forever-forward incremental: 1 full + {restore_points - 1} incremental "
+            f"restore points ({restore_points} total)."
+        )
+    elif backup_type == "reverse_incremental":
+        chain_tb = full_physical_tb + incremental_physical_tb * (restore_points - 1)
+        calculation_basis = (
+            f"Reverse incremental: latest full + {restore_points - 1} rollback points "
+            f"({restore_points} total)."
+        )
+        notes.append(
+            "Reverse incremental is deprecated in Veeam Backup & Replication v13. "
+            "The capacity model covers the retained full/rollback chain; operational free-space "
+            "reserve is applied separately."
+        )
+    else:
+        # Forward incremental with a weekly synthetic full. On Fast Clone repositories, Veeam
+        # recommends treating physical capacity similarly to forever-forward because cloned fulls
+        # reuse blocks. Without Fast Clone, retention is enforced per chain and a weekly schedule
+        # can temporarily retain up to six restore points beyond the requested daily window.
+        if vin.refs_xfs:
+            chain_tb = full_physical_tb + incremental_physical_tb * (restore_points - 1)
+            calculation_basis = (
+                f"Weekly synthetic full with Fast Clone: physical chain modeled as 1 full + "
+                f"{restore_points - 1} changed-data restore points."
+            )
+            notes.append(
+                "ReFS/XFS Fast Clone prevents synthetic fulls from consuming another complete "
+                "physical full. Actual block reuse depends on workload change locality."
+            )
+        else:
+            peak_restore_points = restore_points + 6
+            full_count = math.ceil(peak_restore_points / 7)
+            incremental_count = peak_restore_points - full_count
+            chain_tb = (
+                full_physical_tb * full_count
+                + incremental_physical_tb * incremental_count
+            )
+            calculation_basis = (
+                f"Weekly synthetic full without Fast Clone: conservative chain peak of "
+                f"{peak_restore_points} restore points ({full_count} full, "
+                f"{incremental_count} incremental)."
+            )
+            notes.append(
+                "Forward-incremental retention is enforced per backup chain. With weekly fulls, "
+                "an older chain can remain until the newer chain satisfies retention; the "
+                "calculator allows up to six extra daily restore points at the chain boundary."
+            )
+
+    reserve_factor = max(1.0, float(CONFIG.get("repo_overhead_factor", 1.0)))
+    primary_repo_tb = chain_tb * reserve_factor
+    if reserve_factor > 1.0:
+        notes.append(
+            f"Provisioned primary capacity includes a configured operational reserve of "
+            f"{(reserve_factor - 1.0) * 100:.0f}% for merge/transform workspace and variance."
+        )
+
+    gfs_count = max(0, vin.gfs_weekly_count) + max(0, vin.gfs_monthly_count) + max(
+        0, vin.gfs_yearly_count
+    )
+    if gfs_count:
+        # Exact Fast Clone physical usage for long-term points depends on block churn and cannot
+        # be known from retention counts alone. Use a full-equivalent upper bound rather than an
+        # unsupported dedupe multiplier.
+        gfs_repo_tb = gfs_count * full_physical_tb
+        notes.append(
+            f"GFS capacity is reported as a conservative full-equivalent upper bound for "
+            f"{gfs_count} retained GFS points. Fast Clone can materially reduce actual physical "
+            "usage, but exact savings require block-level change history."
+        )
+    else:
+        gfs_repo_tb = 0.0
 
     total_repo_tb = primary_repo_tb + gfs_repo_tb
 
-    # Round 3: immutability adds ~5% for XFS extended attribute / object-lock metadata
     if vin.immutability_enabled:
-        total_repo_tb *= 1.05
+        notes.append(
+            f"Immutability is modeled by extending the effective short-term retention window "
+            f"to {retention_days} day(s); no arbitrary metadata percentage is added."
+        )
 
     return RepoSizing(
         primary_repo_tb=round(primary_repo_tb, 1),
         gfs_repo_tb=round(gfs_repo_tb, 1),
         total_repo_tb=round(total_repo_tb, 1),
+        calculation_basis=calculation_basis,
+        notes=notes,
     )
 
 
@@ -140,12 +223,12 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
             "segmented from production where possible.",
         )
 
-    # Round 4: ObjectFirst Orca sizing when repo_type is object storage
+    # Object First sizing is opt-in. Generic object storage must not be treated as Ootbi.
     orca = None
-    if vin.repo_type == "object":
+    if vin.repo_type == "object" and vin.object_storage_provider.lower() == "objectfirst":
         orca = size_orca(
             total_protected_tb=repo.total_repo_tb,
-            immutability_days=30 if vin.immutability_enabled else 0,
+            node_capacity_tb=vin.objectfirst_node_tb,
         )
 
     # v3: replication sizing
