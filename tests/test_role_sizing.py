@@ -1,3 +1,5 @@
+import pytest
+
 from typing import Any, cast
 
 from veeam_designer.models import ProxySizing, RepoSizing, VeeamInput
@@ -198,3 +200,41 @@ def test_hyperv_on_host_mode_accounts_for_supplied_hosts():
     assert result.transport_mode == "on-host"
     assert result.total_parallel_tasks == 16
     assert any("On-host mode" in note for note in result.notes)
+
+
+def test_vmware_infrastructure_appliance_adds_overhead_without_inflating_throughput():
+    managed = size_proxies(
+        _vm_input(
+            hypervisor="vmware",
+            on_host_proxy=False,
+            has_san_access=True,
+            proxy_deployment_mode="managed_os",
+        )
+    )
+    appliance = size_proxies(
+        _vm_input(
+            hypervisor="vmware",
+            on_host_proxy=False,
+            has_san_access=True,
+            proxy_deployment_mode="infrastructure_appliance",
+        )
+    )
+
+    assert appliance.proxy_count == managed.proxy_count
+    assert appliance.cores_per_proxy == managed.cores_per_proxy
+    assert appliance.estimated_capacity_mb_s == managed.estimated_capacity_mb_s
+    assert appliance.allocated_cores_per_proxy == appliance.cores_per_proxy + 2
+    assert appliance.allocated_ram_gb_per_proxy == appliance.ram_gb_per_proxy + 8
+    assert appliance.infrastructure_system_disk_gb == 120
+    assert appliance.infrastructure_data_disk_gb == 120
+    assert appliance.deployment_mode == "infrastructure_appliance"
+
+
+def test_infrastructure_appliance_proxy_mode_is_rejected_for_non_vmware_platforms():
+    with pytest.raises(ValueError, match="Infrastructure Appliance"):
+        size_proxies(
+            _vm_input(
+                hypervisor="hyperv",
+                proxy_deployment_mode="infrastructure_appliance",
+            )
+        )
