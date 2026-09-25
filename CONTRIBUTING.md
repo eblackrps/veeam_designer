@@ -24,6 +24,7 @@ Run these before opening a pull request:
 python -m ruff check .
 python -m ruff format --check .
 python -m mypy .
+node --check ui/static/app.js
 python -m pytest -q
 python -m build
 python tools/build_pages.py --output _site
@@ -33,8 +34,8 @@ python tools/build_pages.py --output _site
 
 - Keep the web UI grounded in actual Veeam planning workflows
 - Preserve the live YAML workflow and API parity
-- Update screenshots whenever the visible calculator UI changes materially
-- Keep Docker instructions and runtime commands aligned with the real app
+- Keep the FastAPI, Docker, and GitHub Pages UI paths aligned
+- Keep documentation and runtime commands aligned with the real app
 
 ## Pull Requests
 
