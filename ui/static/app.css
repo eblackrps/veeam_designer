@@ -394,6 +394,78 @@ body {
   font-weight: 600;
 }
 
+.global-advanced {
+  margin-top: 1.2rem;
+}
+
+.editor-details > summary,
+.result-details > summary {
+  list-style: none;
+}
+
+.editor-details > summary::-webkit-details-marker,
+.result-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-details-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.editor-details-summary h2 {
+  margin: 0.35rem 0 0;
+  font-family: var(--title);
+  font-size: 1.25rem;
+}
+
+.editor-details[open] .editor-details-summary {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.editor-details-body {
+  padding-top: 1rem;
+}
+
+.editor-controls {
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.editor-controls .editor-note {
+  max-width: 34rem;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.summary-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.result-details {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.result-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.result-details[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;
