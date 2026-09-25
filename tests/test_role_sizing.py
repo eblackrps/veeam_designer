@@ -1,6 +1,6 @@
-import pytest
-
 from typing import Any, cast
+
+import pytest
 
 from veeam_designer.models import ProxySizing, RepoSizing, VeeamInput
 from veeam_designer.platforms import size_platform_workers
