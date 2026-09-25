@@ -10,7 +10,7 @@ from veeam_designer.replication import size_replication
 from veeam_designer.repo_perf import estimate_repo_perf
 from veeam_designer.roles import size_proxies
 from veeam_designer.service import design_payload_from_project_text
-from veeam_designer.sizing import size_repository
+from veeam_designer.sizing import design_veeam_environment, size_repository
 
 
 def _vm_input(**overrides) -> VeeamInput:
@@ -111,6 +111,26 @@ def test_project_payload_honors_years_to_plan_and_read_write_overhead():
     assert payload["wan_accel"]["mode"] == "direct"
     assert payload["wan_accel"]["source_digest_gb_per_source"] == 0
     assert payload["wan_accel"]["target_total_free_space_gb"] == 0
+
+
+def test_vm_auto_wan_path_does_not_inherit_repository_reduction_ratios():
+    design = design_veeam_environment(
+        _vm_input(
+            total_data_tb=100.0,
+            annual_growth_percent=0.0,
+            daily_change_percent=5.0,
+            years_to_plan_for=0,
+            wan_bandwidth_mbps=100.0,
+            wan_accel_mode="low",
+            compression_ratio=3.0,
+            dedupe_ratio=4.0,
+        )
+    )
+
+    assert design.wan_accel is not None
+    assert design.wan_accel.mode == "low"
+    assert design.wan_accel.effective_mbps == 100.0
+    assert design.wan_accel.source_digest_gb_per_source == 2000
 
 
 def test_replication_project_honors_daily_change_percent():

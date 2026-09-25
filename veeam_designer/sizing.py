@@ -289,9 +289,10 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
                 years_to_plan_for=vin.years_to_plan_for,
             ),
             wan_mbps=vin.wan_bandwidth_mbps,
-            dedupe_ratio=vin.dedupe_ratio,
-            compression_ratio=vin.compression_ratio,
+            dedupe_ratio=1.0,
+            compression_ratio=1.0,
             daily_change_pct=vin.daily_change_percent,
+            mode=vin.wan_accel_mode,
         )
         wan_accel_design = size_wan_accel(wa_in)
 

@@ -30,6 +30,7 @@ class VeeamInput:
     avg_vm_size_gb: float = 0.0
 
     wan_bandwidth_mbps: float = 0.0
+    wan_accel_mode: str = "auto"
     repo_type: str = "sobr"
 
     hypervisor: str = "vmware"

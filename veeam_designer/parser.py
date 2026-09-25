@@ -31,6 +31,7 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         vm_count=d.get("vm_count", 0),
         avg_vm_size_gb=d.get("avg_vm_size_gb", 0.0),
         wan_bandwidth_mbps=d.get("wan_bandwidth_mbps", 0.0),
+        wan_accel_mode=str(d.get("wan_accel_mode", "auto")),
         repo_type=d.get("repo_type", "sobr"),
         hypervisor=d.get("hypervisor", "vmware"),
         has_san_access=d.get("has_san_access", False),
