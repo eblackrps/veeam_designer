@@ -802,9 +802,9 @@ function renderDashboard(dashboard) {
           "Backup Server",
           `${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB${site.bs_deployment_mode ? ` / ${site.bs_deployment_mode}` : ""}`,
         )}
-        ${renderMetric("Required WAN", `${formatNumber(site.wan_required_mbps, 1)} Mbps`)}
-        ${renderMetric("Yearly On-Prem", formatCurrency(site.yearly_onprem_usd))}
-        ${renderMetric("Break-even", `${formatNumber(site.break_even_years, 1)} years`)}
+        ${renderMetric("Avg WAN Rate", `${formatNumber(site.wan_required_mbps, 1)} Mbps`)}
+        ${site.cost_configured ? renderMetric("Configured On-Prem", formatCurrency(site.yearly_onprem_usd)) : ""}
+        ${site.cost_configured && site.break_even_years ? renderMetric("Break-even", `${formatNumber(site.break_even_years, 1)} years`) : ""}
       </dl>
     `;
     dashboardSites.appendChild(article);
