@@ -57,8 +57,9 @@ def test_run_page_renders_builder():
     r = client.get("/run")
     assert r.status_code == 200
     assert "Design Veeam backup platforms with clear sizing" in r.text
-    assert "Interactive design composer" in r.text
-    assert "Live YAML workspace" in r.text
+    assert "Protection architecture builder" in r.text
+    assert "YAML and API project definition" in r.text
+    assert "Recommended design" in r.text
 
 
 @pytest.mark.skipif(not HAS_FASTAPI, reason="FastAPI not installed")
