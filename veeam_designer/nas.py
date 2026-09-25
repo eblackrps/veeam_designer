@@ -68,39 +68,35 @@ def size_nas(nin: NasInput) -> NasDesign:
 
     total_repo_tb = primary_repo_tb + cache_repo_tb
 
-    if nin.backup_window_hours > 0:
-        required_mb_s = tb_to_mb(daily_change_tb) / (nin.backup_window_hours * 3600.0)
-        files_per_hour = (nin.file_count_millions * 1_000_000.0) / nin.backup_window_hours
-    else:
-        required_mb_s = 0.0
-        files_per_hour = 0.0
-
-    throughput_processing_cores = (
-        ceil((required_mb_s / file_proxy_throughput_mb_per_core) / tasks_per_core)
-        if required_mb_s
-        else 0
-    )
-    file_processing_cores = (
-        ceil((files_per_hour / 5_000_000.0) / tasks_per_core) if files_per_hour else 0
-    )
-    processing_cores = _round_up_even(max(2, throughput_processing_cores, file_processing_cores))
-
-    # Two proxies provide production availability when the workload has multiple shares.
+    concurrent_sources = max(1, min(max(1, nin.share_count), nin.concurrent_sources))
     proxy_count = 2 if nin.share_count > 1 else 1
-    os_cores = 2 * proxy_count
-    os_ram_gb = 4 * proxy_count
-    processing_ram_gb = ceil(processing_cores * 1.33 * tasks_per_core)
-    file_proxy_cores = processing_cores + os_cores
-    file_proxy_ram_gb = processing_ram_gb + os_ram_gb
+    sources_per_proxy = max(1, ceil(concurrent_sources / proxy_count))
+
+    if nin.object_storage:
+        file_proxy_cores_each = 2 + (6 * sources_per_proxy)
+        file_proxy_ram_gb_each = 4 + (16 * sources_per_proxy)
+        target_basis = "object-storage target"
+    else:
+        file_proxy_cores_each = 2 + (4 * sources_per_proxy)
+        file_proxy_ram_gb_each = 4 + (4 * sources_per_proxy)
+        target_basis = "direct/NAS/deduplicating target"
+
+    file_proxy_cores = proxy_count * file_proxy_cores_each
+    file_proxy_ram_gb = proxy_count * file_proxy_ram_gb_each
 
     notes.append(
-        f"General-purpose proxy processing uses Veeam BP values of 100 MB/s per core or "
-        f"5 million files/hour per task, at {tasks_per_core} tasks/core. The higher requirement "
-        f"is rounded to an even {processing_cores} processing cores."
+        f"General-purpose proxy sizing follows Veeam 13.1 unstructured-data requirements for a "
+        f"{target_basis}: {file_proxy_cores_each} vCPU / {file_proxy_ram_gb_each} GB RAM per "
+        f"proxy at {sources_per_proxy} concurrently processed source(s) per proxy."
     )
+    if proxy_count > 1:
+        notes.append(
+            "Two proxies are included for production availability, matching Veeam's recommendation "
+            "to select at least two proxies for file-share backup."
+        )
     notes.append(
-        f"Provisioned total for {proxy_count} proxy/proxies adds 2 OS cores and 4 GB OS RAM per "
-        f"proxy: {file_proxy_cores} vCPU / {file_proxy_ram_gb} GB RAM total."
+        f"Concurrent source count is explicit ({concurrent_sources}). File count and backup window "
+        "are not converted into CPU with an unpublished throughput heuristic."
     )
 
     if nin.storage_native_cft:
@@ -128,5 +124,7 @@ def size_nas(nin: NasInput) -> NasDesign:
         file_proxy_cores=file_proxy_cores,
         file_proxy_ram_gb=file_proxy_ram_gb,
         file_proxy_count=proxy_count,
+        file_proxy_cores_each=file_proxy_cores_each,
+        file_proxy_ram_gb_each=file_proxy_ram_gb_each,
         notes=notes,
     )
