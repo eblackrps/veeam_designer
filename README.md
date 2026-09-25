@@ -4,8 +4,9 @@ Veeam Designer is a web-first sizing and architecture calculator for Veeam backu
 It helps Veeam administrators model repository footprint, proxy and backup server requirements,
 WAN feasibility, replication pressure, NAS protection, licensing, tape, compliance, and
 high-level cost tradeoffs from a guided UI, YAML project files, Docker, GitHub Pages, or the CLI.
-Release `4.0.4` calibrates the core sizing math against published Veeam guidance, documents the
-remaining heuristics explicitly, and keeps the Docker, Pages, API, and package workflows aligned.
+The `5.0.0a1` development line introduces platform-aware component sizing while `4.0.4` remains
+the stable release. Proxmox VE and Nutanix AHV now use native Veeam worker models, and backup-server
+sizing can account for the Linux-based Veeam Software Appliance.
 
 ## Why It Exists
 
@@ -105,7 +106,7 @@ The default experience is the browser calculator at `/run`.
 ### Calculator Modes
 
 - `VM Backup` for multi-site infrastructure planning with site cards, GFS retention, capacity tier,
-  WAN, and proxy assumptions
+  WAN, platform-aware proxy/worker sizing, and backup-server deployment selection
 - `NAS` for unstructured data sizing, file proxy estimation, and cache / repository demand
 - `Physical` for agent-based workloads and coordinator sizing
 - `Replication` for replica storage, WAN requirements, and CDP pressure
@@ -259,9 +260,13 @@ paths.
 - WAN accelerator sizing follows Veeam low-bandwidth-mode digest and global-cache guidance.
 - NAS sizing follows Veeam unstructured-data guidance and treats NAS backups as
   incremental-forever, so NAS GFS counts are not separately sized.
-- Hyper-V and AHV proxy throughput, CDP proxy sizing, Veeam ONE sizing, and cost/licensing
-  outputs still include documented heuristics where Veeam does not publish a direct formula for
-  this UI.
+- Proxmox VE and Nutanix AHV use Veeam's native task-based worker sizing rather than VMware proxy
+  throughput assumptions.
+- Veeam Software Appliance minimum CPU, RAM-per-concurrent-job, and system-disk requirements are
+  enforced on top of the workload sizing bands.
+- Hyper-V and mixed-environment proxy throughput, CDP proxy sizing, Veeam ONE sizing, and
+  cost/licensing outputs still include documented heuristics where a direct model is not yet wired
+  into this UI.
 
 The detailed assumptions, formulas, and source links are in [docs/assumptions.md](docs/assumptions.md).
 
