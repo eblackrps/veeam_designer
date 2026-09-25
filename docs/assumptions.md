@@ -77,22 +77,30 @@ References:
 
 ### Hyper-V backup proxies
 
-Hyper-V uses Veeam's task-based proxy requirements instead of VMware throughput-per-core values:
+Veeam's Best Practice Guide directs Hyper-V proxy sizing to the vSphere proxy sizing method. Veeam
+Designer therefore sizes the aggregate Hyper-V proxy compute requirement from changed data,
+backup-window throughput, and the virtual-proxy incremental baseline, then applies Hyper-V-specific
+task and system-requirement floors:
 
-- minimum `2 vCPU`
+- default throughput baseline: `80 MB/s` per core for incremental virtual-proxy processing
+- optional `throughput_mb_per_core` remains available for environment-specific benchmark data
 - no more than `2 concurrent tasks per CPU core`
-- `2 GB RAM + 500 MB` per concurrent task
+- minimum `2 vCPU` per proxy/host allocation
+- off-host memory meets both the Hyper-V minimum of `2 GB + 500 MB per task` and the vSphere
+  planning allowance of up to `2 GB per core`
+- on-host memory uses the stronger Hyper-V Best Practice allowance of up to `2 GB per running task`
 - `300 MB` proxy disk footprint
-- on-host designs treat the supplied Hyper-V host count as the proxy footprint because source hosts
-  perform the proxy role
-- off-host designs size the required proxy count from desired concurrent tasks and per-proxy limits
+- on-host designs distribute aggregate compute across the supplied Hyper-V host count
+- off-host designs distribute aggregate compute across the requested task/proxy footprint
 
-The calculator still reports the data rate required to finish the changed data inside the backup
-window, but it does not manufacture an effective MB/s capacity for Hyper-V because Veeam does not
-publish a direct Hyper-V throughput-per-core value for this model.
+The vSphere throughput value is an adopted planning baseline rather than a Hyper-V-specific
+performance guarantee. The Hyper-V Best Practice Guide explicitly points to the vSphere sizing
+method, but environment benchmarking remains the preferred override for production designs.
 
 References:
 
+- [Veeam Best Practice Guide: Hyper-V proxy](https://bp.veeam.com/vbr/2_Design_Structures/D_Veeam_Components/D_backup_proxies/hyperv_proxies.html)
+- [Veeam Best Practice Guide: Hyper-V backup modes](https://bp.veeam.com/vbr/Support/S_Hyper-V/backupmodes.html)
 - [Veeam User Guide: Hyper-V backup proxy system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html)
 - [Veeam User Guide: limitation of concurrent tasks](https://helpcenter.veeam.com/docs/vbr/userguide/limiting_tasks.html)
 
