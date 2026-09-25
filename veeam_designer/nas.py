@@ -87,7 +87,7 @@ def size_nas(nin: NasInput) -> NasDesign:
     bp_ram_each = ceil((processing_ram_gb + (4 * proxy_count)) / proxy_count)
 
     # Current user-guide minimums for unstructured-data proxy tasks.
-    system_min_cores_each = max(2, 2 * tasks_per_proxy)
+    system_min_cores_each = max(4, 2 * tasks_per_proxy)
     system_min_ram_each = 4 + (4 * tasks_per_proxy)
 
     file_proxy_cores_each = max(bp_cores_each, system_min_cores_each)
