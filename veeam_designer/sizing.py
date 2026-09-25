@@ -174,7 +174,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
 
     if not network.meets_target:
         notes["wan"] = (
-            "WAN bandwidth does not meet target RPO; replication/copy jobs will lag behind."
+            "WAN bandwidth cannot carry the projected changed data inside the configured transfer window."
         )
 
     if vin.vm_count and roles.proxies.total_parallel_tasks < vin.vm_count / 10:
