@@ -430,13 +430,17 @@
     <tr><td class="label">Total proxy RAM</td><td class="value">{{ site.proxy_ram_gb | default(0) }} GB</td></tr>
     <tr><td class="label">Transport mode</td><td class="value">{{ site.transport_mode | default("auto") }}</td></tr>
     <tr><td class="label">Required throughput</td><td class="value">{{ "%.1f" | format(site.required_mb_s | default(0)) }} MB/s</td></tr>
-    <tr><td class="label">Estimated effective capacity</td><td class="value">{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s</td></tr>
+    <tr><td class="label">Estimated effective capacity</td><td class="value">{% if site.proxy_capacity_known %}{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s{% else %}Not modeled{% endif %}</td></tr>
     <tr><td class="label">Sizing basis</td><td class="value">{{ site.proxy_throughput_basis | default("auto") }}</td></tr>
     <tr><td class="label">Proxy load ratio</td>
         <td class="value">
-          {% set ratio = site.proxy_load_ratio | default(0) %}
-          {{ "%.0f" | format(ratio * 100) }}%
-          {% if ratio > 0.85 %} <span style="color:#842029;"> — over-loaded</span>{% endif %}
+          {% if site.proxy_capacity_known %}
+            {% set ratio = site.proxy_load_ratio | default(0) %}
+            {{ "%.0f" | format(ratio * 100) }}%
+            {% if ratio > 0.85 %} <span style="color:#842029;"> — over-loaded</span>{% endif %}
+          {% else %}
+            Not modeled
+          {% endif %}
         </td>
     </tr>
   </tbody>
