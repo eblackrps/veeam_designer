@@ -29,7 +29,7 @@ docker run --rm -p 8000:8000 veeam-designer
 The published Docker Hub image is:
 
 - `emb079/veeam-designer:latest`
-- `emb079/veeam-designer:v4.0.4`
+- versioned tags such as `emb079/veeam-designer:v5.0.0`
 
 Run it directly with:
 
@@ -67,7 +67,7 @@ Then serve the generated `_site/` directory with any static file server, or let
 ## CI Publishing
 
 - Pushing to `main` runs CI, republishes GitHub Pages, and refreshes the `latest` Docker image.
-- Pushing a version tag such as `v4.0.4` publishes Docker images to
+- Pushing a version tag such as `v5.0.0` publishes Docker images to
   `emb079/veeam-designer` and `ghcr.io/eblackrps/veeam-designer`.
 - The package version, Docker tag, and Pages UI version badge should always match the same release.
 
