@@ -3,7 +3,16 @@ from pathlib import Path
 from typing import Any, List, Tuple
 
 from .config import CONFIG, select_profile
-from .models import AgentInput, NasInput, ReplicationInput, VeeamInput
+from .models import (
+    AgentInput,
+    LicenseInput,
+    NasInput,
+    ReplicationInput,
+    TapeInput,
+    VeeamInput,
+    VeeamOneInput,
+    WanAccelInput,
+)
 
 try:
     import yaml  # type: ignore
@@ -32,6 +41,8 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         avg_vm_size_gb=d.get("avg_vm_size_gb", 0.0),
         wan_bandwidth_mbps=d.get("wan_bandwidth_mbps", 0.0),
         repo_type=d.get("repo_type", "sobr"),
+        object_storage_provider=d.get("object_storage_provider", "generic"),
+        objectfirst_node_tb=float(d.get("objectfirst_node_tb", 0.0)),
         hypervisor=d.get("hypervisor", "vmware"),
         has_san_access=d.get("has_san_access", False),
         on_host_proxy=d.get("on_host_proxy", True),
@@ -53,10 +64,18 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         # Round 3
         refs_xfs=d.get("refs_xfs", True),
         immutability_enabled=d.get("immutability_enabled", False),
+        immutability_days=int(
+            d.get(
+                "immutability_days",
+                d.get("primary_retention_days", 30)
+                if d.get("immutability_enabled", False)
+                else 0,
+            )
+        ),
         block_generation_days=d.get("block_generation_days", 10),
         # Round 5
         capacity_tier_enabled=d.get("capacity_tier_enabled", False),
-        capacity_tier_fraction=d.get("capacity_tier_fraction", 0.5),
+        capacity_tier_fraction=d.get("capacity_tier_fraction", 0.0),
         direct_to_object=d.get("direct_to_object", False),
         capacity_tier_immutable=d.get("capacity_tier_immutable", False),
         # v3: compliance
@@ -65,8 +84,11 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         replication_input=_replication_input_from_dict(d),
         # v3: nas sub-input
         nas_input=_nas_input_from_site_dict(d),
-        # v3: tape sub-input
+        # Optional component sub-inputs
+        wan_accel_input=_wan_accel_input_from_dict(d),
         tape_input=_tape_input_from_dict(d),
+        license_input=_license_input_from_dict(d),
+        veeam_one_input=_veeam_one_input_from_dict(d),
     )
 
 
@@ -99,6 +121,7 @@ def _agent_from_dict(d: dict) -> AgentInput:
         retention_days=d.get("retention_days", 14),
         os_type=d.get("os_type", "windows"),
         network_bandwidth_mbps=d.get("network_bandwidth_mbps", 1000.0),
+        concurrent_tasks=int(d.get("concurrent_tasks", 4)),
     )
 
 
@@ -110,6 +133,7 @@ def _replication_from_dict(d: dict) -> ReplicationInput:
         rpo_hours=d.get("rpo_hours", 1.0),
         cdp_enabled=d.get("cdp_enabled", False),
         rpo_seconds=d.get("rpo_seconds", 15),
+        cdp_retention_hours=float(d.get("cdp_retention_hours", 24.0)),
         compression=d.get("compression", True),
         daily_change_pct=d.get("daily_change_pct", 5.0),
     )
@@ -128,6 +152,7 @@ def _replication_input_from_dict(d: dict):
         rpo_hours=float(rep_d.get("rpo_hours", 1.0)),
         cdp_enabled=bool(rep_d.get("cdp_enabled", False)),
         rpo_seconds=int(rep_d.get("rpo_seconds", 15)),
+        cdp_retention_hours=float(rep_d.get("cdp_retention_hours", 24.0)),
         compression=bool(rep_d.get("compression", True)),
         daily_change_pct=float(rep_d.get("daily_change_pct", 5.0)),
     )
@@ -140,17 +165,62 @@ def _nas_input_from_site_dict(d: dict):
     return _nas_from_dict(nas_d)
 
 
+def _wan_accel_input_from_dict(d: dict):
+    wan_d = d.get("wan_accel")
+    if not wan_d:
+        return None
+    return WanAccelInput(
+        source_tb=float(wan_d.get("source_tb", d.get("total_data_tb", 0.0))),
+        wan_mbps=float(wan_d.get("wan_mbps", d.get("wan_bandwidth_mbps", 0.0))),
+        backup_copy_frequency_hours=float(wan_d.get("backup_copy_frequency_hours", 24.0)),
+        dedupe_ratio=float(wan_d.get("dedupe_ratio", 1.0)),
+        compression_ratio=float(wan_d.get("compression_ratio", 1.0)),
+        daily_change_pct=float(wan_d.get("daily_change_pct", d.get("daily_change_percent", 5.0))),
+        mode=str(wan_d.get("mode", "auto")),
+        os_type_count=int(wan_d.get("os_type_count", 0)),
+        cache_size_gb_per_source=int(wan_d.get("cache_size_gb_per_source", 100)),
+    )
+
+
 def _tape_input_from_dict(d: dict):
     tape_d = d.get("tape")
     if not tape_d:
         return None
-    from .models import TapeInput
-
     return TapeInput(
         archive_tb=float(tape_d.get("archive_tb", 0.0)),
         lto_generation=int(tape_d.get("lto_generation", 9)),
         retention_years=int(tape_d.get("retention_years", 7)),
         daily_change_pct=float(tape_d.get("daily_change_pct", 1.0)),
+        media_compression_ratio=float(tape_d.get("media_compression_ratio", 1.0)),
+        cost_per_cartridge_usd=float(tape_d.get("cost_per_cartridge_usd", 0.0)),
+    )
+
+
+def _license_input_from_dict(d: dict):
+    lic_d = d.get("license")
+    if not lic_d:
+        return None
+    return LicenseInput(
+        vm_count=int(lic_d.get("vm_count", d.get("vm_count", 0))),
+        physical_count=int(lic_d.get("physical_count", 0)),
+        nas_tb=float(lic_d.get("nas_tb", 0.0)),
+        cloud_workloads=int(lic_d.get("cloud_workloads", 0)),
+        license_type=str(lic_d.get("license_type", "instance")),
+        occupied_sockets=int(lic_d.get("occupied_sockets", 0)),
+    )
+
+
+def _veeam_one_input_from_dict(d: dict):
+    one_d = d.get("veeam_one")
+    if not one_d:
+        return None
+    return VeeamOneInput(
+        protected_vms=int(one_d.get("protected_vms", d.get("vm_count", 0))),
+        protected_physical=int(one_d.get("protected_physical", 0)),
+        retention_days=int(one_d.get("retention_days", 30)),
+        enterprise_manager=bool(one_d.get("enterprise_manager", False)),
+        vspc_tenants=int(one_d.get("vspc_tenants", 0)),
+        connected_vbr_servers=int(one_d.get("connected_vbr_servers", 1)),
     )
 
 
