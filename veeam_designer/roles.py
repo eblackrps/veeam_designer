@@ -138,7 +138,9 @@ def _size_hyperv_proxies(
         transport_mode="on-host" if on_host else "off-host",
         disk_gb_per_proxy=0.3,
         sizing_basis="Veeam 13.1.1 Hyper-V backup proxy system requirements",
-        source_url=("https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html"),
+        source_url=(
+            "https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html"
+        ),
         notes=notes,
     )
 
