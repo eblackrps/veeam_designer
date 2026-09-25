@@ -62,6 +62,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--hypervisor", default="vmware")
     p.add_argument("--has-san-access", action="store_true")
     p.add_argument("--on-host-proxy", action="store_true")
+    p.add_argument(
+        "--deployment-mode",
+        choices=["software_appliance", "windows"],
+        default="software_appliance",
+    )
+    p.add_argument("--platform-host-count", type=int, default=0)
+    p.add_argument("--platform-cluster-count", type=int, default=1)
+    p.add_argument("--platform-concurrent-tasks", type=int, default=0)
+    p.add_argument("--worker-task-limit", type=int, default=4)
     # Round 2
     p.add_argument("--workload-count", type=int, default=0)
     p.add_argument("--concurrent-jobs", type=int, default=5)
@@ -144,6 +153,7 @@ def _roles_dict(roles):
     return {
         "backup_server": asdict(roles.backup_server),
         "proxies": asdict(roles.proxies),
+        "platform_workers": asdict(roles.platform_workers) if roles.platform_workers else None,
         "hardened_repos": asdict(roles.hardened_repos) if roles.hardened_repos else None,
         "gateways": asdict(roles.gateways) if roles.gateways else None,
     }
@@ -164,9 +174,15 @@ def main():
                 multi = design_multi_site(obj)
                 print(f"Total repo across sites: {multi.total_repo_tb:.1f} TB")
                 for s in multi.sites:
+                    if s.design.roles.platform_workers:
+                        movers = (
+                            f"{s.design.roles.platform_workers.worker_count} "
+                            f"{s.design.roles.platform_workers.platform} workers"
+                        )
+                    else:
+                        movers = f"{s.design.roles.proxies.proxy_count} proxies"
                     print(
-                        f"- {s.name}: {s.design.repo.total_repo_tb:.1f} TB total repo, "
-                        f"{s.design.roles.proxies.proxy_count} proxies"
+                        f"- {s.name}: {s.design.repo.total_repo_tb:.1f} TB total repo, {movers}"
                     )
             return
 
@@ -283,6 +299,11 @@ def main():
                 hypervisor=args.hypervisor,
                 has_san_access=args.has_san_access,
                 on_host_proxy=args.on_host_proxy,
+                deployment_mode=args.deployment_mode,
+                platform_host_count=args.platform_host_count,
+                platform_cluster_count=args.platform_cluster_count,
+                platform_concurrent_tasks=args.platform_concurrent_tasks,
+                worker_task_limit=args.worker_task_limit,
                 workload_count=args.workload_count,
                 concurrent_jobs=args.concurrent_jobs,
                 indexing_enabled=args.indexing,
