@@ -120,7 +120,7 @@ def test_worker_platforms_smoke_through_browser_bundle(hypervisor: str, expected
     assert bundle["csv"].startswith("field,value")
 
 
-def test_hyperv_off_host_smoke_uses_task_model_without_fake_throughput():
+def test_hyperv_off_host_smoke_combines_throughput_and_task_model():
     payload = design_payload_from_project_text(
         _vm_project("hyperv", on_host_proxy=False, platform_concurrent_tasks=8),
         suffix=".yml",
@@ -132,7 +132,7 @@ def test_hyperv_off_host_smoke_uses_task_model_without_fake_throughput():
     assert proxy["ram_gb_per_proxy"] == 4
     assert proxy["total_parallel_tasks"] == 8
     assert proxy["transport_mode"] == "off-host"
-    assert proxy["estimated_capacity_mb_s"] == 0.0
+    assert proxy["estimated_capacity_mb_s"] >= proxy["required_throughput_mb_s"]
 
 
 def test_hyperv_on_host_smoke_accounts_for_each_supplied_host():
@@ -149,7 +149,36 @@ def test_hyperv_on_host_smoke_accounts_for_each_supplied_host():
 
     assert proxy["proxy_count"] == 4
     assert proxy["transport_mode"] == "on-host"
-    assert proxy["total_parallel_tasks"] == 16
+    assert proxy["total_parallel_tasks"] == 8
+
+
+
+
+def test_hyperv_smoke_scales_with_change_rate_and_backup_window():
+    normal = design_payload_from_project_text(
+        _vm_project("hyperv", on_host_proxy=False),
+        suffix=".yml",
+    )
+
+    pressured_project = _vm_project("hyperv", on_host_proxy=False)
+    pressured_project = pressured_project.replace(
+        "daily_change_percent: 5",
+        "daily_change_percent: 20",
+    ).replace(
+        "backup_window_hours: 8",
+        "backup_window_hours: 2",
+    )
+    pressured = design_payload_from_project_text(pressured_project, suffix=".yml")
+
+    normal_proxy = normal["roles"]["proxies"]
+    pressured_proxy = pressured["roles"]["proxies"]
+
+    assert pressured_proxy["required_throughput_mb_s"] > normal_proxy["required_throughput_mb_s"]
+    assert pressured_proxy["total_proxy_cores"] > normal_proxy["total_proxy_cores"]
+    assert (
+        pressured_proxy["estimated_capacity_mb_s"]
+        >= pressured_proxy["required_throughput_mb_s"]
+    )
 
 
 @pytest.mark.parametrize("hypervisor", ["hyperv", "ahv", "proxmox", "mixed"])
