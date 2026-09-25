@@ -16,7 +16,8 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "GitHub Pages browser edition" in index_html
     assert "pyodide.js" in index_html
     assert "Action failed." in index_html
-    assert "Architecture sizing for Veeam backup and recovery." in index_html
+    assert "Plan your Veeam architecture." in index_html
+    assert "Size capacity, data movers, WAN, and cost" in index_html
     assert "Protection architecture builder" in index_html
     assert "YAML and API project definition" in index_html
     assert "Advanced sizing overrides" in index_html
@@ -27,6 +28,9 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert 'data-platforms="vmware"' in index_html
     assert 'data-workload-scope="vm"' in index_html
     assert "Architecture Snapshot" in index_html
+    assert '<svg viewBox="0 0 24 24"' in index_html
+    assert 'id="runtime-status"' not in index_html
+    assert "Browser engine ready." not in app_js
     assert (output_dir / "assets" / "app.css").exists()
     assert (output_dir / "assets" / "app.js").exists()
     assert (output_dir / "assets" / fake_wheel.name).exists()
