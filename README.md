@@ -262,11 +262,13 @@ paths.
   incremental-forever, so NAS GFS counts are not separately sized.
 - Proxmox VE and Nutanix AHV use Veeam's native task-based worker sizing rather than VMware proxy
   throughput assumptions.
+- Hyper-V proxy CPU, memory, disk, and concurrency sizing follows Veeam's native task-based
+  requirements; required data rate is reported separately because no throughput-per-core value is
+  inferred.
 - Veeam Software Appliance minimum CPU, RAM-per-concurrent-job, and system-disk requirements are
   enforced on top of the workload sizing bands.
-- Hyper-V and mixed-environment proxy throughput, CDP proxy sizing, Veeam ONE sizing, and
-  cost/licensing outputs still include documented heuristics where a direct model is not yet wired
-  into this UI.
+- Mixed-environment proxy throughput, CDP proxy sizing, Veeam ONE sizing, and cost/licensing
+  outputs still include documented heuristics where a direct model is not yet wired into this UI.
 
 The detailed assumptions, formulas, and source links are in [docs/assumptions.md](docs/assumptions.md).
 
