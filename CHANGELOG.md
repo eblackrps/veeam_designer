@@ -19,6 +19,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
   raw JSON in the advanced results section
 - Reduced the visual weight of YAML/API editing and advanced sizing controls without removing them
 - Improved responsive behavior for tablet and mobile layouts
+- Removed stale 4.x UI screenshots from the README so the repository landing page does not
+  misrepresent the 5.x interface
 
 ### Added
 
