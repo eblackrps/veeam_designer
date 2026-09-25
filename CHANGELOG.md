@@ -5,6 +5,15 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a3] - 2026-09-25
+
+### Changed
+
+- Replaced the ambiguous `VD` hero mark with a neutral stacked-infrastructure icon
+- Shortened the hero heading and supporting copy to direct product language
+- Removed browser-engine readiness/status copy from the visible interface
+- Reduced large-heading weight and scale on narrow screens
+
 ## [5.0.0a2] - 2026-09-25
 
 ### Changed
