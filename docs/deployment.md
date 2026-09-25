@@ -84,6 +84,6 @@ same release.
 The GitHub Pages edition runs entirely in the browser. Use FastAPI or Docker when you need:
 
 - `/api/design`
-- server-side CSV export
-- server-rendered report routes
+- stateless `POST /export/csv` with project YAML as `text/plain`
+- stateless `POST /export/report` for VM/multi-site project YAML
 - integration with another service over HTTP

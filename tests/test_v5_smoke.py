@@ -186,7 +186,7 @@ def test_infrastructure_appliance_proxy_mode_rejects_non_vmware(hypervisor: str)
         )
 
 
-def test_server_result_bundle_exposes_csv_and_report_route_is_inline():
+def test_server_result_bundle_exposes_csv_and_stateless_report_is_inline():
     client = TestClient(app)
     project = _vm_project("vmware")
 
@@ -197,7 +197,11 @@ def test_server_result_bundle_exposes_csv_and_report_route_is_inline():
     assert page_response.status_code == 200
     assert '"csv":' in page_response.text
 
-    report_response = client.get("/export/report")
+    report_response = client.post(
+        "/export/report",
+        content=project,
+        headers={"Content-Type": "text/plain"},
+    )
     assert report_response.status_code == 200
     assert report_response.headers["content-type"].startswith("text/html")
     assert report_response.headers["content-disposition"].startswith("inline;")
@@ -223,7 +227,11 @@ def test_api_and_server_report_smoke_for_proxmox():
     assert page_response.status_code == 200
     assert "PROXMOX workers" in page_response.text
 
-    report_response = client.get("/export/report")
+    report_response = client.post(
+        "/export/report",
+        content=project,
+        headers={"Content-Type": "text/plain"},
+    )
     assert report_response.status_code == 200
     assert "PROXMOX Workers" in report_response.text
     assert "Backup Server" in report_response.text
