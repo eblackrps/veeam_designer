@@ -217,7 +217,11 @@ def print_human_summary(d: VeeamDesign) -> None:
     print("Repository sizing:")
     print(f"  Primary repo capacity : {d.repo.primary_repo_tb:.1f} TB")
     print(f"  GFS repo capacity     : {d.repo.gfs_repo_tb:.1f} TB")
-    print(f"  Total repo capacity   : {d.repo.total_repo_tb:.1f} TB\n")
+    print(f"  Total repo capacity   : {d.repo.total_repo_tb:.1f} TB")
+    print(f"  Basis                 : {d.repo.calculation_basis}")
+    for note in d.repo.notes:
+        print(f"  NOTE: {note}")
+    print("")
 
     print("Roles:")
     print(
@@ -255,12 +259,10 @@ def print_human_summary(d: VeeamDesign) -> None:
         )
     print("")
 
-    print("SOBR:")
-    print(
-        f"  Extents               : {d.sobr.extent_count} "
-        f"(~{d.sobr.extent_size_tb:.1f} TB each), "
-        f"capacity tier ~{d.sobr.capacity_tier_tb:.1f} TB"
-    )
+    print("SOBR / repository tiers:")
+    print(f"  Performance capacity  : {d.sobr.extent_size_tb:.1f} TB")
+    print(f"  Capacity tier         : {d.sobr.capacity_tier_tb:.1f} TB")
+    print(f"  Guidance              : {d.sobr.recommendation}")
     print("")
 
     print("Jobs:")
@@ -273,17 +275,20 @@ def print_human_summary(d: VeeamDesign) -> None:
     print("")
 
     print("Network:")
-    print(f"  Required WAN          : {d.network.required_mbps:.1f} Mbps")
-    print(
-        f"  Achievable RPO        : {d.network.achievable_rpo_hours:.1f} h "
-        f"(target {d.input.target_rpo_hours:.1f} h)"
-    )
-    print(f"  Meets target          : {d.network.meets_target}\n")
+    print(f"  Avg required WAN      : {d.network.required_mbps:.1f} Mbps")
+    print(f"  Transfer window met   : {d.network.meets_target}")
+    for note in d.network.notes:
+        print(f"  NOTE: {note}")
+    print("")
 
-    print("Cost (rough):")
-    print(f"  Monthly object        : ${d.cost.monthly_object_usd:.2f}")
-    print(f"  Yearly object         : ${d.cost.yearly_object_usd:.2f}")
-    print(f"  Yearly on-prem        : ${d.cost.yearly_onprem_usd:.2f}\n")
+    print("Cost:")
+    if d.cost.configured:
+        print(f"  Monthly object        : ${d.cost.monthly_object_usd:.2f}")
+        print(f"  Yearly object         : ${d.cost.yearly_object_usd:.2f}")
+        print(f"  Yearly on-prem        : ${d.cost.yearly_onprem_usd:.2f}")
+    else:
+        print("  Not configured — no embedded market pricing is assumed.")
+    print("")
 
     print("Risk:")
     print(f"  Overall               : {d.risk.level.upper()} (score {d.risk.total_score})")
