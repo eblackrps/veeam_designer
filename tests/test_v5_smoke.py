@@ -152,8 +152,6 @@ def test_hyperv_on_host_smoke_accounts_for_each_supplied_host():
     assert proxy["total_parallel_tasks"] == 8
 
 
-
-
 def test_hyperv_smoke_scales_with_change_rate_and_backup_window():
     normal = design_payload_from_project_text(
         _vm_project("hyperv", on_host_proxy=False),
