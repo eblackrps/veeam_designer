@@ -64,9 +64,7 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             workers = roles.get("platform_workers") or {}
             proxies = roles.get("proxies") or {}
             data_movers += int(
-                workers.get("worker_count", 0)
-                if workers
-                else proxies.get("proxy_count", 0)
+                workers.get("worker_count", 0) if workers else proxies.get("proxy_count", 0)
             )
             if bool((design.get("network") or {}).get("meets_target", False)):
                 wan_targets_met += 1
