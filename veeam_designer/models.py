@@ -388,8 +388,8 @@ class WanAccelInput:
     source_tb: float
     wan_mbps: float
     backup_copy_frequency_hours: float = 24.0
-    dedupe_ratio: float = 3.0
-    compression_ratio: float = 1.6
+    dedupe_ratio: float = 1.0
+    compression_ratio: float = 1.0
     daily_change_pct: float = 5.0
     mode: str = "auto"
     os_type_count: int = 0
