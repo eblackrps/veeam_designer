@@ -53,6 +53,7 @@ class VeeamInput:
     # Round 3: filesystem + immutability + synthetic full period
     refs_xfs: bool = True
     immutability_enabled: bool = False
+    immutability_days: int = 0
     block_generation_days: int = 10
 
     # Round 5: capacity tier
@@ -111,6 +112,8 @@ class RepoSizing:
     primary_repo_tb: float
     gfs_repo_tb: float
     total_repo_tb: float
+    calculation_basis: str = ""
+    notes: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -328,6 +331,7 @@ class ReplicationInput:
     rpo_hours: float = 1.0
     cdp_enabled: bool = False
     rpo_seconds: int = 15
+    cdp_retention_hours: float = 24.0
     compression: bool = True
     daily_change_pct: float = 5.0
 
@@ -338,6 +342,8 @@ class ReplicationDesign:
     meets_rpo: bool
     replica_storage_tb: float
     cdp_proxy_cores: int = 0
+    cdp_proxy_ram_gb: int = 0
+    cdp_proxy_cache_gb: int = 0
     cdp_journal_tb: float = 0.0
     notes: List[str] = field(default_factory=list)
 
@@ -379,6 +385,9 @@ class WanAccelInput:
     dedupe_ratio: float = 3.0
     compression_ratio: float = 1.6
     daily_change_pct: float = 5.0
+    mode: str = "auto"
+    os_type_count: int = 0
+    cache_size_gb_per_source: int = 100
 
 
 @dataclass
@@ -386,6 +395,7 @@ class WanAccelDesign:
     source_appliance_count: int
     target_appliance_count: int
     cache_size_gb_per_source: int
+    mode: str = "low"
     source_digest_gb_per_source: int
     target_digest_gb_per_target: int
     target_total_free_space_gb: int
@@ -407,6 +417,7 @@ class LicenseInput:
     nas_tb: float = 0.0
     cloud_workloads: int = 0
     license_type: str = "vul"
+    occupied_sockets: int = 0
 
 
 @dataclass
@@ -415,6 +426,8 @@ class LicenseEstimate:
     estimated_sockets: int
     tier: str
     annual_maintenance_usd: float
+    instance_consumption: float = 0.0
+    capacity_consumption_tb: float = 0.0
     notes: List[str] = field(default_factory=list)
 
 
@@ -429,6 +442,8 @@ class TapeInput:
     lto_generation: int = 9
     retention_years: int = 7
     daily_change_pct: float = 1.0
+    media_compression_ratio: float = 1.0
+    cost_per_cartridge_usd: float = 0.0
 
 
 @dataclass
@@ -439,6 +454,7 @@ class TapeDesign:
     lto_generation: int
     tb_per_cartridge: float
     annual_media_cost_usd: float
+    native_tb_per_cartridge: float = 0.0
     notes: List[str] = field(default_factory=list)
 
 
@@ -454,6 +470,7 @@ class VeeamOneInput:
     retention_days: int = 30
     enterprise_manager: bool = False
     vspc_tenants: int = 0
+    connected_vbr_servers: int = 1
 
 
 @dataclass
