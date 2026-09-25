@@ -12,4 +12,3 @@ __pycache__/
 build/
 dist/
 tests/
-docs/screenshots/
