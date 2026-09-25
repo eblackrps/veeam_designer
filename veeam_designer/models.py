@@ -36,6 +36,13 @@ class VeeamInput:
     has_san_access: bool = False
     on_host_proxy: bool = True
 
+    # v5: platform-aware worker and deployment sizing
+    platform_host_count: int = 0
+    platform_cluster_count: int = 1
+    platform_concurrent_tasks: int = 0
+    worker_task_limit: int = 4
+    deployment_mode: str = "software_appliance"
+
     # Round 2: backup server sizing
     workload_count: int = 0
     concurrent_jobs: int = 5
@@ -121,10 +128,30 @@ class ProxySizing:
 
 
 @dataclass
+class PlatformWorkerSizing:
+    platform: str
+    worker_count: int
+    tasks_per_worker: int
+    total_concurrent_tasks: int
+    cores_per_worker: int
+    ram_gb_per_worker: int
+    disk_gb_per_worker: int
+    total_worker_cores: int
+    total_worker_ram_gb: int
+    transport_modes: List[str] = field(default_factory=list)
+    sizing_basis: str = "vendor-calibrated"
+    source_url: str = ""
+    notes: List[str] = field(default_factory=list)
+
+
+@dataclass
 class BackupServerSizing:
     cores: int
     ram_gb: int
     v13_appliance: bool = True
+    deployment_mode: str = "software_appliance"
+    system_disk_gb: int = 240
+    sizing_basis: str = "Veeam workload bands plus deployment minimums"
     notes: List[str] = field(default_factory=list)
 
 
@@ -149,6 +176,7 @@ class GatewayServerSizing:
 class RolePlan:
     backup_server: BackupServerSizing
     proxies: ProxySizing
+    platform_workers: Optional[PlatformWorkerSizing] = None
     hardened_repos: Optional[HardenedRepoHost] = None
     gateways: Optional[GatewayServerSizing] = None
 
