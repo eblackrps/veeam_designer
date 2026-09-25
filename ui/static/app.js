@@ -44,6 +44,7 @@ const defaultVmSites = [
     vm_count: 800,
     avg_vm_size_gb: 400,
     wan_bandwidth_mbps: 1000,
+    wan_accel_mode: "auto",
     backup_window_hours: 8,
     backup_type: "synthetic_full_weekly",
     repo_type: "sobr",
@@ -51,6 +52,7 @@ const defaultVmSites = [
     on_host_proxy: false,
     refs_xfs: true,
     immutability_enabled: true,
+    immutability_days: 30,
     capacity_tier_enabled: true,
     direct_to_object: false,
     gfs_weekly_count: 4,
@@ -73,6 +75,7 @@ const defaultVmSites = [
     vm_count: 260,
     avg_vm_size_gb: 320,
     wan_bandwidth_mbps: 300,
+    wan_accel_mode: "auto",
     backup_window_hours: 10,
     backup_type: "synthetic_full_weekly",
     repo_type: "direct",
@@ -80,6 +83,7 @@ const defaultVmSites = [
     on_host_proxy: true,
     refs_xfs: true,
     immutability_enabled: false,
+    immutability_days: 0,
     capacity_tier_enabled: false,
     direct_to_object: false,
     gfs_weekly_count: 2,
@@ -114,11 +118,13 @@ const defaultState = {
     nas_source_tb: 120,
     nas_share_count: 80,
     nas_file_count: 1.5,
+    nas_concurrent_sources: 1,
     nas_compress: 30,
     nas_daily: 5,
     nas_retention: 30,
     nas_window: 8,
     nas_growth: 10,
+    nas_forecast_years: 3,
     nas_cft: false,
     nas_immutability: false,
     nas_object_storage: false,
@@ -129,17 +135,21 @@ const defaultState = {
     agent_daily: 5,
     agent_retention: 30,
     agent_window: 8,
+    agent_concurrent_tasks: 4,
     agent_network: 1000,
     agent_os: "windows",
   },
   replication: {
     rep_source_tb: 100,
     rep_vm_count: 300,
+    rep_daily_change: 5,
     rep_wan_mbps: 1000,
     rep_rpo_hours: 1,
     rep_rpo_seconds: 15,
+    rep_cdp_retention_hours: 24,
+    rep_cdp_write_io_mb_s: 0,
     rep_cdp: false,
-    rep_compression: true,
+    rep_cdp_network_encryption: false,
   },
 };
 
@@ -510,6 +520,7 @@ function collectVmSites() {
     vm_count: getCardNumber(card, "vm_count", 0),
     avg_vm_size_gb: getCardNumber(card, "avg_vm_size_gb", 0),
     wan_bandwidth_mbps: getCardNumber(card, "wan_bandwidth_mbps", 0),
+    wan_accel_mode: getCardValue(card, "wan_accel_mode") || "auto",
     backup_window_hours: getCardNumber(card, "backup_window_hours", 8),
     backup_type: getCardValue(card, "backup_type"),
     repo_type: getCardValue(card, "repo_type"),
@@ -517,6 +528,7 @@ function collectVmSites() {
     on_host_proxy: getCardChecked(card, "on_host_proxy"),
     refs_xfs: getCardChecked(card, "refs_xfs"),
     immutability_enabled: getCardChecked(card, "immutability_enabled"),
+    immutability_days: getCardNumber(card, "immutability_days", 0),
     capacity_tier_enabled: getCardChecked(card, "capacity_tier_enabled"),
     direct_to_object: getCardChecked(card, "direct_to_object"),
     gfs_weekly_count: getCardNumber(card, "gfs_weekly_count", 0),
@@ -553,11 +565,13 @@ function buildYamlFromBuilder() {
       `source_tb: ${numberValue("nas-source-tb", 0)}`,
       `share_count: ${numberValue("nas-share-count", 0)}`,
       `file_count_millions: ${numberValue("nas-file-count", 0)}`,
+      `concurrent_sources: ${numberValue("nas-concurrent-sources", 1)}`,
       `compress_pct: ${numberValue("nas-compress", 30)}`,
       `daily_change_pct: ${numberValue("nas-daily", 5)}`,
       `retention_days: ${numberValue("nas-retention", 30)}`,
       `backup_window_hours: ${numberValue("nas-window", 8)}`,
       `growth_rate_pct: ${numberValue("nas-growth", 10)}`,
+      `forecast_years: ${numberValue("nas-forecast-years", 3)}`,
       `storage_native_cft: ${booleanValue("nas-cft")}`,
       `immutability_enabled: ${booleanValue("nas-immutability")}`,
       `object_storage: ${booleanValue("nas-object-storage")}`,
@@ -573,6 +587,7 @@ function buildYamlFromBuilder() {
       `daily_change_pct: ${numberValue("agent-daily", 5)}`,
       `backup_window_hours: ${numberValue("agent-window", 8)}`,
       `retention_days: ${numberValue("agent-retention", 30)}`,
+      `concurrent_tasks: ${numberValue("agent-concurrent-tasks", 4)}`,
       `os_type: ${getFieldValue("agent-os") || "windows"}`,
       `network_bandwidth_mbps: ${numberValue("agent-network", 1000)}`,
     ].join("\n");
@@ -584,11 +599,14 @@ function buildYamlFromBuilder() {
       "workload_type: replication",
       `source_tb: ${numberValue("rep-source-tb", 0)}`,
       `vm_count: ${numberValue("rep-vm-count", 0)}`,
+      `daily_change_pct: ${numberValue("rep-daily-change", 5)}`,
       `wan_mbps: ${numberValue("rep-wan-mbps", 0)}`,
       `rpo_hours: ${numberValue("rep-rpo-hours", 1)}`,
       `cdp_enabled: ${booleanValue("rep-cdp")}`,
       `rpo_seconds: ${numberValue("rep-rpo-seconds", 15)}`,
-      `compression: ${booleanValue("rep-compression")}`,
+      `cdp_retention_hours: ${numberValue("rep-cdp-retention-hours", 24)}`,
+      `cdp_write_io_mb_s: ${numberValue("rep-cdp-write-io-mb-s", 0)}`,
+      `cdp_network_encryption: ${booleanValue("rep-cdp-network-encryption")}`,
     ].join("\n");
   }
 
@@ -648,6 +666,7 @@ function buildVmSiteYaml(
     `      vm_count: ${site.vm_count}`,
     `      avg_vm_size_gb: ${site.avg_vm_size_gb}`,
     `      wan_bandwidth_mbps: ${site.wan_bandwidth_mbps}`,
+    `      wan_accel_mode: ${site.wan_accel_mode}`,
     `      repo_type: ${site.repo_type}`,
     `      hypervisor: ${hypervisor}`,
     `      deployment_mode: ${deploymentMode}`,
@@ -660,6 +679,7 @@ function buildVmSiteYaml(
     `      on_host_proxy: ${site.on_host_proxy}`,
     `      refs_xfs: ${site.refs_xfs}`,
     `      immutability_enabled: ${site.immutability_enabled}`,
+    `      immutability_days: ${site.immutability_days}`,
     `      capacity_tier_enabled: ${site.capacity_tier_enabled}`,
     `      direct_to_object: ${site.direct_to_object}`,
     `      block_generation_days: ${site.block_generation_days}`,
@@ -690,7 +710,9 @@ function newSiteDefaults(index) {
     vm_count: 200,
     avg_vm_size_gb: 250,
     wan_bandwidth_mbps: 500,
+    wan_accel_mode: "auto",
     immutability_enabled: false,
+    immutability_days: 0,
     capacity_tier_enabled: false,
     notes: "",
   };
@@ -768,6 +790,8 @@ function renderDashboard(dashboard) {
       </div>
       <dl class="metric-list">
         ${renderMetric("Total Repo", `${formatNumber(site.total_repo_tb, 1)} TB`)}
+        ${renderMetric("Retained Data", `${formatNumber(site.short_term_data_tb, 1)} TB`)}
+        ${renderMetric("Operational Headroom", `${formatNumber(site.operational_headroom_tb, 1)} TB`)}
         ${renderMetric(
           site.platform_worker_count ? "Workers" : "Proxies",
           site.platform_worker_count
@@ -967,6 +991,8 @@ function buildBrowserReportMarkup(bundle) {
         <article class="dashboard-site">
           <h3>${escapeHtml(site.name)}</h3>
           <p><strong>Total Repo:</strong> ${escapeHtml(`${formatNumber(site.total_repo_tb, 1)} TB`)}</p>
+          <p><strong>Retained Data:</strong> ${escapeHtml(`${formatNumber(site.short_term_data_tb, 1)} TB`)}</p>
+          <p><strong>Operational Headroom:</strong> ${escapeHtml(`${formatNumber(site.operational_headroom_tb, 1)} TB`)}</p>
           <p><strong>${site.platform_worker_count ? "Workers" : "Proxies"}:</strong> ${escapeHtml(
             site.platform_worker_count
               ? `${formatInteger(site.platform_worker_count)} / ${formatInteger(site.platform_worker_cores_each)} vCPU / ${formatInteger(site.platform_worker_ram_each)} GB each`

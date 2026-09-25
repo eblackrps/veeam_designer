@@ -210,6 +210,67 @@ def test_api_and_server_report_smoke_for_proxmox():
     assert report_response.status_code == 200
     assert "PROXMOX Workers" in report_response.text
     assert "Backup Server" in report_response.text
+    assert "Retained short-term data" in report_response.text
+    assert "Operational headroom" in report_response.text
+    assert "Capacity basis" in report_response.text
+
+
+def test_web_builder_exposes_hardened_calculation_inputs():
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    for label in [
+        "WAN Accelerator Mode",
+        "Immutability Period",
+        "Concurrent Sources",
+        "Forecast Horizon",
+        "Concurrent Proxy Tasks",
+        "CDP Retention",
+        "Measured CDP Write I/O",
+    ]:
+        assert label in response.text
+
+
+def test_physical_presenter_uses_proxy_not_coordinator_language():
+    bundle = design_browser_bundle_from_project_text(
+        """workload_type: physical
+machine_count: 20
+avg_size_gb: 500
+daily_change_pct: 5
+retention_days: 14
+backup_window_hours: 8
+network_bandwidth_mbps: 1000
+concurrent_tasks: 4
+""",
+        suffix=".yml",
+    )
+
+    labels = {card["label"] for card in bundle["summary_cards"]}
+    assert "General Proxy" in labels
+    assert "Coordinator Cores" not in labels
+    assert "General-purpose proxy" in bundle["blueprint"]
+
+
+def test_replication_presenter_exposes_cdp_retention_capacity():
+    bundle = design_browser_bundle_from_project_text(
+        """workload_type: replication
+source_tb: 50
+vm_count: 100
+wan_mbps: 1000
+daily_change_pct: 5
+cdp_enabled: true
+rpo_seconds: 15
+cdp_retention_hours: 12
+cdp_write_io_mb_s: 400
+""",
+        suffix=".yml",
+    )
+
+    labels = {card["label"] for card in bundle["summary_cards"]}
+    assert "CDP Retention" in labels
+    assert "CDP proxies per side" in bundle["blueprint"]
 
 
 def test_checked_in_example_project_smoke():

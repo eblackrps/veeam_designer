@@ -393,9 +393,14 @@
     <tr><th colspan="2">Repository &amp; Storage</th></tr>
   </thead>
   <tbody>
-    <tr><td class="label">Primary repository</td><td class="value">{{ "%.1f" | format(site.primary_repo_tb | default(0)) }} TB</td></tr>
+    <tr><td class="label">Retained short-term data</td><td class="value">{{ "%.1f" | format(site.short_term_data_tb | default(0)) }} TB</td></tr>
+    <tr><td class="label">Operational headroom</td><td class="value">{{ "%.1f" | format(site.operational_headroom_tb | default(0)) }} TB</td></tr>
+    <tr><td class="label">Primary repository provisioned</td><td class="value">{{ "%.1f" | format(site.primary_repo_tb | default(0)) }} TB</td></tr>
     <tr><td class="label">GFS / long-term retention</td><td class="value">{{ "%.1f" | format(site.gfs_repo_tb | default(0)) }} TB</td></tr>
-    <tr><td class="label">Total on-prem repository</td><td class="value">{{ "%.1f" | format(site.total_repo_tb | default(0)) }} TB</td></tr>
+    <tr><td class="label">Total repository</td><td class="value">{{ "%.1f" | format(site.total_repo_tb | default(0)) }} TB</td></tr>
+    {% if site.repo_calculation_basis %}
+    <tr><td class="label">Capacity basis</td><td class="value">{{ site.repo_calculation_basis }}</td></tr>
+    {% endif %}
     {% if site.repo_host_count %}
     <tr><td class="label">Hardened repo hosts</td><td class="value">{{ site.repo_host_count }}</td></tr>
     <tr><td class="label">Per repo host target</td><td class="value">{{ site.repo_host_cores }} cores / {{ site.repo_host_ram_gb }} GB / {{ "%.1f" | format(site.repo_host_tb | default(0)) }} TB</td></tr>
@@ -499,12 +504,13 @@
   {% if site.replication %}
   <div class="card avoid-break">
     <div class="card-title">VM Replication</div>
-    <div class="card-row"><span class="clabel">Required bandwidth</span><span class="cval">{{ "%.1f" | format(site.replication.required_mbps | default(0)) }} Mbps</span></div>
-    <div class="card-row"><span class="clabel">Meets RPO</span><span class="cval">{{ "Yes" if site.replication.meets_rpo else "No" }}</span></div>
+    <div class="card-row"><span class="clabel">Average changed-data bandwidth</span><span class="cval">{{ "%.1f" | format(site.replication.required_mbps | default(0)) }} Mbps</span></div>
+    <div class="card-row"><span class="clabel">WAN carries average change</span><span class="cval">{{ "Yes" if site.replication.meets_rpo else "No" }}</span></div>
     <div class="card-row"><span class="clabel">Replica storage</span><span class="cval">{{ "%.1f" | format(site.replication.replica_storage_tb | default(0)) }} TB</span></div>
-    {% if site.replication.cdp_proxy_cores %}
-    <div class="card-row"><span class="clabel">CDP proxy cores</span><span class="cval">{{ site.replication.cdp_proxy_cores }}</span></div>
-    <div class="card-row"><span class="clabel">CDP journal</span><span class="cval">{{ "%.1f" | format(site.replication.cdp_journal_tb | default(0)) }} TB</span></div>
+    {% if site.replication.cdp_proxy_count_per_side %}
+    <div class="card-row"><span class="clabel">CDP proxies per side</span><span class="cval">{{ site.replication.cdp_proxy_count_per_side }}</span></div>
+    <div class="card-row"><span class="clabel">Per CDP proxy</span><span class="cval">{{ site.replication.cdp_proxy_cores }} vCPU / {{ site.replication.cdp_proxy_ram_gb }} GB RAM / {{ site.replication.cdp_proxy_cache_gb }} GB cache</span></div>
+    <div class="card-row"><span class="clabel">CDP retention capacity</span><span class="cval">{{ "%.2f" | format(site.replication.cdp_journal_tb | default(0)) }} TB</span></div>
     {% endif %}
     {% if site.replication.notes %}
     <p class="note">{{ site.replication.notes | join(" ") }}</p>
@@ -515,12 +521,12 @@
   {% if site.nas %}
   <div class="card avoid-break">
     <div class="card-title">NAS / Unstructured</div>
-    <div class="card-row"><span class="clabel">Cache repo</span><span class="cval">{{ "%.1f" | format(site.nas.cache_repo_tb | default(0)) }} TB</span></div>
+    <div class="card-row"><span class="clabel">Cache repo</span><span class="cval">{% if site.nas.cache_repo_tb and site.nas.cache_repo_tb < 1 %}{{ "%.0f" | format(site.nas.cache_repo_tb * 1024) }} GB{% else %}{{ "%.1f" | format(site.nas.cache_repo_tb | default(0)) }} TB{% endif %}</span></div>
     <div class="card-row"><span class="clabel">Primary repo</span><span class="cval">{{ "%.1f" | format(site.nas.primary_repo_tb | default(0)) }} TB</span></div>
     <div class="card-row"><span class="clabel">Long-term GFS</span><span class="cval">{% if site.nas.gfs_repo_tb %}{{ "%.1f" | format(site.nas.gfs_repo_tb) }} TB{% else %}Not separately sized{% endif %}</span></div>
     <div class="card-row"><span class="clabel">Total repo</span><span class="cval">{{ "%.1f" | format(site.nas.total_repo_tb | default(0)) }} TB</span></div>
-    <div class="card-row"><span class="clabel">File proxy cores</span><span class="cval">{{ site.nas.file_proxy_cores | default(0) }}</span></div>
-    <div class="card-row"><span class="clabel">File proxy RAM</span><span class="cval">{{ site.nas.file_proxy_ram_gb | default(0) }} GB</span></div>
+    <div class="card-row"><span class="clabel">File proxies</span><span class="cval">{{ site.nas.file_proxy_count | default(0) }} x {{ site.nas.file_proxy_cores_each | default(0) }} vCPU / {{ site.nas.file_proxy_ram_gb_each | default(0) }} GB RAM</span></div>
+    <div class="card-row"><span class="clabel">Cache repo compute</span><span class="cval">{{ site.nas.cache_repo_cores | default(0) }} vCPU / {{ site.nas.cache_repo_ram_gb | default(0) }} GB RAM</span></div>
     {% if site.nas.notes %}
     <p class="note">{{ site.nas.notes | join(" ") }}</p>
     {% endif %}
@@ -530,13 +536,15 @@
   {% if site.wan_accel %}
   <div class="card avoid-break">
     <div class="card-title">WAN Accelerator</div>
+    <div class="card-row"><span class="clabel">Mode</span><span class="cval">{{ site.wan_accel.mode | default("auto") | title }}</span></div>
     <div class="card-row"><span class="clabel">Source appliances</span><span class="cval">{{ site.wan_accel.source_appliance_count | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">Target appliances</span><span class="cval">{{ site.wan_accel.target_appliance_count | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">Cache / source</span><span class="cval">{{ site.wan_accel.cache_size_gb_per_source | default(0) }} GB</span></div>
     <div class="card-row"><span class="clabel">Source digest</span><span class="cval">{{ site.wan_accel.source_digest_gb_per_source | default(0) }} GB</span></div>
     <div class="card-row"><span class="clabel">Target digest</span><span class="cval">{{ site.wan_accel.target_digest_gb_per_target | default(0) }} GB</span></div>
     <div class="card-row"><span class="clabel">Target free space</span><span class="cval">{{ site.wan_accel.target_total_free_space_gb | default(0) }} GB</span></div>
-    <div class="card-row"><span class="clabel">Effective throughput</span><span class="cval">{{ "%.0f" | format(site.wan_accel.effective_mbps | default(0)) }} Mbps</span></div>
+    <div class="card-row"><span class="clabel">Planning effective throughput</span><span class="cval">{{ "%.0f" | format(site.wan_accel.effective_mbps | default(0)) }} Mbps</span></div>
+    <div class="card-row"><span class="clabel">Estimated copy window</span><span class="cval">{{ "%.2f" | format(site.wan_accel.backup_copy_window_hours | default(0)) }} hours</span></div>
     <div class="card-row"><span class="clabel">Meets copy window</span><span class="cval">{{ "Yes" if site.wan_accel.meets_copy_window else "No" }}</span></div>
     {% if site.wan_accel.notes %}
     <p class="note">{{ site.wan_accel.notes | join(" ") }}</p>
@@ -546,11 +554,14 @@
 
   {% if site.license_estimate %}
   <div class="card avoid-break">
-    <div class="card-title">VUL Licensing</div>
+    <div class="card-title">License Consumption</div>
+    <div class="card-row"><span class="clabel">License model</span><span class="cval">{{ site.license_estimate.tier | default("—") | title }}</span></div>
     <div class="card-row"><span class="clabel">Protected workloads</span><span class="cval">{{ site.license_estimate.protected_workloads | default(0) }}</span></div>
-    <div class="card-row"><span class="clabel">Estimated sockets</span><span class="cval">{{ site.license_estimate.estimated_sockets | default(0) }}</span></div>
-    <div class="card-row"><span class="clabel">License tier</span><span class="cval">{{ site.license_estimate.tier | default("—") | title }}</span></div>
-    <div class="card-row"><span class="clabel">Annual maintenance</span><span class="cval">${{ "{:,.0f}".format(site.license_estimate.annual_maintenance_usd | default(0)) }}</span></div>
+    <div class="card-row"><span class="clabel">Instance consumption</span><span class="cval">{{ "%.1f" | format(site.license_estimate.instance_consumption | default(0)) }}</span></div>
+    <div class="card-row"><span class="clabel">Capacity consumption</span><span class="cval">{{ "%.1f" | format(site.license_estimate.capacity_consumption_tb | default(0)) }} TB</span></div>
+    {% if site.license_estimate.estimated_sockets %}
+    <div class="card-row"><span class="clabel">Occupied source sockets</span><span class="cval">{{ site.license_estimate.estimated_sockets }}</span></div>
+    {% endif %}
     {% if site.license_estimate.notes %}
     <p class="note">{{ site.license_estimate.notes | join(" ") }}</p>
     {% endif %}
@@ -561,11 +572,17 @@
   <div class="card avoid-break">
     <div class="card-title">LTO Tape Archive</div>
     <div class="card-row"><span class="clabel">LTO generation</span><span class="cval">LTO-{{ site.tape.lto_generation | default(9) }}</span></div>
-    <div class="card-row"><span class="clabel">TB per cartridge</span><span class="cval">{{ site.tape.tb_per_cartridge | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Native TB per cartridge</span><span class="cval">{{ site.tape.native_tb_per_cartridge | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Effective TB per cartridge</span><span class="cval">{{ site.tape.tb_per_cartridge | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">Cartridges needed</span><span class="cval">{{ site.tape.cartridge_count | default(0) }}</span></div>
-    <div class="card-row"><span class="clabel">Drives recommended</span><span class="cval">{{ site.tape.drive_count_recommended | default(0) }}</span></div>
-    <div class="card-row"><span class="clabel">Library slots</span><span class="cval">{{ site.tape.library_slots_needed | default(0) }}</span></div>
-    <div class="card-row"><span class="clabel">Annual media cost</span><span class="cval">${{ "{:,.0f}".format(site.tape.annual_media_cost_usd | default(0)) }}</span></div>
+    <div class="card-row"><span class="clabel">Drives planned</span><span class="cval">{{ site.tape.drive_count_recommended | default(0) }}</span></div>
+    <div class="card-row"><span class="clabel">Data slots</span><span class="cval">{{ site.tape.library_slots_needed | default(0) }}</span></div>
+    {% if site.tape.required_tape_write_mb_s %}
+    <div class="card-row"><span class="clabel">Required tape write rate</span><span class="cval">{{ "%.1f" | format(site.tape.required_tape_write_mb_s) }} MB/s</span></div>
+    {% endif %}
+    {% if site.tape.initial_media_cost_usd %}
+    <div class="card-row"><span class="clabel">Initial media cost</span><span class="cval">${{ "{:,.0f}".format(site.tape.initial_media_cost_usd) }}</span></div>
+    {% endif %}
     {% if site.tape.notes %}
     <p class="note">{{ site.tape.notes | join(" ") }}</p>
     {% endif %}
@@ -577,7 +594,7 @@
     <div class="card-title">Veeam ONE / EM</div>
     <div class="card-row"><span class="clabel">ONE server cores</span><span class="cval">{{ site.veeam_one.server_cores | default(0) }}</span></div>
     <div class="card-row"><span class="clabel">ONE server RAM</span><span class="cval">{{ site.veeam_one.server_ram_gb | default(0) }} GB</span></div>
-    <div class="card-row"><span class="clabel">Database size</span><span class="cval">{{ site.veeam_one.database_size_gb | default(0) }} GB</span></div>
+    <div class="card-row"><span class="clabel">Database sizing</span><span class="cval">{% if site.veeam_one.database_size_gb %}{{ site.veeam_one.database_size_gb }} GB{% else %}Use Veeam ONE Database Calculator{% endif %}</span></div>
     {% if site.veeam_one.em_cores %}
     <div class="card-row"><span class="clabel">Enterprise Mgr cores</span><span class="cval">{{ site.veeam_one.em_cores }}</span></div>
     <div class="card-row"><span class="clabel">Enterprise Mgr RAM</span><span class="cval">{{ site.veeam_one.em_ram_gb | default(0) }} GB</span></div>

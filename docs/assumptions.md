@@ -154,13 +154,50 @@ References:
 - [Veeam Best Practice Guide: backup server sizing](https://bp.veeam.com/vbr/Support/configurations/backup_server.html)
 - [Veeam User Guide: backup server system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_backup_server.html)
 
+### Repository retention, growth, and capacity
+
+VM repository capacity is separated into retained backup data, operational headroom, and GFS
+capacity instead of hiding all three inside one multiplier.
+
+- annual source growth compounds over the configured planning horizon
+- VBR 13 daily retention is modeled as N+1 days with a minimum of three restore points, assuming
+  one successful restore point per day
+- forever-forward and reverse-incremental chains are modeled as one retained full plus changed-data
+  restore points
+- weekly forward-incremental chains can retain up to six additional daily points at a chain
+  boundary because an older chain is not deleted until the newer chain satisfies retention
+- weekly synthetic fulls on ReFS/XFS use a Fast Clone changed-block planning model; exact physical
+  use still depends on block-change locality
+- active fulls and synthetic fulls without Fast Clone are modeled with the required retained full
+  chains instead of receiving block-clone savings
+- GFS points are reported as a conservative full-equivalent upper bound unless block-level change
+  history is available
+
+Disk repositories keep operational headroom separate from retained backup data. The default
+transformation reserve is one full backup multiplied by the configured repo_overhead_factor
+(1.25 by default). Extra room for an ad-hoc or one-off full is a separate architecture decision
+because Veeam does not publish one universal amount that fits every repository and job design.
+
+Immutability extends the effective retention window; the calculator does not add an arbitrary
+metadata percentage. For a hardened repository, immutable chains must use forward incremental with
+scheduled active or synthetic fulls. Forever-forward and reverse-incremental chains are rejected
+for that combination. For object storage, block_generation_days remains an explicit planning
+input because Veeam applies block generation automatically and the actual duration is
+provider-dependent.
+
+References:
+
+- [Veeam Backup & Replication User Guide: retention policy](https://helpcenter.veeam.com/docs/vbr/userguide/retention_policy.html?ver=13)
+- [Veeam Backup & Replication User Guide: hardened repository limitations](https://helpcenter.veeam.com/docs/vbr/userguide/hardened_repository_limitations.html?ver=13)
+- [Veeam Best Practice Guide: repository storage](https://bp.veeam.com/vbr/2_Design_Structures/D_Veeam_Components/D_backup_repositories/repositories%20storage.html)
+
 ### Hardened repository host compute
 
 Repository host compute follows Veeam repository guidance:
 
-- `1` repository CPU core for every `3` proxy cores
-- `4 GB RAM` for each repository CPU core
-- minimum host target of `2 cores` and `8 GB RAM`
+- 1 repository CPU core for every 3 proxy cores
+- 4 GB RAM for each repository CPU core
+- minimum host target of 2 cores and 8 GB RAM
 
 The calculator also keeps the repository host count capped by configured per-host capacity and
 preserves separate notes for large ReFS/XFS filesystem footprints.
@@ -169,21 +206,44 @@ Reference:
 
 - [Veeam Best Practice Guide: backup repositories](https://bp.veeam.com/vbr/2_Design_Structures/D_Veeam_Components/D_backup_repositories/)
 
+### Replication and CDP
+
+Replication bandwidth is modeled as the average raw changed-data rate required to avoid backlog.
+RPO controls recovery-point cadence and latency tolerance; it does not multiply or divide the
+average number of changed bytes produced per day. Replica capacity is the source VM footprint.
+Additional standard-replication restore-point deltas are not guessed because replica retention is
+not currently an input.
+
+CDP keeps RPO and short-term retention as independent inputs:
+
+- supported CDP RPO input range is 2 seconds through 60 minutes
+- short-term retention capacity is based on changed data over cdp_retention_hours
+- the capacity model includes Veeam's documented allowance that retention can consume up to 25%
+  longer during chain transformation
+- CDP proxy sizing uses measured cluster write I/O when cdp_write_io_mb_s is supplied
+- when measured write I/O is absent, proxy sizing falls back to average changed-data throughput and
+  labels that result as a planning assumption
+- each CDP proxy is planned with at least 50 GB of disk-based write-I/O cache
+- network-encryption proxy tiers are kept separate from non-encrypted throughput tiers
+
 ### WAN accelerator
 
-WAN accelerator sizing follows Veeam low-bandwidth guidance:
+WAN accelerator mode is explicit and does not inherit repository compression or deduplication
+ratios.
 
-- source digest space is sized at `20 GB` per `1 TB` of protected source data
-- target digest space is sized at up to `2%` of protected source data when digest recalculation is
-  required
-- target global cache is modeled at `100 GB` per connected source accelerator in the current UI.
-  Veeam also publishes an OS-count-based formula for low-bandwidth mode, but the UI does not
-  currently collect unique guest OS counts.
-- the calculator uses `500 Mbps` per target accelerator as the planning envelope for multiple
-  accelerator pairs
+- auto selects Low bandwidth mode at 1-100 Mbps and Direct above 100 Mbps
+- High bandwidth mode must be selected explicitly for the high-latency/high-change cases where it
+  is appropriate
+- Low mode uses 2% source/target digest planning and global cache
+- High mode uses 1% digest planning and no global cache
+- Low-mode target cache is at least 40 GB, can be explicitly increased, and also honors Veeam's
+  10 GB per unique guest-OS-type guidance when that count is supplied
+- approximately 500 Mbps per target accelerator is used as the published processing-envelope
+  planning value for multiple pairs
 
-The automatic VM-to-WAN calculator path now sends projected source size and daily change rate into
-the WAN model so future-growth planning stays aligned with the rest of the VM workflow.
+The automatic VM path uses neutral 1.0 WAN reduction ratios. If a project explicitly supplies a
+nested wan_accel input with compression or deduplication ratios, those values are treated as
+workload planning assumptions, not guaranteed Veeam reduction factors.
 
 References:
 
@@ -193,17 +253,26 @@ References:
 
 ### NAS / unstructured workloads
 
-NAS sizing follows Veeam unstructured-data guidance in the following ways:
+NAS calculations distinguish repository capacity, general-purpose proxy resources, and cache
+repository resources.
 
-- file proxy throughput uses `100 MB/s` per CPU core as the planning baseline
-- file inventory scanning uses `5 million files per hour` per CPU core as the alternate bottleneck
-- object-storage cache repository sizing reserves `5%` of source capacity
-- NAS long-term retention is treated as `incremental-forever`, so weekly, monthly, and yearly GFS
-  counts are not separately added to repository capacity
-
-For disk-backed NAS targets, Veeam Designer does not add a separate synthetic cache-repository disk
-reservation because Veeam documents that this footprint is usually small enough not to drive
-dedicated sizing.
+- compress_pct is an explicit data-reduction input; no reduction percentage is invented
+- annual growth compounds over the configured forecast horizon
+- disk-backed capacity uses the conservative formula-table values on the Veeam Best Practice page:
+  backup data plus 10% metadata and 10% workspace
+- the same Best Practice page contains worked examples using 5% metadata and 5% workspace; the
+  calculator deliberately uses the more conservative table values and calls out that
+  documentation inconsistency
+- direct-to-object capacity adds 5% metadata and no workspace reserve
+- direct-to-object cache disk reserves at least 1 GB of active metadata per 1 million file
+  versions per protecting job; with only aggregate file count available, the calculator assumes
+  one active version per file and one protecting job
+- general-purpose proxy processing uses Veeam's 100 MB/s / approximately 0.34 TB/h starting
+  point, 5 million files/hour/task, two tasks per core, and 1.33 GB RAM per core/task, then
+  applies current system minimums
+- concurrent_sources is explicit and drives cache-repository compute sizing
+- NAS short-term retention is incremental-forever; weekly/monthly/yearly GFS counts are not turned
+  into fabricated full-backup capacity
 
 References:
 
@@ -212,19 +281,85 @@ References:
 - [Veeam Best Practice Guide: general-purpose backup proxy](https://bp.veeam.com/vbr/2_Design_Structures/D_Veeam_Components/D_backup_proxies/general_purpose_proxy.html)
 - [Veeam Best Practice Guide: unstructured backup proxy](https://bp.veeam.com/vbr/3_Build_structures/B_Veeam_Components/B_backup_proxies/unstructured_backup_proxy.html)
 
-## Documented Heuristics
+### Physical / Agent workloads
 
-These paths remain heuristics in the current release and are labeled that way in code, notes, or
-tests:
+Managed Agent capacity follows the same VBR 13 N+1 daily-retention rule with a three-restore-point
+minimum. The model does not invent an Agent compression or deduplication ratio.
 
-- Mixed-environment proxy throughput still reuses the VMware transport table unless you provide a
-  custom `throughput_mb_per_core` override
-- NBD proxy throughput is intentionally conservative rather than source-table-driven
-- VM repository capacity still uses the existing weekly-full plus incremental planning model used by
-  this app
-- CDP proxy sizing remains a simplified workload-driven estimate
-- Veeam ONE sizing remains a practical tiered heuristic
-- licensing and cost outputs remain configuration-driven planning estimates, not live pricing
+Operational headroom is separated from retained data. The transformation reserve is one full
+backup multiplied by the configured repo_overhead_factor; additional one-off-full headroom remains
+a separate planning decision.
+
+General-purpose proxy resources are driven by the explicit concurrent-task input and current proxy
+minimums. The legacy payload fields coordinator_cores and coordinator_ram_gb are retained for API
+compatibility, but the UI and documentation identify those resources as the general-purpose proxy.
+
+Reference:
+
+- [Veeam Backup & Replication User Guide: Agent retention](https://helpcenter.veeam.com/docs/vbr/userguide/agents_retention.html?ver=13)
+
+### Tape
+
+Tape sizing is capacity-first and assumption-explicit.
+
+- built-in native capacities are 6 TB for LTO-7, 12 TB for LTO-8, and 18 TB for LTO-9
+- LTO-10 requires an explicit native_capacity_tb because current media specifications are not a
+  single unambiguous native-capacity value
+- media compression defaults to 1.0:1; a higher value is used only when the project supplies it
+- drive count is calculated from an explicit write window and per-drive native throughput; without
+  those inputs the result is one functional minimum, not a fabricated performance estimate
+- cartridge counts cover data capacity only; scratch media, cleaning cartridges, rotation sets,
+  GFS media pools, and spare slots are policy inputs and are not invented
+- media cost is calculated only when cost_per_cartridge_usd is explicitly supplied
+
+### Veeam ONE and Enterprise Manager
+
+Veeam ONE uses the current published backup-data monitoring workload ranges. The calculator takes
+the conservative upper end of the applicable published range and adds the documented connected-VBR
+overhead.
+
+For deployments at or below 1,000 protected workloads, the calculator preserves the documented
+all-in-one minimum of 4 vCPU / 8 GB RAM rather than interpolating below it.
+
+Database capacity is intentionally not inferred from a made-up MB-per-workload rate. The result
+directs operators to the official Veeam ONE Database Calculator for SQL application-data sizing.
+Enterprise Manager uses the current recommended Linux-appliance resources. VSPC is treated as a
+separate product and is not sized from an arbitrary tenant-to-CPU ratio.
+
+### Licensing
+
+Licensing output is consumption planning, not commercial quoting.
+
+- generic VM, physical, and cloud workload counts are treated as one instance each in the
+  instance-license planner, subject to entitlement-specific exceptions
+- unstructured instance licensing is estimated at one instance per 500 GB, rounded down; Veeam
+  performs that rounding per data source, so an aggregate estimate can differ from a source-level
+  inventory
+- capacity licensing uses 1 TB chunks, rounded down per protected source; the calculator exposes
+  the aggregate planning estimate and calls out the limitation
+- socket licensing requires the actual occupied motherboard sockets on protected source hosts;
+  VM count is never converted into sockets
+- commercial price, renewal, discount, edition, package, and maintenance figures are not inferred
+
+### Cost planning
+
+The existing infrastructure-cost model remains configuration-driven. Values such as
+object_cost_usd_per_tb_month and onprem_cost_usd_per_tb_year are planning-rate inputs, not Veeam
+pricing or live provider quotes. Reports label these values as planning assumptions.
+
+## Remaining Planning Assumptions
+
+The following values still require engineering judgment or environment-specific evidence:
+
+- mixed-environment proxy throughput reuses the VMware transport table unless a custom
+  throughput_mb_per_core benchmark is supplied
+- NBD proxy throughput remains a conservative planning heuristic
+- Fast Clone repository capacity uses a changed-block model because exact physical savings require
+  block-level history
+- GFS capacity uses a conservative full-equivalent upper bound when block-level history is absent
+- CDP proxy sizing falls back to average changed-data rate when measured cluster write I/O is not
+  supplied
+- configured infrastructure-cost rates are assumptions, not quotes
 
 ## Custom Overrides
 

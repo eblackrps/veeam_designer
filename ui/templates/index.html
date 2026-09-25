@@ -191,11 +191,13 @@
                 <label class="field"><span>Source Data</span><div class="input-with-suffix"><input id="nas-source-tb" type="number" min="0" step="0.1" value="120"><span>TB</span></div></label>
                 <label class="field"><span>Share Count</span><input id="nas-share-count" type="number" min="1" step="1" value="80"></label>
                 <label class="field"><span>File Count</span><div class="input-with-suffix"><input id="nas-file-count" type="number" min="0" step="0.1" value="1.5"><span>million</span></div></label>
-                <label class="field"><span>Compression</span><div class="input-with-suffix"><input id="nas-compress" type="number" min="0" step="1" value="30"><span>%</span></div></label>
+                <label class="field"><span>Concurrent Sources</span><input id="nas-concurrent-sources" type="number" min="1" step="1" value="1"></label>
+                <label class="field"><span>Data Reduction</span><div class="input-with-suffix"><input id="nas-compress" type="number" min="0" max="90" step="1" value="30"><span>%</span></div></label>
                 <label class="field"><span>Daily Change</span><div class="input-with-suffix"><input id="nas-daily" type="number" min="0" step="0.1" value="5"><span>%</span></div></label>
                 <label class="field"><span>Retention</span><div class="input-with-suffix"><input id="nas-retention" type="number" min="1" step="1" value="30"><span>days</span></div></label>
                 <label class="field"><span>Backup Window</span><div class="input-with-suffix"><input id="nas-window" type="number" min="1" step="0.5" value="8"><span>hours</span></div></label>
                 <label class="field"><span>Annual Growth</span><div class="input-with-suffix"><input id="nas-growth" type="number" min="0" step="0.1" value="10"><span>%</span></div></label>
+                <label class="field"><span>Forecast Horizon</span><div class="input-with-suffix"><input id="nas-forecast-years" type="number" min="0" step="1" value="3"><span>years</span></div></label>
               </div>
               <div class="toggle-row">
                 <label class="toggle"><input id="nas-cft" type="checkbox"><span>Storage-native CFT</span></label>
@@ -209,7 +211,7 @@
             <div class="mode-panel-header">
               <div>
                 <h3>Physical / agent workloads</h3>
-                <p>Estimate coordinator and repository requirements for protected Windows and Linux systems.</p>
+                <p>Estimate general-purpose proxy, repository, and network requirements for protected Windows and Linux systems.</p>
               </div>
             </div>
             <div class="mode-form-card">
@@ -219,7 +221,8 @@
                 <label class="field"><span>Daily Change</span><div class="input-with-suffix"><input id="agent-daily" type="number" min="0" step="0.1" value="5"><span>%</span></div></label>
                 <label class="field"><span>Retention</span><div class="input-with-suffix"><input id="agent-retention" type="number" min="1" step="1" value="30"><span>days</span></div></label>
                 <label class="field"><span>Backup Window</span><div class="input-with-suffix"><input id="agent-window" type="number" min="1" step="0.5" value="8"><span>hours</span></div></label>
-                <label class="field"><span>Network Bandwidth</span><div class="input-with-suffix"><input id="agent-network" type="number" min="1" step="1" value="1000"><span>Mbps</span></div></label>
+                <label class="field"><span>Concurrent Proxy Tasks</span><input id="agent-concurrent-tasks" type="number" min="1" step="1" value="4"></label>
+                <label class="field"><span>Network Bandwidth</span><div class="input-with-suffix"><input id="agent-network" type="number" min="0" step="1" value="1000"><span>Mbps</span></div></label>
                 <label class="field field-wide">
                   <span>Operating System Mix</span>
                   <select id="agent-os">
@@ -243,13 +246,16 @@
               <div class="settings-grid">
                 <label class="field"><span>Source Data</span><div class="input-with-suffix"><input id="rep-source-tb" type="number" min="0" step="0.1" value="100"><span>TB</span></div></label>
                 <label class="field"><span>VM Count</span><input id="rep-vm-count" type="number" min="0" step="1" value="300"></label>
-                <label class="field"><span>WAN to DR</span><div class="input-with-suffix"><input id="rep-wan-mbps" type="number" min="1" step="1" value="1000"><span>Mbps</span></div></label>
+                <label class="field"><span>Daily Change</span><div class="input-with-suffix"><input id="rep-daily-change" type="number" min="0" step="0.1" value="5"><span>%</span></div></label>
+                <label class="field"><span>WAN to DR</span><div class="input-with-suffix"><input id="rep-wan-mbps" type="number" min="0" step="1" value="1000"><span>Mbps</span></div></label>
                 <label class="field"><span>Target RPO</span><div class="input-with-suffix"><input id="rep-rpo-hours" type="number" min="0.25" step="0.25" value="1"><span>hours</span></div></label>
-                <label class="field"><span>CDP RPO</span><div class="input-with-suffix"><input id="rep-rpo-seconds" type="number" min="2" step="1" value="15"><span>seconds</span></div></label>
+                <label class="field"><span>CDP RPO</span><div class="input-with-suffix"><input id="rep-rpo-seconds" type="number" min="2" max="3600" step="1" value="15"><span>seconds</span></div></label>
+                <label class="field"><span>CDP Retention</span><div class="input-with-suffix"><input id="rep-cdp-retention-hours" type="number" min="0" step="1" value="24"><span>hours</span></div></label>
+                <label class="field"><span>Measured CDP Write I/O</span><div class="input-with-suffix"><input id="rep-cdp-write-io-mb-s" type="number" min="0" step="1" value="0"><span>MB/s</span></div></label>
               </div>
               <div class="toggle-row">
                 <label class="toggle"><input id="rep-cdp" type="checkbox"><span>Enable CDP</span></label>
-                <label class="toggle"><input id="rep-compression" type="checkbox" checked><span>Compression</span></label>
+                <label class="toggle"><input id="rep-cdp-network-encryption" type="checkbox"><span>CDP Network Encryption</span></label>
               </div>
             </div>
           </section>
@@ -372,9 +378,19 @@
         <div class="settings-grid">
           <label class="field"><span>WAN Bandwidth</span><div class="input-with-suffix"><input type="number" min="0" step="1" data-field="wan_bandwidth_mbps"><span>Mbps</span></div></label>
           <label class="field">
+            <span>WAN Accelerator Mode</span>
+            <select data-field="wan_accel_mode">
+              <option value="auto">Auto</option>
+              <option value="direct">Direct</option>
+              <option value="low">Low bandwidth</option>
+              <option value="high">High bandwidth</option>
+            </select>
+          </label>
+          <label class="field">
             <span>Backup Type</span>
             <select data-field="backup_type">
               <option value="synthetic_full_weekly">Synthetic full weekly</option>
+              <option value="active_full_weekly">Active full weekly</option>
               <option value="forever_forward_incremental">Forever-forward incremental</option>
               <option value="reverse_incremental">Reverse incremental</option>
             </select>
@@ -405,7 +421,8 @@
           <label class="field"><span>GFS Weekly</span><input type="number" min="0" step="1" data-field="gfs_weekly_count"></label>
           <label class="field"><span>GFS Monthly</span><input type="number" min="0" step="1" data-field="gfs_monthly_count"></label>
           <label class="field"><span>GFS Yearly</span><input type="number" min="0" step="1" data-field="gfs_yearly_count"></label>
-          <label class="field"><span>Block Generation</span><div class="input-with-suffix"><input type="number" min="1" step="1" data-field="block_generation_days"><span>days</span></div></label>
+          <label class="field"><span>Immutability Period</span><div class="input-with-suffix"><input type="number" min="0" step="1" data-field="immutability_days"><span>days</span></div></label>
+          <label class="field"><span>Object Block Generation</span><div class="input-with-suffix"><input type="number" min="0" step="1" data-field="block_generation_days"><span>days</span></div></label>
           <label class="field"><span>Concurrent Jobs</span><input type="number" min="1" step="1" data-field="concurrent_jobs"></label>
           <label class="field" data-platforms="hyperv,ahv,proxmox"><span>Platform Host Count</span><input type="number" min="0" step="1" data-field="platform_host_count"></label>
           <label class="field" data-platforms="ahv,proxmox"><span>Platform Cluster Count</span><input type="number" min="1" step="1" data-field="platform_cluster_count"></label>

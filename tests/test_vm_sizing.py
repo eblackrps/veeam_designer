@@ -1,3 +1,5 @@
+import pytest
+
 from veeam_designer.models import VeeamInput
 from veeam_designer.sizing import size_repository
 
@@ -5,40 +7,118 @@ from veeam_designer.sizing import size_repository
 def _base_input(**kwargs):
     defaults = dict(
         total_data_tb=100.0,
-        annual_growth_percent=10.0,
-        daily_change_percent=5.0,
-        backup_type="synthetic_full_weekly",
-        primary_retention_days=30,
-        gfs_weekly_count=4,
-        gfs_monthly_count=12,
-        gfs_yearly_count=3,
+        annual_growth_percent=0.0,
+        daily_change_percent=10.0,
+        backup_type="forever_forward_incremental",
+        primary_retention_days=7,
+        gfs_weekly_count=0,
+        gfs_monthly_count=0,
+        gfs_yearly_count=0,
         backup_window_hours=8.0,
         target_rpo_hours=24.0,
+        compression_ratio=1.0,
+        dedupe_ratio=1.0,
+        years_to_plan_for=0,
+        refs_xfs=True,
+        repo_type="sobr",
     )
     defaults.update(kwargs)
     return VeeamInput(**defaults)
 
 
-def test_repo_grows_with_data():
-    small = size_repository(_base_input(total_data_tb=50.0))
-    large = size_repository(_base_input(total_data_tb=200.0))
-    assert large.total_repo_tb > small.total_repo_tb
+def test_forever_forward_v13_n_plus_one_known_answer():
+    result = size_repository(_base_input())
+
+    assert result.short_term_data_tb == 170.0
+    assert result.operational_headroom_tb == 125.0
+    assert result.primary_repo_tb == 295.0
+    assert result.total_repo_tb == 295.0
+    assert "8 retained points" in result.calculation_basis
 
 
-def test_gfs_adds_to_total():
-    no_gfs = size_repository(
-        _base_input(gfs_weekly_count=0, gfs_monthly_count=0, gfs_yearly_count=0)
+def test_v13_minimum_three_restore_points_known_answer():
+    result = size_repository(_base_input(primary_retention_days=1))
+
+    assert result.short_term_data_tb == 120.0
+    assert result.primary_repo_tb == 245.0
+
+
+def test_weekly_synthetic_without_fast_clone_chain_overlap_known_answer():
+    result = size_repository(_base_input(backup_type="synthetic_full_weekly", refs_xfs=False))
+
+    assert result.short_term_data_tb == 320.0
+    assert result.operational_headroom_tb == 125.0
+    assert result.primary_repo_tb == 445.0
+    assert "14 restore points" in result.calculation_basis
+
+
+def test_weekly_active_full_does_not_receive_fast_clone_capacity_savings():
+    result = size_repository(_base_input(backup_type="active_full_weekly", refs_xfs=True))
+
+    assert result.short_term_data_tb == 320.0
+    assert result.primary_repo_tb == 445.0
+
+
+def test_weekly_synthetic_fast_clone_uses_changed_block_model():
+    result = size_repository(_base_input(backup_type="synthetic_full_weekly", refs_xfs=True))
+
+    assert result.short_term_data_tb == 230.0
+    assert result.operational_headroom_tb == 125.0
+    assert result.primary_repo_tb == 355.0
+    assert any("planning estimate" in note for note in result.notes)
+
+
+def test_hardened_immutability_extends_retention_without_fake_percentage():
+    result = size_repository(
+        _base_input(
+            backup_type="synthetic_full_weekly",
+            immutability_enabled=True,
+            immutability_days=14,
+        )
     )
-    with_gfs = size_repository(_base_input())
-    assert with_gfs.total_repo_tb > no_gfs.total_repo_tb
+
+    assert result.short_term_data_tb == 300.0
+    assert result.operational_headroom_tb == 125.0
+    assert result.total_repo_tb == 425.0
+    assert any("no arbitrary metadata percentage" in note for note in result.notes)
 
 
-def test_immutability_overhead():
-    base = size_repository(_base_input())
-    immut = size_repository(_base_input(immutability_enabled=True))
-    assert immut.total_repo_tb > base.total_repo_tb
+def test_immutability_without_duration_does_not_invent_capacity():
+    base = size_repository(_base_input(backup_type="synthetic_full_weekly"))
+    immutable = size_repository(
+        _base_input(
+            backup_type="synthetic_full_weekly",
+            immutability_enabled=True,
+            immutability_days=0,
+        )
+    )
+
+    assert immutable.total_repo_tb == base.total_repo_tb
+    assert any("no immutability duration" in note for note in immutable.notes)
 
 
-def test_repo_components_sum():
-    r = size_repository(_base_input())
-    assert abs(r.total_repo_tb - (r.primary_repo_tb + r.gfs_repo_tb)) < 2.0
+@pytest.mark.parametrize("backup_type", ["forever_forward_incremental", "reverse_incremental"])
+def test_hardened_immutability_rejects_unsupported_chain_types(backup_type):
+    with pytest.raises(ValueError, match="hardened repositories"):
+        size_repository(
+            _base_input(
+                backup_type=backup_type,
+                immutability_enabled=True,
+                immutability_days=14,
+            )
+        )
+
+
+def test_gfs_is_conservative_full_equivalent_upper_bound():
+    result = size_repository(_base_input(gfs_weekly_count=1, gfs_monthly_count=1))
+
+    assert result.primary_repo_tb == 295.0
+    assert result.gfs_repo_tb == 200.0
+    assert result.total_repo_tb == 495.0
+    assert any("full-equivalent upper bound" in note for note in result.notes)
+
+
+def test_repo_components_sum_exactly_at_reported_precision():
+    result = size_repository(_base_input(gfs_weekly_count=1))
+
+    assert result.total_repo_tb == result.primary_repo_tb + result.gfs_repo_tb

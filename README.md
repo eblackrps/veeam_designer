@@ -9,7 +9,7 @@ capacity, WAN, risk, and cost guidance.
 
 **Live calculator:** https://eblackrps.github.io/veeam_designer/
 
-Current development line: **5.0.0a3**
+Current development line: **5.0.0a4**
 
 ## What It Sizes
 
@@ -19,8 +19,8 @@ Current development line: **5.0.0a3**
 - **Nutanix AHV** — native Veeam worker sizing
 - **Proxmox VE** — native Veeam worker sizing with Hot-Add/NBD placement guidance
 - **NAS** — file proxy, cache, repository, retention, and growth planning
-- **Physical** — agent/coordinator and repository sizing
-- **Replication / CDP** — replica capacity, WAN, RPO, and CDP pressure
+- **Physical** — agent/general-purpose proxy, repository, and network sizing
+- **Replication / CDP** — replica capacity, average changed-data WAN, CDP retention, and proxy sizing
 
 The same Python sizing engine is used by the browser edition, FastAPI service, CLI, and Docker image.
 
@@ -76,8 +76,8 @@ The shared web interface is architecture-first and context-aware:
 - raw JSON stays under the advanced results section
 - the same frontend is used by FastAPI, Docker, and GitHub Pages
 
-A completed design produces architecture summary cards, per-site sizing, warnings, cost output,
-structured JSON, CSV, and a printable report.
+A completed design produces architecture summary cards, per-site sizing, warnings, configured
+planning-cost output, structured JSON, CSV, and a printable report.
 
 ## CLI
 
@@ -137,10 +137,14 @@ proxy_deployment_mode: managed_os
 
 ## Sizing Guidance
 
-Veeam Designer distinguishes published vendor guidance from planning heuristics. Current platform
+Veeam Designer distinguishes published vendor guidance from planning assumptions. Current platform
 models include VMware proxies, Hyper-V proxies, AHV workers, Proxmox workers, backup-server
 deployment requirements, hardened repository compute, WAN acceleration, NAS, replication/CDP,
-Veeam ONE, tape, licensing, and cost modeling.
+Veeam ONE, tape, licensing consumption, and configured cost planning.
+
+Repository outputs separate retained backup data from operational headroom. Commercial licensing
+pricing is not inferred, and any workload-dependent reduction or cost factor is labeled as an input
+or planning assumption.
 
 See [docs/assumptions.md](docs/assumptions.md) for formulas, caveats, and source links.
 

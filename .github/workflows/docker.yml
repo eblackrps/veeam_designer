@@ -35,9 +35,13 @@ jobs:
         id: meta
         shell: bash
         run: |
+          package_version="$(python -c 'from veeam_designer._version import __version__; print(__version__)')"
+
           tags=(
             "emb079/veeam-designer:latest"
             "ghcr.io/eblackrps/veeam-designer:latest"
+            "emb079/veeam-designer:${package_version}"
+            "ghcr.io/eblackrps/veeam-designer:${package_version}"
           )
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
