@@ -1,7 +1,9 @@
 from typing import Any, cast
 
 from veeam_designer.models import ProxySizing, RepoSizing, VeeamInput
+from veeam_designer.platforms import size_platform_workers
 from veeam_designer.roles import size_backup_server, size_hardened_repo
+from veeam_designer.service import design_payload_from_project_text
 
 
 def _vm_input(**overrides) -> VeeamInput:
@@ -37,8 +39,27 @@ def test_backup_server_uses_published_workload_bands():
     large = size_backup_server(proxies, _vm_input(workload_count=4000, concurrent_jobs=400))
 
     assert (small.cores, small.ram_gb) == (12, 24)
-    assert (medium.cores, medium.ram_gb) == (24, 32)
-    assert (large.cores, large.ram_gb) == (48, 64)
+    assert (medium.cores, medium.ram_gb) == (24, 40)
+    assert (large.cores, large.ram_gb) == (48, 216)
+
+
+def test_windows_backup_server_retains_workload_band_without_appliance_ram():
+    proxies = ProxySizing(
+        proxy_count=2,
+        cores_per_proxy=4,
+        total_proxy_cores=8,
+        total_parallel_tasks=16,
+        required_throughput_mb_s=100.0,
+    )
+
+    result = size_backup_server(
+        proxies,
+        _vm_input(workload_count=900, concurrent_jobs=80, deployment_mode="windows"),
+    )
+
+    assert (result.cores, result.ram_gb) == (24, 32)
+    assert result.system_disk_gb == 0
+    assert result.deployment_mode == "windows"
 
 
 def test_hardened_repo_host_compute_tracks_proxy_cores():
@@ -50,3 +71,64 @@ def test_hardened_repo_host_compute_tracks_proxy_cores():
     assert result.tb_per_host == 600.0
     assert result.cpu_cores_each == 4
     assert result.ram_gb_each == 16
+
+
+def test_proxmox_workers_use_vendor_task_model():
+    result = size_platform_workers(
+        _vm_input(
+            hypervisor="proxmox",
+            platform_concurrent_tasks=8,
+            worker_task_limit=4,
+            platform_cluster_count=1,
+        )
+    )
+
+    assert result is not None
+    assert result.platform == "proxmox"
+    assert result.worker_count == 2
+    assert result.cores_per_worker == 6
+    assert result.ram_gb_per_worker == 6
+    assert result.disk_gb_per_worker == 100
+    assert result.total_concurrent_tasks == 8
+
+
+def test_ahv_worker_resources_scale_above_four_tasks():
+    result = size_platform_workers(
+        _vm_input(
+            hypervisor="ahv",
+            platform_concurrent_tasks=6,
+            worker_task_limit=6,
+            platform_cluster_count=1,
+            platform_host_count=4,
+        )
+    )
+
+    assert result is not None
+    assert result.worker_count == 1
+    assert result.cores_per_worker == 8
+    assert result.ram_gb_per_worker == 8
+    assert result.total_concurrent_tasks == 6
+
+
+def test_platform_workers_are_exposed_in_api_payload():
+    payload = design_payload_from_project_text(
+        """workload_type: vm
+total_data_tb: 50
+daily_change_percent: 5
+backup_window_hours: 8
+hypervisor: proxmox
+vm_count: 120
+platform_host_count: 3
+platform_cluster_count: 1
+platform_concurrent_tasks: 8
+worker_task_limit: 4
+deployment_mode: software_appliance
+""",
+        suffix=".yml",
+    )
+
+    workers = payload["roles"]["platform_workers"]
+    assert workers["platform"] == "proxmox"
+    assert workers["worker_count"] == 2
+    assert payload["roles"]["backup_server"]["deployment_mode"] == "software_appliance"
+    assert payload["roles"]["backup_server"]["system_disk_gb"] == 240
