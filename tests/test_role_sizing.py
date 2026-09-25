@@ -34,13 +34,39 @@ def test_backup_server_uses_published_workload_bands():
         required_throughput_mb_s=100.0,
     )
 
-    small = size_backup_server(proxies, _vm_input(workload_count=400, concurrent_jobs=40))
-    medium = size_backup_server(proxies, _vm_input(workload_count=900, concurrent_jobs=80))
-    large = size_backup_server(proxies, _vm_input(workload_count=4000, concurrent_jobs=400))
+    small = size_backup_server(
+        proxies, _vm_input(workload_count=400, concurrent_jobs=40, deployment_mode="windows")
+    )
+    medium = size_backup_server(
+        proxies, _vm_input(workload_count=900, concurrent_jobs=80, deployment_mode="windows")
+    )
+    large = size_backup_server(
+        proxies, _vm_input(workload_count=4000, concurrent_jobs=400, deployment_mode="windows")
+    )
 
     assert (small.cores, small.ram_gb) == (12, 24)
-    assert (medium.cores, medium.ram_gb) == (24, 40)
-    assert (large.cores, large.ram_gb) == (48, 216)
+    assert (medium.cores, medium.ram_gb) == (24, 32)
+    assert (large.cores, large.ram_gb) == (48, 64)
+
+
+def test_software_appliance_enforces_ram_per_concurrent_job():
+    proxies = ProxySizing(
+        proxy_count=2,
+        cores_per_proxy=4,
+        total_proxy_cores=8,
+        total_parallel_tasks=16,
+        required_throughput_mb_s=100.0,
+    )
+
+    result = size_backup_server(
+        proxies,
+        _vm_input(workload_count=400, concurrent_jobs=40, deployment_mode="software_appliance"),
+    )
+
+    assert result.cores == 12
+    assert result.ram_gb == 36
+    assert result.system_disk_gb == 240
+    assert result.deployment_mode == "software_appliance"
 
 
 def test_windows_backup_server_retains_workload_band_without_appliance_ram():
