@@ -101,9 +101,7 @@ def _size_hyperv_proxies(
         mb_per_core = vin.throughput_mb_per_core
         throughput_basis = "custom benchmark override"
     else:
-        mb_per_core = VMWARE_INCREMENTAL_MB_PER_CORE[
-            ("virtual", _proxy_target_storage(vin))
-        ]
+        mb_per_core = VMWARE_INCREMENTAL_MB_PER_CORE[("virtual", _proxy_target_storage(vin))]
         throughput_basis = (
             "Veeam Hyper-V BP uses vSphere proxy sizing method; "
             "virtual incremental throughput baseline"
@@ -148,9 +146,7 @@ def _size_hyperv_proxies(
         ram_gb_per_proxy = max(system_min_ram, cores_per_proxy * 2)
 
     total_proxy_ram_gb = proxy_count * ram_gb_per_proxy
-    estimated_capacity_mb_s = (
-        total_proxy_cores * mb_per_core / max(vin.read_write_overhead, 1.0)
-    )
+    estimated_capacity_mb_s = total_proxy_cores * mb_per_core / max(vin.read_write_overhead, 1.0)
 
     notes = [
         "Hyper-V proxy sizing uses the vSphere proxy sizing method recommended by Veeam Best "
