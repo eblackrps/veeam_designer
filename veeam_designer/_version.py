@@ -1,1 +1,3 @@
-"""Project version metadata."""\n\n__version__ = "5.0.0a1"\n
+"""Project version metadata."""
+
+__version__ = "5.0.0a1"
