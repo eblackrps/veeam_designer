@@ -55,6 +55,12 @@ def size_platform_workers(vin: VeeamInput) -> PlatformWorkerSizing | None:
             "Each task above the default four adds 1 vCPU and 1 GB RAM to each worker.",
             "Veeam creates a processing task per protected Proxmox VM; storage-level backup-operation limits can reduce effective concurrency.",
         ]
+        if vin.platform_host_count > 0 and worker_count < vin.platform_host_count:
+            notes.append(
+                f"The design has {vin.platform_host_count} Proxmox hosts but {worker_count} workers. "
+                "Veeam best practice recommends at least one worker per host for Hot-Add coverage; "
+                "VMs without a same-host worker can be processed over NBD."
+            )
     else:
         source_url = AHV_SOURCE
         transport_modes = ["platform-native worker"]
@@ -62,6 +68,7 @@ def size_platform_workers(vin: VeeamInput) -> PlatformWorkerSizing | None:
             "Veeam Nutanix AHV workers default to 6 vCPU, 6 GB RAM and 100 GB disk for 4 concurrent tasks.",
             "Each task above the default four adds 1 vCPU and 1 GB RAM to each worker.",
             "Veeam recommends worker coverage in each AHV cluster and recommends not configuring more workers than cluster hosts.",
+            "AHV best practice also recommends that total worker task limits in a cluster do not exceed the cluster physical-disk count; disk count is not yet collected by this calculator.",
         ]
         if vin.platform_host_count > 0 and worker_count > vin.platform_host_count:
             notes.append(
