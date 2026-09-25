@@ -21,22 +21,7 @@ multiple spreadsheets. Veeam Designer puts those planning paths into one calcula
 - export structured JSON, CSV, and printable HTML reports
 - run the same engine in the browser, over REST, from the CLI, or in Docker
 
-## Screenshots
-
-VM planner with multi-site infrastructure inputs and live YAML:
-
-![VM planner overview](docs/screenshots/vm-planner-overview.png)
-
-Replication sizing workflow in the restored calculator UI:
-
-![Replication planner](docs/screenshots/replication-planner.png)
-
-Results dashboard after a design run:
-
-![Results dashboard](docs/screenshots/results-dashboard.png)
-
-## Quick Start
-
+1751
 ### Local Install
 
 Create a virtual environment, install the package, and launch the web app:
@@ -77,7 +62,6 @@ You can also run the published image directly:
 
 ```bash
 docker run --rm -p 8000:8000 emb079/veeam-designer:latest
-docker run --rm -p 8000:8000 emb079/veeam-designer:v4.0.4
 ```
 
 ### GitHub Pages
