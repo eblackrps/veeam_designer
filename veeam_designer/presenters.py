@@ -224,8 +224,12 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "repo_host_ram_gb": int(hardened_repos.get("ram_gb_each", 0)) if hardened_repos else 0,
         "required_mb_s": float(repo_perf.get("required_mb_s", 0.0)),
         "proxy_capacity_mb_s": proxy_capacity_mb_s,
-        "proxy_load_ratio": float(repo_perf.get("required_mb_s", 0.0))
-        / max(proxy_capacity_mb_s, 1.0),
+        "proxy_capacity_known": proxy_capacity_mb_s > 0,
+        "proxy_load_ratio": (
+            float(repo_perf.get("required_mb_s", 0.0)) / proxy_capacity_mb_s
+            if proxy_capacity_mb_s > 0
+            else 0.0
+        ),
         "wan_required_mbps": float(network.get("required_mbps", 0.0)),
         "wan_meets_target": bool(network.get("meets_target", False)),
         "risk_level": str(risk.get("level", "unknown")),
