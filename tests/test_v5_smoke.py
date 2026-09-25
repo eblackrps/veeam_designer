@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -209,6 +210,22 @@ def test_api_and_server_report_smoke_for_proxmox():
     assert report_response.status_code == 200
     assert "PROXMOX Workers" in report_response.text
     assert "Backup Server" in report_response.text
+
+
+def test_checked_in_example_project_smoke():
+    payload = design_payload_from_project_text(
+        Path("example-project.yml").read_text(encoding="utf-8"),
+        suffix=".yml",
+    )
+
+    assert payload["kind"] == "multi-site"
+    assert len(payload["sites"]) == 2
+    assert payload["sites"][0]["name"] == "Primary DC"
+    assert payload["sites"][1]["name"] == "Recovery Site"
+    assert (
+        payload["sites"][0]["design"]["roles"]["backup_server"]["deployment_mode"]
+        == "software_appliance"
+    )
 
 
 def test_cli_smoke_for_proxmox_json_output():

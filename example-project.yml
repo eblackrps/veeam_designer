@@ -1,6 +1,9 @@
-profile: msp
+profile: enterprise
+workload_type: vm
+compliance_framework: none
+
 sites:
-  - name: HQ
+  - name: Primary DC
     veeam_input:
       total_data_tb: 200
       annual_growth_percent: 15
@@ -14,25 +17,37 @@ sites:
       target_rpo_hours: 24
       vm_count: 600
       avg_vm_size_gb: 250
-      wan_bandwidth_mbps: 500
+      wan_bandwidth_mbps: 1000
       repo_type: sobr
       hypervisor: vmware
+      deployment_mode: software_appliance
+      proxy_deployment_mode: managed_os
       has_san_access: true
-  - name: DR
+      refs_xfs: true
+      immutability_enabled: true
+      capacity_tier_enabled: true
+      concurrent_jobs: 20
+
+  - name: Recovery Site
     veeam_input:
       total_data_tb: 120
       annual_growth_percent: 10
       daily_change_percent: 4
       backup_type: synthetic_full_weekly
-      primary_retention_days: 30
-      gfs_weekly_count: 4
-      gfs_monthly_count: 12
-      gfs_yearly_count: 3
-      backup_window_hours: 8
+      primary_retention_days: 21
+      gfs_weekly_count: 2
+      gfs_monthly_count: 6
+      gfs_yearly_count: 0
+      backup_window_hours: 10
       target_rpo_hours: 24
       vm_count: 350
       avg_vm_size_gb: 220
       wan_bandwidth_mbps: 500
-      repo_type: sobr
+      repo_type: direct
       hypervisor: vmware
-      has_san_access: true
+      deployment_mode: software_appliance
+      proxy_deployment_mode: managed_os
+      has_san_access: false
+      refs_xfs: true
+      immutability_enabled: true
+      concurrent_jobs: 12

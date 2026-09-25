@@ -20,7 +20,7 @@ dependencies = [
 ]
 keywords = ["veeam", "backup", "sizing", "architecture", "capacity-planning", "disaster-recovery"]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 3 - Alpha",
   "Environment :: Web Environment",
   "Framework :: FastAPI",
   "Intended Audience :: Information Technology",
@@ -36,7 +36,10 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/eblackrps/veeam_designer"
+"Live Calculator" = "https://eblackrps.github.io/veeam_designer/"
 Repository = "https://github.com/eblackrps/veeam_designer"
+Documentation = "https://github.com/eblackrps/veeam_designer/blob/main/docs/assumptions.md"
+Changelog = "https://github.com/eblackrps/veeam_designer/blob/main/CHANGELOG.md"
 Issues = "https://github.com/eblackrps/veeam_designer/issues"
 
 [project.scripts]

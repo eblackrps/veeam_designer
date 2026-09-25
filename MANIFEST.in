@@ -6,4 +6,3 @@ include example-project.yml
 recursive-include ui/templates *.html
 recursive-include ui/static *.css *.js
 recursive-include veeam_designer/resources *.json
-recursive-include docs/screenshots *.png
