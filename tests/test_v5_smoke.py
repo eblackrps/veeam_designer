@@ -222,7 +222,10 @@ def test_checked_in_example_project_smoke():
     assert len(payload["sites"]) == 2
     assert payload["sites"][0]["name"] == "Primary DC"
     assert payload["sites"][1]["name"] == "Recovery Site"
-    assert payload["sites"][0]["design"]["roles"]["backup_server"]["deployment_mode"] == "software_appliance"
+    assert (
+        payload["sites"][0]["design"]["roles"]["backup_server"]["deployment_mode"]
+        == "software_appliance"
+    )
 
 
 def test_cli_smoke_for_proxmox_json_output():
