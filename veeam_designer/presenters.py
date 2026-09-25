@@ -48,7 +48,7 @@ def build_dashboard_from_payload(payload: JSONDict | None) -> JSONDict | None:
 
 
 def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
-    """Build headline metrics for the dashboard summary strip."""
+    """Build headline metrics without presenting unconfigured estimates as facts."""
 
     if payload is None:
         return []
@@ -57,7 +57,9 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
     if kind == "multi-site":
         sites = payload.get("sites", [])
         data_movers = 0
-        wan_targets_met = 0
+        wan_windows_met = 0
+        configured_cost = 0.0
+        has_cost = False
         for site in sites:
             design = site.get("design", {}) or {}
             roles = design.get("roles", {}) or {}
@@ -67,18 +69,24 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
                 workers.get("worker_count", 0) if workers else proxies.get("proxy_count", 0)
             )
             if bool((design.get("network") or {}).get("meets_target", False)):
-                wan_targets_met += 1
+                wan_windows_met += 1
+            cost = design.get("cost", {}) or {}
+            if cost.get("configured"):
+                has_cost = True
+                configured_cost += float(cost.get("yearly_onprem_usd", 0.0))
 
-        return [
+        cards = [
             {"label": "Sites", "value": str(len(sites))},
             {"label": "Repository", "value": f"{float(payload.get('total_repo_tb', 0.0)):.1f} TB"},
             {"label": "Data Movers", "value": str(data_movers)},
-            {"label": "WAN Targets", "value": f"{wan_targets_met}/{len(sites)} met"},
-            {
-                "label": "Yearly Cost",
-                "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('yearly_onprem_usd', 0.0)) for site in sites):,.0f}",
-            },
+            {"label": "WAN Windows", "value": f"{wan_windows_met}/{len(sites)} met"},
         ]
+        if has_cost:
+            cards.append(
+                {"label": "Configured On-Prem Cost", "value": f"${configured_cost:,.0f}/yr"}
+            )
+        return cards
+
     if kind == "vm":
         repo = payload.get("repo") or {}
         roles = payload.get("roles") or {}
@@ -98,9 +106,7 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             if platform_workers
             else int(proxies.get("proxy_count", 0))
         )
-        wan_required = float(network.get("required_mbps", 0.0))
-        wan_status = "Pass" if network.get("meets_target") else "Review"
-        return [
+        cards = [
             {"label": "Repository", "value": f"{float(repo.get('total_repo_tb', 0.0)):.1f} TB"},
             {"label": mover_label, "value": str(mover_count)},
             {
@@ -110,39 +116,56 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
                     f"{int(backup_server.get('ram_gb', 0))} GB"
                 ),
             },
-            {"label": "WAN / RPO", "value": f"{wan_required:.0f} Mbps · {wan_status}"},
+            {
+                "label": "WAN Window",
+                "value": (
+                    f"{float(network.get('required_mbps', 0.0)):.0f} Mbps · "
+                    f"{'Pass' if network.get('meets_target') else 'Review'}"
+                ),
+            },
             {"label": "Risk", "value": str(risk.get("level", "unknown")).upper()},
-            {"label": "Yearly Cost", "value": f"${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}"},
         ]
+        if cost.get("configured"):
+            cards.append(
+                {
+                    "label": "Configured On-Prem Cost",
+                    "value": f"${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr",
+                }
+            )
+        return cards
+
     if kind == "nas":
         result = payload.get("result") or {}
         return [
             {"label": "Repository", "value": f"{float(result.get('total_repo_tb', 0.0)):.1f} TB"},
-            {"label": "File Proxies", "value": str(int(result.get("file_proxy_cores", 0)))},
-            {"label": "Cache Repo", "value": f"{float(result.get('cache_repo_tb', 0.0)):.1f} TB"},
+            {"label": "File Proxies", "value": str(int(result.get("file_proxy_count", 0)))},
+            {
+                "label": "Proxy Resources",
+                "value": (
+                    f"{int(result.get('file_proxy_cores', 0))}c / "
+                    f"{int(result.get('file_proxy_ram_gb', 0))} GB"
+                ),
+            },
+            {"label": "Cache Repo", "value": f"{float(result.get('cache_repo_tb', 0.0)):.3f} TB"},
         ]
+
     if kind == "physical":
         result = payload.get("result") or {}
         return [
             {"label": "Repository", "value": f"{float(result.get('total_repo_tb', 0.0)):.1f} TB"},
-            {"label": "Coordinator Cores", "value": str(int(result.get("coordinator_cores", 0)))},
-            {"label": "Coordinator RAM", "value": f"{int(result.get('coordinator_ram_gb', 0))} GB"},
+            {"label": "General Proxy Cores", "value": str(int(result.get("coordinator_cores", 0)))},
+            {"label": "General Proxy RAM", "value": f"{int(result.get('coordinator_ram_gb', 0))} GB"},
         ]
+
     if kind == "replication":
         result = payload.get("result") or {}
         return [
-            {
-                "label": "Required WAN",
-                "value": f"{float(result.get('required_mbps', 0.0)):.1f} Mbps",
-            },
-            {
-                "label": "Replica Storage",
-                "value": f"{float(result.get('replica_storage_tb', 0.0)):.1f} TB",
-            },
-            {"label": "RPO Status", "value": "Pass" if result.get("meets_rpo") else "Risk"},
+            {"label": "Average Change Rate", "value": f"{float(result.get('required_mbps', 0.0)):.1f} Mbps"},
+            {"label": "Replica Storage", "value": f"{float(result.get('replica_storage_tb', 0.0)):.1f} TB"},
+            {"label": "Avg Rate Feasible", "value": "Yes" if result.get("meets_rpo") else "No"},
         ]
-    return []
 
+    return []
 
 def render_blueprint_human(payload: JSONDict) -> str:
     """Render a concise operator-facing blueprint summary."""
