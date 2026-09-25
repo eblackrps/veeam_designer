@@ -341,6 +341,7 @@ class ReplicationDesign:
     required_mbps: float
     meets_rpo: bool
     replica_storage_tb: float
+    cdp_proxy_count_per_side: int = 0
     cdp_proxy_cores: int = 0
     cdp_proxy_ram_gb: int = 0
     cdp_proxy_cache_gb: int = 0
@@ -395,13 +396,13 @@ class WanAccelDesign:
     source_appliance_count: int
     target_appliance_count: int
     cache_size_gb_per_source: int
-    mode: str = "low"
     source_digest_gb_per_source: int
     target_digest_gb_per_target: int
     target_total_free_space_gb: int
     effective_mbps: float
     meets_copy_window: bool
     backup_copy_window_hours: float
+    mode: str = "low"
     notes: List[str] = field(default_factory=list)
 
 
