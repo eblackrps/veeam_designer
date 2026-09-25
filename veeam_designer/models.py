@@ -461,6 +461,7 @@ class TapeDesign:
     tb_per_cartridge: float
     annual_media_cost_usd: float
     native_tb_per_cartridge: float = 0.0
+    initial_media_cost_usd: float = 0.0
     notes: List[str] = field(default_factory=list)
 
 
