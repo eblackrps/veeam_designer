@@ -729,7 +729,9 @@ function renderDashboard(dashboard) {
           site.platform_worker_count ? "Workers" : "Proxies",
           site.platform_worker_count
             ? `${formatInteger(site.platform_worker_count)} / ${formatInteger(site.platform_worker_cores_each)} vCPU / ${formatInteger(site.platform_worker_ram_each)} GB each`
-            : `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`,
+            : site.proxy_deployment_mode === "infrastructure_appliance"
+              ? `${formatInteger(site.proxy_count)} / ${formatInteger(site.proxy_allocated_cores)} allocated cores / VIA`
+              : `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`,
         )}
         ${renderMetric(
           "Backup Server",
@@ -934,7 +936,9 @@ function buildBrowserReportMarkup(bundle) {
           <p><strong>${site.platform_worker_count ? "Workers" : "Proxies"}:</strong> ${escapeHtml(
             site.platform_worker_count
               ? `${formatInteger(site.platform_worker_count)} / ${formatInteger(site.platform_worker_cores_each)} vCPU / ${formatInteger(site.platform_worker_ram_each)} GB each`
-              : `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`,
+              : site.proxy_deployment_mode === "infrastructure_appliance"
+                ? `${formatInteger(site.proxy_count)} / ${formatInteger(site.proxy_allocated_cores)} allocated cores / VIA`
+                : `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`,
           )}</p>
           <p><strong>Backup Server:</strong> ${escapeHtml(
             `${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB${site.bs_deployment_mode ? ` / ${site.bs_deployment_mode}` : ""}`,
