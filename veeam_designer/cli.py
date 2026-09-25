@@ -181,9 +181,7 @@ def main():
                         )
                     else:
                         movers = f"{s.design.roles.proxies.proxy_count} proxies"
-                    print(
-                        f"- {s.name}: {s.design.repo.total_repo_tb:.1f} TB total repo, {movers}"
-                    )
+                    print(f"- {s.name}: {s.design.repo.total_repo_tb:.1f} TB total repo, {movers}")
             return
 
         # Single-object project file — dispatch by type
