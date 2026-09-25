@@ -41,7 +41,7 @@ class VeeamInput:
     platform_cluster_count: int = 1
     platform_concurrent_tasks: int = 0
     worker_task_limit: int = 4
-    deployment_mode: str = "software_appliance"
+    deployment_mode: str = ""
 
     # Round 2: backup server sizing
     workload_count: int = 0
