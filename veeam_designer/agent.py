@@ -1,78 +1,70 @@
-"""
-Agent / Physical machine backup sizing module.
-
-Mirrors the Veeam Calculator – Agent Backup tab behaviour:
-  - Network-based transfer (NBD-equivalent: 5 MB/s per core)
-  - Agent coordinator VM sized by machine count
-  - Repository sizing reuses the VM engine formulas
-"""
+"""Physical / Veeam Agent workload sizing."""
 
 from __future__ import annotations
-
-from math import ceil
 
 from .config import CONFIG
 from .models import AgentDesign, AgentInput
 
-_AGENT_MB_PER_CORE = 5.0  # network throughput per core (no SAN/HotAdd for agents)
-
 
 def size_agent(ain: AgentInput) -> AgentDesign:
-    """Return an AgentDesign for the given AgentInput."""
-    total_data_tb = ain.machine_count * ain.avg_size_gb / 1024.0
-    daily_change_tb = total_data_tb * ain.daily_change_pct / 100.0
+    """Size Agent backup capacity and general-purpose proxy minimum resources."""
 
-    # Repository sizing (same logic as VM engine)
-    weeks_in_retention = ain.retention_days / 7.0
-    week_full_tb = total_data_tb
-    week_incr_tb = daily_change_tb * 6
-    primary_logical_tb = (week_full_tb + week_incr_tb) * weeks_in_retention
-    # Agents default to ~1.3 compression (lower than VM due to OS overhead)
-    compression_ratio = 1.3
-    primary_repo_tb = (primary_logical_tb / compression_ratio) * CONFIG["repo_overhead_factor"]
-    total_repo_tb = primary_repo_tb
+    total_data_tb = max(0, ain.machine_count) * max(0.0, ain.avg_size_gb) / 1024.0
+    daily_change_tb = total_data_tb * max(0.0, ain.daily_change_pct) / 100.0
 
-    # Throughput and coordinator sizing
-    if ain.backup_window_hours > 0:
-        required_mb_s = (daily_change_tb * 1024.0 * 1024.0) / (ain.backup_window_hours * 3600.0)
-    else:
-        required_mb_s = 0.0
+    # Managed Agent daily retention in VBR 13 keeps N+1 days and never fewer than 3 points.
+    restore_points = max(3, max(0, int(ain.retention_days)) + 1)
+    short_term_data_tb = total_data_tb + daily_change_tb * (restore_points - 1)
 
-    # Validate against available network bandwidth
-    available_mb_s = ain.network_bandwidth_mbps / 8.0
-    # bottleneck unused; kept for future use
+    # Use the same documented disk-repository transformation reserve as the VM engine.
+    # This is headroom, not retained backup data.
+    transformation_factor = max(0.0, float(CONFIG.get("repo_overhead_factor", 1.25)))
+    operational_headroom_tb = total_data_tb * transformation_factor
+    total_repo_tb = short_term_data_tb + operational_headroom_tb
 
-    # Agent coordinator: 1 coordinator per 100 machines minimum
-    coordinator_cores = max(2, ceil(ain.machine_count / 100))
-    coordinator_ram_gb = max(8, coordinator_cores * 2)
+    if ain.backup_window_hours <= 0:
+        raise ValueError("backup_window_hours must be greater than zero")
 
-    notes: list[str] = []
-    if required_mb_s > available_mb_s > 0:
-        deficit = required_mb_s - available_mb_s
+    required_mb_s = (daily_change_tb * 1024.0 * 1024.0) / (
+        ain.backup_window_hours * 3600.0
+    )
+    required_mbps = required_mb_s * 8.0
+    available_mbps = max(0.0, ain.network_bandwidth_mbps)
+
+    tasks = max(1, int(ain.concurrent_tasks))
+    # Current general-purpose proxy minimum for Agent integration:
+    # 2 vCPU minimum, with 2 vCPU required per concurrent task; 2 GB RAM + 1 GB/task.
+    proxy_cores = max(2, 2 * tasks)
+    proxy_ram_gb = 2 + tasks
+
+    notes: list[str] = [
+        f"Agent repository capacity assumes one successful restore point per day and uses "
+        f"{restore_points} retained restore points (VBR 13 N+1 retention, minimum 3): "
+        "one full plus changed data for the remaining points.",
+        "No backup-data compression or deduplication ratio is invented for Agent workloads.",
+        f"Operational headroom adds one full backup x {transformation_factor:.2f}, matching "
+        "Veeam Best Practice's documented minimum for backup-chain transformation. "
+        "One-off full-backup headroom is a separate planning consideration because Veeam does "
+        "not publish a single universal quantity for it.",
+        f"General-purpose proxy minimum for {tasks} concurrent Agent task(s): "
+        f"{proxy_cores} vCPU / {proxy_ram_gb} GB RAM. The legacy output field name "
+        "'coordinator' is retained for API compatibility but represents proxy resources.",
+    ]
+
+    if available_mbps <= 0:
+        notes.append("No network bandwidth was supplied; backup-window feasibility was not validated.")
+    elif required_mbps > available_mbps:
         notes.append(
-            f"Network bandwidth ({ain.network_bandwidth_mbps:.0f} Mbps) is insufficient "
-            f"for {required_mb_s * 8:.0f} Mbps of backup traffic within the window. "
-            f"Deficit: {deficit * 8:.0f} Mbps. Extend backup window or increase bandwidth."
-        )
-    if ain.os_type.lower() == "linux":
-        notes.append(
-            "Linux agents: ensure Veeam Agent for Linux is deployed and CBT driver is loaded "
-            "for efficient incremental tracking."
-        )
-    elif ain.os_type.lower() == "windows":
-        notes.append(
-            "Windows agents: Volume Shadow Copy (VSS) is used for consistent snapshots. "
-            "Ensure VSS writers are healthy on all protected machines."
-        )
-    if ain.machine_count > 200:
-        notes.append(
-            f"Large agent deployment ({ain.machine_count} machines): consider a dedicated "
-            "distribution server to reduce coordinator load."
+            f"Average changed data requires {required_mbps:.1f} Mbps inside the backup window, "
+            f"above the configured {available_mbps:.1f} Mbps."
         )
 
     return AgentDesign(
         total_repo_tb=round(total_repo_tb, 1),
-        coordinator_cores=coordinator_cores,
-        coordinator_ram_gb=coordinator_ram_gb,
+        coordinator_cores=proxy_cores,
+        coordinator_ram_gb=proxy_ram_gb,
+        short_term_data_tb=round(short_term_data_tb, 1),
+        operational_headroom_tb=round(operational_headroom_tb, 1),
+        required_mbps=round(required_mbps, 1),
         notes=notes,
     )

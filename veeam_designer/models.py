@@ -82,6 +82,7 @@ class NasInput:
     source_tb: float
     share_count: int = 70
     file_count_millions: float = 1.0
+    concurrent_sources: int = 1
     daily_change_pct: float = 5.0
     backup_window_hours: float = 8.0
     retention_days: int = 14
@@ -104,6 +105,11 @@ class NasDesign:
     total_repo_tb: float
     file_proxy_cores: int
     file_proxy_ram_gb: int
+    file_proxy_count: int = 0
+    file_proxy_cores_each: int = 0
+    file_proxy_ram_gb_each: int = 0
+    cache_repo_cores: int = 0
+    cache_repo_ram_gb: int = 0
     notes: List[str] = field(default_factory=list)
 
 
@@ -367,6 +373,7 @@ class AgentInput:
     retention_days: int = 14
     os_type: str = "windows"
     network_bandwidth_mbps: float = 1000.0
+    concurrent_tasks: int = 4
 
 
 @dataclass
@@ -374,6 +381,9 @@ class AgentDesign:
     total_repo_tb: float
     coordinator_cores: int
     coordinator_ram_gb: int
+    short_term_data_tb: float = 0.0
+    operational_headroom_tb: float = 0.0
+    required_mbps: float = 0.0
     notes: List[str] = field(default_factory=list)
 
 
@@ -422,6 +432,7 @@ class LicenseInput:
     nas_tb: float = 0.0
     cloud_workloads: int = 0
     license_type: str = "vul"
+    occupied_sockets: int = 0
 
 
 @dataclass
@@ -430,6 +441,8 @@ class LicenseEstimate:
     estimated_sockets: int
     tier: str
     annual_maintenance_usd: float
+    instance_consumption: float = 0.0
+    capacity_consumption_tb: float = 0.0
     notes: List[str] = field(default_factory=list)
 
 
@@ -444,6 +457,11 @@ class TapeInput:
     lto_generation: int = 9
     retention_years: int = 7
     daily_change_pct: float = 1.0
+    media_compression_ratio: float = 1.0
+    cost_per_cartridge_usd: float = 0.0
+    native_capacity_tb: float = 0.0
+    write_window_hours: float = 0.0
+    drive_native_mb_s: float = 0.0
 
 
 @dataclass
@@ -454,6 +472,9 @@ class TapeDesign:
     lto_generation: int
     tb_per_cartridge: float
     annual_media_cost_usd: float
+    native_tb_per_cartridge: float = 0.0
+    initial_media_cost_usd: float = 0.0
+    required_tape_write_mb_s: float = 0.0
     notes: List[str] = field(default_factory=list)
 
 
@@ -469,12 +490,13 @@ class VeeamOneInput:
     retention_days: int = 30
     enterprise_manager: bool = False
     vspc_tenants: int = 0
+    connected_vbr_servers: int = 1
 
 
 @dataclass
 class VeeamOneDesign:
-    server_cores: int
-    server_ram_gb: int
+    server_cores: float
+    server_ram_gb: float
     database_size_gb: int
     em_cores: int = 0
     em_ram_gb: int = 0
