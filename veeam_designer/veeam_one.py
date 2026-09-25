@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from math import ceil
-
 from .models import VeeamOneDesign, VeeamOneInput
 
 
@@ -37,12 +35,13 @@ def size_veeam_one(vin: VeeamOneInput) -> VeeamOneDesign:
             "range. Do not extrapolate automatically; validate the deployment with Veeam."
         )
 
-    cores = max(4, ceil(base_cores + (0.03 * vbr_servers)))
-    ram_gb = max(8, ceil(base_ram + (0.06 * vbr_servers)))
+    cores = round(max(4.0, base_cores + (0.03 * vbr_servers)), 2)
+    ram_gb = round(max(8.0, base_ram + ((60.0 / 1024.0) * vbr_servers)), 2)
 
     notes.append(
         f"Veeam ONE backup-data-only sizing uses the conservative upper end of the published "
-        f"{tier} range, plus 0.03 vCPU and 60 MB RAM per connected VBR server."
+        f"{tier} range, with 0.03 vCPU and 60 MB RAM added per connected VBR server. "
+        "Fractional requirements are preserved instead of rounded into whole vCPUs/GB."
     )
     notes.append(
         "Database capacity is intentionally not estimated from a made-up per-VM rate. Use the "
