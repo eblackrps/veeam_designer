@@ -97,6 +97,12 @@ def collect_inputs_interactive() -> VeeamInput:
         "Backup server deployment (software_appliance / windows)", "software_appliance"
     )
 
+    proxy_deployment_mode = "managed_os"
+    if hypervisor.lower() == "vmware":
+        proxy_deployment_mode = _prompt_str(
+            "VMware proxy deployment (managed_os / infrastructure_appliance)", "managed_os"
+        )
+
     platform_host_count = 0
     platform_cluster_count = 1
     platform_concurrent_tasks = 0
@@ -149,6 +155,7 @@ def collect_inputs_interactive() -> VeeamInput:
         has_san_access=has_san_access,
         on_host_proxy=on_host_proxy,
         deployment_mode=deployment_mode,
+        proxy_deployment_mode=proxy_deployment_mode,
         platform_host_count=platform_host_count,
         platform_cluster_count=platform_cluster_count,
         platform_concurrent_tasks=platform_concurrent_tasks,
