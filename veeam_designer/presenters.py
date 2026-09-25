@@ -55,22 +55,63 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
 
     kind = payload.get("kind")
     if kind == "multi-site":
+        sites = payload.get("sites", [])
+        data_movers = 0
+        wan_targets_met = 0
+        for site in sites:
+            design = site.get("design", {}) or {}
+            roles = design.get("roles", {}) or {}
+            workers = roles.get("platform_workers") or {}
+            proxies = roles.get("proxies") or {}
+            data_movers += int(
+                workers.get("worker_count", 0) if workers else proxies.get("proxy_count", 0)
+            )
+            if bool((design.get("network") or {}).get("meets_target", False)):
+                wan_targets_met += 1
+
         return [
-            {"label": "Sites", "value": str(len(payload.get("sites", [])))},
+            {"label": "Sites", "value": str(len(sites))},
             {"label": "Repository", "value": f"{float(payload.get('total_repo_tb', 0.0)):.1f} TB"},
+            {"label": "Data Movers", "value": str(data_movers)},
+            {"label": "WAN Targets", "value": f"{wan_targets_met}/{len(sites)} met"},
             {
                 "label": "Yearly Cost",
-                "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('yearly_onprem_usd', 0.0)) for site in payload.get('sites', [])):,.0f}",
+                "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('yearly_onprem_usd', 0.0)) for site in sites):,.0f}",
             },
         ]
     if kind == "vm":
         repo = payload.get("repo") or {}
         roles = payload.get("roles") or {}
         cost = payload.get("cost") or {}
+        network = payload.get("network") or {}
+        risk = payload.get("risk") or {}
         proxies = roles.get("proxies") or {}
+        platform_workers = roles.get("platform_workers") or {}
+        backup_server = roles.get("backup_server") or {}
+        mover_label = (
+            f"{str(platform_workers.get('platform', '')).upper()} Workers"
+            if platform_workers
+            else "Proxies"
+        )
+        mover_count = (
+            int(platform_workers.get("worker_count", 0))
+            if platform_workers
+            else int(proxies.get("proxy_count", 0))
+        )
+        wan_required = float(network.get("required_mbps", 0.0))
+        wan_status = "Pass" if network.get("meets_target") else "Review"
         return [
             {"label": "Repository", "value": f"{float(repo.get('total_repo_tb', 0.0)):.1f} TB"},
-            {"label": "Proxy Count", "value": str(int(proxies.get("proxy_count", 0)))},
+            {"label": mover_label, "value": str(mover_count)},
+            {
+                "label": "Backup Server",
+                "value": (
+                    f"{int(backup_server.get('cores', 0))}c / "
+                    f"{int(backup_server.get('ram_gb', 0))} GB"
+                ),
+            },
+            {"label": "WAN / RPO", "value": f"{wan_required:.0f} Mbps · {wan_status}"},
+            {"label": "Risk", "value": str(risk.get("level", "unknown")).upper()},
             {"label": "Yearly Cost", "value": f"${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}"},
         ]
     if kind == "nas":
@@ -177,6 +218,7 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
     repo = design_payload.get("repo") or {}
     roles = design_payload.get("roles") or {}
     proxies = roles.get("proxies") or {}
+    platform_workers = roles.get("platform_workers") or {}
     backup_server = roles.get("backup_server") or {}
     hardened_repos = roles.get("hardened_repos") or {}
     network = design_payload.get("network") or {}
@@ -197,19 +239,47 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "capacity_tier_tb": float(sobr.get("capacity_tier_tb", 0.0)),
         "proxy_count": int(proxies.get("proxy_count", 0)),
         "total_proxy_cores": total_proxy_cores,
+        "proxy_deployment_mode": str(proxies.get("deployment_mode", "managed_os")),
+        "proxy_allocated_cores": int(
+            proxies.get("total_allocated_proxy_cores", 0) or total_proxy_cores
+        ),
+        "proxy_allocated_ram_gb": int(
+            proxies.get("total_allocated_proxy_ram_gb", 0) or proxies.get("total_proxy_ram_gb", 0)
+        ),
+        "proxy_allocated_cores_each": int(
+            proxies.get("allocated_cores_per_proxy", 0) or proxies.get("cores_per_proxy", 0)
+        ),
+        "proxy_allocated_ram_each": int(
+            proxies.get("allocated_ram_gb_per_proxy", 0) or proxies.get("ram_gb_per_proxy", 0)
+        ),
+        "proxy_infra_system_disk_gb": int(proxies.get("infrastructure_system_disk_gb", 0)),
+        "proxy_infra_data_disk_gb": int(proxies.get("infrastructure_data_disk_gb", 0)),
+        "platform_worker_count": int(platform_workers.get("worker_count", 0)),
+        "platform_worker_platform": str(platform_workers.get("platform", "")),
+        "platform_worker_tasks": int(platform_workers.get("total_concurrent_tasks", 0)),
+        "platform_worker_cores_each": int(platform_workers.get("cores_per_worker", 0)),
+        "platform_worker_ram_each": int(platform_workers.get("ram_gb_per_worker", 0)),
+        "platform_worker_disk_each": int(platform_workers.get("disk_gb_per_worker", 0)),
         "proxy_ram_gb": int(proxies.get("total_proxy_ram_gb", 0)),
         "transport_mode": transport_mode,
         "proxy_throughput_basis": str(proxies.get("throughput_basis", "auto")),
         "bs_cores": int(backup_server.get("cores", 0)),
         "bs_ram_gb": int(backup_server.get("ram_gb", 0)),
+        "bs_deployment_mode": str(backup_server.get("deployment_mode", "")),
+        "bs_system_disk_gb": int(backup_server.get("system_disk_gb", 0)),
+        "bs_secondary_disk_gb": int(backup_server.get("secondary_disk_gb", 0)),
         "repo_host_count": int(hardened_repos.get("count", 0)) if hardened_repos else 0,
         "repo_host_tb": float(hardened_repos.get("tb_per_host", 0.0)) if hardened_repos else 0.0,
         "repo_host_cores": int(hardened_repos.get("cpu_cores_each", 0)) if hardened_repos else 0,
         "repo_host_ram_gb": int(hardened_repos.get("ram_gb_each", 0)) if hardened_repos else 0,
         "required_mb_s": float(repo_perf.get("required_mb_s", 0.0)),
         "proxy_capacity_mb_s": proxy_capacity_mb_s,
-        "proxy_load_ratio": float(repo_perf.get("required_mb_s", 0.0))
-        / max(proxy_capacity_mb_s, 1.0),
+        "proxy_capacity_known": proxy_capacity_mb_s > 0,
+        "proxy_load_ratio": (
+            float(repo_perf.get("required_mb_s", 0.0)) / proxy_capacity_mb_s
+            if proxy_capacity_mb_s > 0
+            else 0.0
+        ),
         "wan_required_mbps": float(network.get("required_mbps", 0.0)),
         "wan_meets_target": bool(network.get("meets_target", False)),
         "risk_level": str(risk.get("level", "unknown")),
@@ -265,12 +335,21 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
             repo = design.get("repo") or {}
             roles = design.get("roles") or {}
             proxies = roles.get("proxies") or {}
+            workers = roles.get("platform_workers") or {}
             lines.append(f"{site.get('name', 'Site')}")
             lines.append(f"- Total repo: {float(repo.get('total_repo_tb', 0.0)):.1f} TB")
-            lines.append(
-                f"- Proxies: {int(proxies.get('proxy_count', 0))} "
-                f"({int(proxies.get('total_proxy_cores', 0))} cores)"
-            )
+            if workers:
+                lines.append(
+                    f"- {str(workers.get('platform', 'platform')).upper()} workers: "
+                    f"{int(workers.get('worker_count', 0))} "
+                    f"({int(workers.get('cores_per_worker', 0))} vCPU / "
+                    f"{int(workers.get('ram_gb_per_worker', 0))} GB each)"
+                )
+            else:
+                lines.append(
+                    f"- Proxies: {int(proxies.get('proxy_count', 0))} "
+                    f"({int(proxies.get('total_proxy_cores', 0))} cores)"
+                )
             lines.append(
                 f"- Required WAN: {float((design.get('network') or {}).get('required_mbps', 0.0)):.1f} Mbps"
             )
@@ -280,15 +359,29 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
     repo = payload.get("repo") or {}
     roles = payload.get("roles") or {}
     proxies = roles.get("proxies") or {}
+    workers = roles.get("platform_workers") or {}
     backup_server = roles.get("backup_server") or {}
     network = payload.get("network") or {}
+    mover_line = (
+        f"- {str(workers.get('platform', 'platform')).upper()} workers: "
+        f"{int(workers.get('worker_count', 0))} x "
+        f"{int(workers.get('cores_per_worker', 0))} vCPU / "
+        f"{int(workers.get('ram_gb_per_worker', 0))} GB RAM / "
+        f"{int(workers.get('disk_gb_per_worker', 0))} GB disk "
+        f"({int(workers.get('total_concurrent_tasks', 0))} concurrent tasks)\n"
+        if workers
+        else (
+            f"- Proxies: {int(proxies.get('proxy_count', 0))} "
+            f"({int(proxies.get('total_proxy_cores', 0))} cores / "
+            f"{int(proxies.get('total_proxy_ram_gb', 0))} GB RAM)\n"
+        )
+    )
     return (
         "VM backup sizing\n"
         f"- Total repository: {float(repo.get('total_repo_tb', 0.0)):.1f} TB\n"
-        f"- Proxies: {int(proxies.get('proxy_count', 0))} "
-        f"({int(proxies.get('total_proxy_cores', 0))} cores / "
-        f"{int(proxies.get('total_proxy_ram_gb', 0))} GB RAM)\n"
+        f"{mover_line}"
         f"- Backup server: {int(backup_server.get('cores', 0))} cores / "
-        f"{int(backup_server.get('ram_gb', 0))} GB RAM\n"
+        f"{int(backup_server.get('ram_gb', 0))} GB RAM "
+        f"({backup_server.get('deployment_mode', 'unspecified')})\n"
         f"- Required WAN: {float(network.get('required_mbps', 0.0)):.1f} Mbps\n"
     )

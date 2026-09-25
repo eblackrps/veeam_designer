@@ -32,6 +32,7 @@ def _roles_dict(roles: Any) -> JSONDict:
     return {
         "backup_server": asdict(roles.backup_server),
         "proxies": asdict(roles.proxies),
+        "platform_workers": _optional_dataclass(roles.platform_workers),
         "hardened_repos": _optional_dataclass(roles.hardened_repos),
         "gateways": _optional_dataclass(roles.gateways),
     }

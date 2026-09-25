@@ -35,6 +35,16 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         hypervisor=d.get("hypervisor", "vmware"),
         has_san_access=d.get("has_san_access", False),
         on_host_proxy=d.get("on_host_proxy", True),
+        # v5: platform and deployment inputs
+        platform_host_count=int(d.get("platform_host_count", 0)),
+        platform_cluster_count=int(d.get("platform_cluster_count", 1)),
+        platform_concurrent_tasks=int(d.get("platform_concurrent_tasks", 0)),
+        worker_task_limit=int(d.get("worker_task_limit", 4)),
+        deployment_mode=d.get(
+            "deployment_mode",
+            "software_appliance" if d.get("v13_appliance", True) else "windows",
+        ),
+        proxy_deployment_mode=d.get("proxy_deployment_mode", "managed_os"),
         # Round 2
         workload_count=d.get("workload_count") or d.get("vm_count", 0),
         concurrent_jobs=d.get("concurrent_jobs", 5),

@@ -48,12 +48,11 @@
         <section class="panel panel-builder">
           <div class="panel-header">
             <div>
-              <span class="section-tag">Builder</span>
-              <h2>Interactive design composer</h2>
+              <span class="section-tag">Architecture Inputs</span>
+              <h2>Protection architecture builder</h2>
             </div>
             <div class="panel-actions">
               <button type="button" id="reset-example" class="button button-secondary">Reset Example</button>
-              <button type="button" id="sync-yaml" class="button button-ghost">Rebuild YAML</button>
             </div>
           </div>
 
@@ -73,7 +72,24 @@
                 <option value="vmware" selected>VMware vSphere</option>
                 <option value="hyperv">Microsoft Hyper-V</option>
                 <option value="ahv">Nutanix AHV</option>
+                <option value="proxmox">Proxmox VE</option>
                 <option value="mixed">Mixed environment</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Backup Server Deployment</span>
+              <select id="deployment-mode">
+                <option value="software_appliance" selected>Veeam Software Appliance</option>
+                <option value="windows">Microsoft Windows</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>VMware Proxy Deployment</span>
+              <select id="proxy-deployment-mode">
+                <option value="managed_os" selected>Managed Windows / Linux</option>
+                <option value="infrastructure_appliance">Veeam Infrastructure Appliance</option>
               </select>
             </label>
 
@@ -94,21 +110,25 @@
               </select>
             </label>
 
-            <label class="field">
-              <span>Compression Ratio</span>
-              <input id="compression-ratio" type="number" min="0" step="0.1" placeholder="Use profile default">
-            </label>
-
-            <label class="field">
-              <span>Dedupe Ratio</span>
-              <input id="dedupe-ratio" type="number" min="0" step="0.1" placeholder="Use profile default">
-            </label>
-
-            <label class="field field-wide">
-              <span>Custom Proxy Throughput Override (MB/s per core)</span>
-              <input id="throughput-mb-per-core" type="number" min="0" step="0.5" placeholder="Optional benchmark override">
-            </label>
           </div>
+
+          <details class="advanced-panel global-advanced">
+            <summary>Advanced sizing overrides</summary>
+            <div class="settings-grid">
+              <label class="field">
+                <span>Compression Ratio</span>
+                <input id="compression-ratio" type="number" min="0" step="0.1" placeholder="Use profile default">
+              </label>
+              <label class="field">
+                <span>Dedupe Ratio</span>
+                <input id="dedupe-ratio" type="number" min="0" step="0.1" placeholder="Use profile default">
+              </label>
+              <label class="field field-wide">
+                <span>Custom Proxy Throughput Override (MB/s per core)</span>
+                <input id="throughput-mb-per-core" type="number" min="0" step="0.5" placeholder="Optional benchmark override">
+              </label>
+            </div>
+          </details>
 
           <div class="mode-strip">
             <div>
@@ -127,7 +147,7 @@
             <div class="mode-panel-header">
               <div>
                 <h3>Multi-site VM planner</h3>
-                <p>Use site cards to model primary repositories, proxy counts, retention, and WAN pressure.</p>
+                <p>Model repository demand, platform data movers, retention, and WAN pressure for each site.</p>
               </div>
               <button type="button" id="add-site" class="button button-primary">Add Site</button>
             </div>
@@ -204,36 +224,42 @@
           </section>
 
           <div class="submission-row">
-            <button type="submit" id="run-design" class="button button-primary button-large">Run Full Design</button>
-            <p class="submission-hint">Blueprint and cost outputs are calculated together so the results page stays coherent.</p>
+            <button type="submit" id="run-design" class="button button-primary button-large">Build Architecture</button>
+            <p class="submission-hint">Build the infrastructure recommendation, capacity model, warnings, and cost view together.</p>
           </div>
         </section>
 
-        <section class="panel panel-editor">
-          <div class="panel-header">
+        <details class="panel panel-editor editor-details">
+          <summary class="editor-details-summary">
             <div>
-              <span class="section-tag">Project Definition</span>
-              <h2>Live YAML workspace</h2>
+              <span class="section-tag">Automation</span>
+              <h2>YAML and API project definition</h2>
             </div>
-            <div class="editor-toggle">
-              <button type="button" id="editor-mode-builder" class="button button-pill is-active">Builder Sync</button>
-              <button type="button" id="editor-mode-manual" class="button button-pill">Manual YAML</button>
+            <span class="summary-hint">Advanced workspace</span>
+          </summary>
+
+          <div class="editor-details-body">
+            <div class="panel-header editor-controls">
+              <p id="editor-mode-note" class="editor-note">
+                Builder Sync keeps YAML generated from the architecture fields. Switch to Manual YAML to hand-edit.
+              </p>
+              <div class="editor-toggle">
+                <button type="button" id="editor-mode-builder" class="button button-pill is-active">Builder Sync</button>
+                <button type="button" id="editor-mode-manual" class="button button-pill">Manual YAML</button>
+                <button type="button" id="sync-yaml" class="button button-ghost">Rebuild YAML</button>
+              </div>
             </div>
+
+            <textarea id="yaml-editor" name="yaml_content" class="yaml-editor" spellcheck="false">{{ yaml_content }}</textarea>
           </div>
-
-          <p id="editor-mode-note" class="editor-note">
-            Builder Sync keeps the YAML editor generated from the calculator fields. Switch to Manual YAML to hand-edit.
-          </p>
-
-          <textarea id="yaml-editor" name="yaml_content" class="yaml-editor" spellcheck="false">{{ yaml_content }}</textarea>
-        </section>
+        </details>
       </form>
 
       <aside class="panel panel-results">
         <div class="panel-header">
           <div>
-            <span class="section-tag">Results</span>
-            <h2>Design outputs</h2>
+            <span class="section-tag">Architecture Output</span>
+            <h2>Recommended design</h2>
           </div>
           <div class="panel-actions">
             <button type="button" id="download-json" class="button button-secondary" disabled>Download JSON</button>
@@ -244,11 +270,11 @@
 
         <div id="summary-cards" class="summary-cards is-hidden"></div>
         <div id="results-empty-state" class="empty-state">
-          Run a design to populate the dashboard, exports, and raw payload.
+          Build the architecture to populate infrastructure sizing, warnings, exports, and report output.
         </div>
 
         <section id="dashboard-section" class="results-section is-hidden">
-          <div class="section-title">Infrastructure Snapshot</div>
+          <div class="section-title">Architecture Snapshot</div>
           <div id="dashboard-sites" class="dashboard-sites"></div>
         </section>
 
@@ -262,10 +288,13 @@
           <pre id="cost-output" class="output-block">No cost summary yet.</pre>
         </section>
 
-        <section class="results-section">
-          <div class="section-title">Structured JSON</div>
+        <details class="results-section result-details">
+          <summary class="section-title">
+            <span>Structured JSON</span>
+            <span class="summary-hint">Advanced</span>
+          </summary>
           <pre id="json-output" class="output-block output-json">No payload yet.</pre>
-        </section>
+        </details>
       </aside>
     </section>
   </main>
@@ -318,13 +347,17 @@
       </div>
 
       <details class="advanced-panel">
-        <summary>Advanced retention and concurrency</summary>
+        <summary>Advanced retention, concurrency, and data movers</summary>
         <div class="settings-grid">
           <label class="field"><span>GFS Weekly</span><input type="number" min="0" step="1" data-field="gfs_weekly_count"></label>
           <label class="field"><span>GFS Monthly</span><input type="number" min="0" step="1" data-field="gfs_monthly_count"></label>
           <label class="field"><span>GFS Yearly</span><input type="number" min="0" step="1" data-field="gfs_yearly_count"></label>
           <label class="field"><span>Block Generation (days)</span><input type="number" min="1" step="1" data-field="block_generation_days"></label>
           <label class="field"><span>Concurrent Jobs</span><input type="number" min="1" step="1" data-field="concurrent_jobs"></label>
+          <label class="field"><span>Platform Host Count</span><input type="number" min="0" step="1" data-field="platform_host_count"></label>
+          <label class="field"><span>Platform Cluster Count</span><input type="number" min="1" step="1" data-field="platform_cluster_count"></label>
+          <label class="field"><span>Data Mover Concurrent Tasks</span><input type="number" min="0" step="1" data-field="platform_concurrent_tasks"></label>
+          <label class="field"><span>Tasks per Worker / Proxy</span><input type="number" min="1" step="1" data-field="worker_task_limit"></label>
           <label class="field field-wide"><span>Notes</span><textarea rows="3" data-field="notes"></textarea></label>
         </div>
       </details>

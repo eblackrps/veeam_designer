@@ -23,9 +23,9 @@ const downloadJsonButton = document.getElementById("download-json");
 const downloadCsvButton = document.getElementById("download-csv");
 const printReportButton = document.getElementById("print-report");
 
-const FORM_STORAGE_KEY = "veeam-designer-form-v4";
-const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v4";
-const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v4";
+const FORM_STORAGE_KEY = "veeam-designer-form-v5";
+const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v5";
+const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v5";
 const PRINT_FRAME_ID = "veeam-designer-print-frame";
 
 const browserEngine = {
@@ -59,6 +59,10 @@ const defaultVmSites = [
     gfs_yearly_count: 3,
     block_generation_days: 10,
     concurrent_jobs: 5,
+    platform_host_count: 4,
+    platform_cluster_count: 1,
+    platform_concurrent_tasks: 8,
+    worker_task_limit: 4,
     notes: "Primary data center",
   },
   {
@@ -84,6 +88,10 @@ const defaultVmSites = [
     gfs_yearly_count: 0,
     block_generation_days: 7,
     concurrent_jobs: 3,
+    platform_host_count: 3,
+    platform_cluster_count: 1,
+    platform_concurrent_tasks: 4,
+    worker_task_limit: 4,
     notes: "Regional branch recovery target",
   },
 ];
@@ -94,6 +102,8 @@ const defaultState = {
   globals: {
     profile: "enterprise",
     hypervisor: "vmware",
+    deployment_mode: "software_appliance",
+    proxy_deployment_mode: "managed_os",
     target_rpo: 24,
     compliance_framework: "none",
     compression_ratio: "",
@@ -141,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireResetButtons();
   wireExportButtons();
   restoreState();
+  syncProxyDeploymentAvailability();
   updateEditorModeNote();
   if (getEditorMode() === "builder") {
     updateYamlFromBuilder();
@@ -273,6 +284,7 @@ function handleSubmit(event) {
 }
 
 function handleMutation() {
+  syncProxyDeploymentAvailability();
   if (getEditorMode() === "builder") {
     updateYamlFromBuilder();
   }
@@ -323,6 +335,8 @@ function loadStoredState() {
 function applyGlobalState(globals) {
   setField("profile", globals.profile);
   setField("hypervisor", globals.hypervisor);
+  setField("deployment-mode", globals.deployment_mode);
+  setField("proxy-deployment-mode", globals.proxy_deployment_mode || "managed_os");
   setField("target-rpo", globals.target_rpo);
   setField("compliance-framework", globals.compliance_framework);
   setField("compression-ratio", globals.compression_ratio);
@@ -420,6 +434,20 @@ function updateEditorModeNote() {
       : "Manual YAML leaves the editor writable. Use Rebuild YAML to replace it with the calculator state.";
 }
 
+function syncProxyDeploymentAvailability() {
+  const select = document.getElementById("proxy-deployment-mode");
+  if (!(select instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const vmwareSelected = (getFieldValue("hypervisor") || "vmware") === "vmware";
+  select.disabled = !vmwareSelected;
+  if (!vmwareSelected) {
+    select.value = "managed_os";
+  }
+}
+
+
 function saveState() {
   const state = {
     workloadType: getCurrentWorkload(),
@@ -427,6 +455,8 @@ function saveState() {
     globals: {
       profile: getFieldValue("profile"),
       hypervisor: getFieldValue("hypervisor"),
+      deployment_mode: getFieldValue("deployment-mode"),
+      proxy_deployment_mode: getFieldValue("proxy-deployment-mode"),
       target_rpo: getFieldValue("target-rpo"),
       compliance_framework: getFieldValue("compliance-framework"),
       compression_ratio: getFieldValue("compression-ratio"),
@@ -475,6 +505,10 @@ function collectVmSites() {
     gfs_yearly_count: getCardNumber(card, "gfs_yearly_count", 0),
     block_generation_days: getCardNumber(card, "block_generation_days", 10),
     concurrent_jobs: getCardNumber(card, "concurrent_jobs", 5),
+    platform_host_count: getCardNumber(card, "platform_host_count", 0),
+    platform_cluster_count: getCardNumber(card, "platform_cluster_count", 1),
+    platform_concurrent_tasks: getCardNumber(card, "platform_concurrent_tasks", 0),
+    worker_task_limit: getCardNumber(card, "worker_task_limit", 4),
     notes: getCardValue(card, "notes"),
   }));
 }
@@ -542,8 +576,22 @@ function buildYamlFromBuilder() {
   const targetRpo = numberValue("target-rpo", 24);
   const complianceFramework = getFieldValue("compliance-framework") || "none";
   const hypervisor = getFieldValue("hypervisor") || "vmware";
+  const deploymentMode = getFieldValue("deployment-mode") || "software_appliance";
+  const proxyDeploymentMode =
+    hypervisor === "vmware"
+      ? getFieldValue("proxy-deployment-mode") || "managed_os"
+      : "managed_os";
   const siteBlocks = collectVmSites().map((site) =>
-    buildVmSiteYaml(site, targetRpo, hypervisor, compression, dedupe, throughput),
+    buildVmSiteYaml(
+      site,
+      targetRpo,
+      hypervisor,
+      deploymentMode,
+      proxyDeploymentMode,
+      compression,
+      dedupe,
+      throughput,
+    ),
   );
 
   return [
@@ -555,7 +603,16 @@ function buildYamlFromBuilder() {
   ].join("\n");
 }
 
-function buildVmSiteYaml(site, targetRpo, hypervisor, compression, dedupe, throughput) {
+function buildVmSiteYaml(
+  site,
+  targetRpo,
+  hypervisor,
+  deploymentMode,
+  proxyDeploymentMode,
+  compression,
+  dedupe,
+  throughput,
+) {
   const lines = [
     `  - name: ${yamlString(site.name)}`,
     "    veeam_input:",
@@ -574,6 +631,12 @@ function buildVmSiteYaml(site, targetRpo, hypervisor, compression, dedupe, throu
     `      wan_bandwidth_mbps: ${site.wan_bandwidth_mbps}`,
     `      repo_type: ${site.repo_type}`,
     `      hypervisor: ${hypervisor}`,
+    `      deployment_mode: ${deploymentMode}`,
+    `      proxy_deployment_mode: ${proxyDeploymentMode}`,
+    `      platform_host_count: ${site.platform_host_count}`,
+    `      platform_cluster_count: ${site.platform_cluster_count}`,
+    `      platform_concurrent_tasks: ${site.platform_concurrent_tasks}`,
+    `      worker_task_limit: ${site.worker_task_limit}`,
     `      has_san_access: ${site.has_san_access}`,
     `      on_host_proxy: ${site.on_host_proxy}`,
     `      refs_xfs: ${site.refs_xfs}`,
@@ -662,8 +725,18 @@ function renderDashboard(dashboard) {
       </div>
       <dl class="metric-list">
         ${renderMetric("Total Repo", `${formatNumber(site.total_repo_tb, 1)} TB`)}
-        ${renderMetric("Proxies", `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`)}
-        ${renderMetric("Backup Server", `${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB`)}
+        ${renderMetric(
+          site.platform_worker_count ? "Workers" : "Proxies",
+          site.platform_worker_count
+            ? `${formatInteger(site.platform_worker_count)} / ${formatInteger(site.platform_worker_cores_each)} vCPU / ${formatInteger(site.platform_worker_ram_each)} GB each`
+            : site.proxy_deployment_mode === "infrastructure_appliance"
+              ? `${formatInteger(site.proxy_count)} / ${formatInteger(site.proxy_allocated_cores)} allocated cores / VIA`
+              : `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`,
+        )}
+        ${renderMetric(
+          "Backup Server",
+          `${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB${site.bs_deployment_mode ? ` / ${site.bs_deployment_mode}` : ""}`,
+        )}
         ${renderMetric("Required WAN", `${formatNumber(site.wan_required_mbps, 1)} Mbps`)}
         ${renderMetric("Yearly On-Prem", formatCurrency(site.yearly_onprem_usd))}
         ${renderMetric("Break-even", `${formatNumber(site.break_even_years, 1)} years`)}
@@ -860,8 +933,16 @@ function buildBrowserReportMarkup(bundle) {
         <article class="dashboard-site">
           <h3>${escapeHtml(site.name)}</h3>
           <p><strong>Total Repo:</strong> ${escapeHtml(`${formatNumber(site.total_repo_tb, 1)} TB`)}</p>
-          <p><strong>Proxies:</strong> ${escapeHtml(`${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`)}</p>
-          <p><strong>Backup Server:</strong> ${escapeHtml(`${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB`)}</p>
+          <p><strong>${site.platform_worker_count ? "Workers" : "Proxies"}:</strong> ${escapeHtml(
+            site.platform_worker_count
+              ? `${formatInteger(site.platform_worker_count)} / ${formatInteger(site.platform_worker_cores_each)} vCPU / ${formatInteger(site.platform_worker_ram_each)} GB each`
+              : site.proxy_deployment_mode === "infrastructure_appliance"
+                ? `${formatInteger(site.proxy_count)} / ${formatInteger(site.proxy_allocated_cores)} allocated cores / VIA`
+                : `${formatInteger(site.proxy_count)} / ${formatInteger(site.total_proxy_cores)} cores`,
+          )}</p>
+          <p><strong>Backup Server:</strong> ${escapeHtml(
+            `${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB${site.bs_deployment_mode ? ` / ${site.bs_deployment_mode}` : ""}`,
+          )}</p>
           <p><strong>Required WAN:</strong> ${escapeHtml(`${formatNumber(site.wan_required_mbps, 1)} Mbps`)}</p>
         </article>
       `,

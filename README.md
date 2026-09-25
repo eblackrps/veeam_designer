@@ -4,8 +4,9 @@ Veeam Designer is a web-first sizing and architecture calculator for Veeam backu
 It helps Veeam administrators model repository footprint, proxy and backup server requirements,
 WAN feasibility, replication pressure, NAS protection, licensing, tape, compliance, and
 high-level cost tradeoffs from a guided UI, YAML project files, Docker, GitHub Pages, or the CLI.
-Release `4.0.4` calibrates the core sizing math against published Veeam guidance, documents the
-remaining heuristics explicitly, and keeps the Docker, Pages, API, and package workflows aligned.
+The `5.0.0a1` development line introduces platform-aware component sizing while `4.0.4` remains
+the stable release. Proxmox VE and Nutanix AHV now use native Veeam worker models, and backup-server
+sizing can account for the Linux-based Veeam Software Appliance.
 
 ## Why It Exists
 
@@ -105,18 +106,20 @@ The default experience is the browser calculator at `/run`.
 ### Calculator Modes
 
 - `VM Backup` for multi-site infrastructure planning with site cards, GFS retention, capacity tier,
-  WAN, and proxy assumptions
+  WAN, platform-aware proxy/worker sizing, and backup-server deployment selection
 - `NAS` for unstructured data sizing, file proxy estimation, and cache / repository demand
 - `Physical` for agent-based workloads and coordinator sizing
 - `Replication` for replica storage, WAN requirements, and CDP pressure
 
 ### Builder and YAML Workflow
 
-The UI keeps a live YAML workspace next to the calculator:
+The primary UI is architecture-first: platform, protection, retention, data-mover, and repository
+inputs stay in the main workflow, while tuning overrides and YAML are available as advanced tools.
 
-- `Builder Sync` keeps YAML generated from the form
+- `Builder Sync` keeps YAML generated from the architecture fields
 - `Manual YAML` lets you hand-edit the project definition directly
 - `Rebuild YAML` replaces manual edits with the current calculator state
+- raw structured JSON remains available from an advanced results section
 
 ### Results
 
@@ -259,9 +262,18 @@ paths.
 - WAN accelerator sizing follows Veeam low-bandwidth-mode digest and global-cache guidance.
 - NAS sizing follows Veeam unstructured-data guidance and treats NAS backups as
   incremental-forever, so NAS GFS counts are not separately sized.
-- Hyper-V and AHV proxy throughput, CDP proxy sizing, Veeam ONE sizing, and cost/licensing
-  outputs still include documented heuristics where Veeam does not publish a direct formula for
-  this UI.
+- Proxmox VE and Nutanix AHV use Veeam's native task-based worker sizing rather than VMware proxy
+  throughput assumptions.
+- Hyper-V proxy sizing follows Veeam's Best Practice direction to use the vSphere proxy sizing
+  method for throughput, then applies Hyper-V-specific CPU, memory, disk, and concurrency minimums.
+- Current backup-server CPU and RAM-per-concurrent-job minimums are enforced on top of the workload
+  sizing bands for both Windows and Linux deployments; Software Appliance output also includes both
+  240 GB minimum appliance disks.
+- VMware proxies can be modeled on managed Windows/Linux hosts or Veeam Infrastructure Appliance;
+  the calculator keeps proxy-role resources separate from the appliance's additional 2 vCPU,
+  8 GB RAM, and 120 GB + 120 GB minimum disks.
+- Mixed-environment proxy throughput, CDP proxy sizing, Veeam ONE sizing, and cost/licensing
+  outputs still include documented heuristics where a direct model is not yet wired into this UI.
 
 The detailed assumptions, formulas, and source links are in [docs/assumptions.md](docs/assumptions.md).
 

@@ -5,6 +5,36 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a1] - 2026-09-25
+
+### Added
+
+- Added native Proxmox VE and Nutanix AHV worker sizing with explicit host, cluster, concurrency,
+  per-worker task, compute, memory, and disk outputs
+- Added Hyper-V proxy sizing that combines Veeam's vSphere-method throughput calculation with
+  Hyper-V-specific CPU, RAM, disk, and concurrent-task minimums
+- Added Veeam Software Appliance deployment sizing and exposed deployment mode in the browser and CLI
+- Added current Windows/Linux backup-server concurrency memory minimums and both Software Appliance
+  minimum disks to architecture output
+- Added Veeam Infrastructure Appliance deployment sizing for VMware proxies, separating proxy-role
+  throughput resources from appliance allocation and disk overhead
+- Added platform-worker details to API payloads, dashboards, browser reports, and human summaries
+- Added Proxmox VE to the web calculator and CLI/interactive workflows
+
+### Changed
+
+- Stopped applying VMware proxy assumptions to Proxmox VE and Nutanix AHV workers; Hyper-V now
+  follows Veeam's documented direction to use the vSphere proxy sizing method with Hyper-V-specific
+  system minimums
+- Preserved the existing proxy payload as a compatibility adapter while introducing a dedicated
+  `platform_workers` role model
+- Updated platform recommendations to distinguish VMware/Hyper-V proxies from AHV/Proxmox workers
+- Bumped browser local-storage keys for the v5 form schema
+
+### Fixed
+
+- Corrected AHV guidance that previously described AHV data movers as VMware-style proxy VMs
+
 ## [4.0.4] - 2026-04-12
 
 ### Added

@@ -95,9 +95,16 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
         )
 
     if vin.vm_count and roles.proxies.total_parallel_tasks < vin.vm_count / 10:
-        notes["proxies"] = (
-            "Proxy parallelism is low vs VM count. Consider more proxy cores or additional proxy VMs."
-        )
+        if roles.platform_workers:
+            notes["data_movers"] = (
+                "Worker parallelism is low vs VM count. Review worker count or concurrent-task "
+                "limits for the selected platform."
+            )
+        else:
+            notes["data_movers"] = (
+                "Proxy parallelism is low vs VM count. Consider more proxy cores or additional "
+                "proxy servers."
+            )
 
     hv = vin.hypervisor.lower()
     if hv == "vmware":
@@ -106,7 +113,7 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
             "VMware: align proxies with clusters, prefer DirectSAN or HotAdd where possible, "
             "and avoid NBD for large/high-churn workloads unless absolutely necessary.",
         )
-    elif hv == "hyperv":
+    elif hv in {"hyperv", "hyper-v"}:
         notes.setdefault(
             "platform",
             "Hyper-V: prefer off-host proxies with SAN access for larger environments. "
@@ -116,9 +123,14 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
     elif hv in {"nutanix_ahv", "ahv"}:
         notes.setdefault(
             "platform",
-            "Nutanix AHV: deploy AHV proxy VMs with direct access to storage. "
-            "Co-locate proxies with Nutanix clusters and size for parallelism per cluster, "
-            "not just total VM count.",
+            "Nutanix AHV: deploy workers in each AHV cluster, size worker task limits for the "
+            "desired parallelism, and keep the configured worker count at or below host count.",
+        )
+    elif hv in {"proxmox", "proxmox_ve", "pve"}:
+        notes.setdefault(
+            "platform",
+            "Proxmox VE: worker tasks are per VM. Same-host workers can use Hot-Add; when a worker "
+            "is not present on the source host, processing can use NBD across the Proxmox network.",
         )
     elif hv == "agent":
         notes.setdefault(

@@ -329,7 +329,7 @@
         <th>Site</th>
         <th>Total Repo (TB)</th>
         <th>Risk Level</th>
-        <th>Proxies</th>
+        <th>Data Movers</th>
         <th>Yearly On-Prem Cost</th>
         <th>Yearly Object Cost</th>
       </tr>
@@ -344,7 +344,13 @@
             {{ site.risk_level | upper | default('UNKNOWN') }}
           </span>
         </td>
-        <td>{{ site.proxy_count | default(0) }}</td>
+        <td>
+          {% if site.platform_worker_count %}
+            {{ site.platform_worker_count }} {{ site.platform_worker_platform | upper }} workers
+          {% else %}
+            {{ site.proxy_count | default(0) }} proxies
+          {% endif %}
+        </td>
         <td>${{ "{:,.0f}".format(site.yearly_onprem_usd | default(0)) }}</td>
         <td>
           {% if site.monthly_object_usd %}
@@ -400,6 +406,20 @@
   </tbody>
 </table>
 
+{% if site.platform_worker_count %}
+<table class="avoid-break">
+  <thead>
+    <tr><th colspan="2">{{ site.platform_worker_platform | upper }} Workers</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="label">Worker count</td><td class="value">{{ site.platform_worker_count }}</td></tr>
+    <tr><td class="label">Per worker</td><td class="value">{{ site.platform_worker_cores_each }} vCPU / {{ site.platform_worker_ram_each }} GB RAM / {{ site.platform_worker_disk_each }} GB disk</td></tr>
+    <tr><td class="label">Total concurrent tasks</td><td class="value">{{ site.platform_worker_tasks }}</td></tr>
+    <tr><td class="label">Sizing basis</td><td class="value">{{ site.proxy_throughput_basis | default("Veeam worker task sizing") }}</td></tr>
+    <tr><td class="label">Required data rate</td><td class="value">{{ "%.1f" | format(site.required_mb_s | default(0)) }} MB/s</td></tr>
+  </tbody>
+</table>
+{% else %}
 <table class="avoid-break">
   <thead>
     <tr><th colspan="2">Proxy Servers</th></tr>
@@ -407,20 +427,31 @@
   <tbody>
     <tr><td class="label">Proxy count</td><td class="value">{{ site.proxy_count | default(0) }}</td></tr>
     <tr><td class="label">Total proxy cores</td><td class="value">{{ site.total_proxy_cores | default(0) }}</td></tr>
-    <tr><td class="label">Total proxy RAM</td><td class="value">{{ site.proxy_ram_gb | default(0) }} GB</td></tr>
+    <tr><td class="label">Total proxy RAM</td><td class="value">{{ site.proxy_ram_gb | default(0) }} GB role requirement</td></tr>
+    <tr><td class="label">Deployment</td><td class="value">{{ site.proxy_deployment_mode | default("managed_os") }}</td></tr>
+    {% if site.proxy_deployment_mode == "infrastructure_appliance" %}
+    <tr><td class="label">Allocated per appliance</td><td class="value">{{ site.proxy_allocated_cores_each }} vCPU / {{ site.proxy_allocated_ram_each }} GB RAM</td></tr>
+    <tr><td class="label">Total allocated proxy compute</td><td class="value">{{ site.proxy_allocated_cores }} vCPU / {{ site.proxy_allocated_ram_gb }} GB RAM</td></tr>
+    <tr><td class="label">Infrastructure Appliance disks</td><td class="value">{{ site.proxy_infra_system_disk_gb }} GB + {{ site.proxy_infra_data_disk_gb }} GB minimum</td></tr>
+    {% endif %}
     <tr><td class="label">Transport mode</td><td class="value">{{ site.transport_mode | default("auto") }}</td></tr>
     <tr><td class="label">Required throughput</td><td class="value">{{ "%.1f" | format(site.required_mb_s | default(0)) }} MB/s</td></tr>
-    <tr><td class="label">Estimated effective capacity</td><td class="value">{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s</td></tr>
+    <tr><td class="label">Estimated effective capacity</td><td class="value">{% if site.proxy_capacity_known %}{{ "%.1f" | format(site.proxy_capacity_mb_s | default(0)) }} MB/s{% else %}Not modeled{% endif %}</td></tr>
     <tr><td class="label">Sizing basis</td><td class="value">{{ site.proxy_throughput_basis | default("auto") }}</td></tr>
     <tr><td class="label">Proxy load ratio</td>
         <td class="value">
-          {% set ratio = site.proxy_load_ratio | default(0) %}
-          {{ "%.0f" | format(ratio * 100) }}%
-          {% if ratio > 0.85 %} <span style="color:#842029;"> — over-loaded</span>{% endif %}
+          {% if site.proxy_capacity_known %}
+            {% set ratio = site.proxy_load_ratio | default(0) %}
+            {{ "%.0f" | format(ratio * 100) }}%
+            {% if ratio > 0.85 %} <span style="color:#842029;"> — over-loaded</span>{% endif %}
+          {% else %}
+            Not modeled
+          {% endif %}
         </td>
     </tr>
   </tbody>
 </table>
+{% endif %}
 
 <table class="avoid-break">
   <thead>
@@ -429,6 +460,13 @@
   <tbody>
     <tr><td class="label">Cores</td><td class="value">{{ site.bs_cores | default(0) }}</td></tr>
     <tr><td class="label">RAM</td><td class="value">{{ site.bs_ram_gb | default(0) }} GB</td></tr>
+    <tr><td class="label">Deployment</td><td class="value">{{ site.bs_deployment_mode | default("unspecified") }}</td></tr>
+    {% if site.bs_system_disk_gb %}
+    <tr><td class="label">System disk</td><td class="value">{{ site.bs_system_disk_gb }} GB minimum</td></tr>
+    {% endif %}
+    {% if site.bs_secondary_disk_gb %}
+    <tr><td class="label">Application-data disk</td><td class="value">{{ site.bs_secondary_disk_gb }} GB minimum</td></tr>
+    {% endif %}
   </tbody>
 </table>
 

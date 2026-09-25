@@ -44,3 +44,33 @@ def test_dashboard_uses_engine_reported_proxy_capacity():
 
     assert site["proxy_capacity_mb_s"] == roles["estimated_capacity_mb_s"]
     assert site["proxy_throughput_basis"] == roles["throughput_basis"]
+
+
+def test_dashboard_reports_platform_workers_for_proxmox():
+    project_json = """
+    {
+      "profile": "enterprise",
+      "workload_type": "vm",
+      "total_data_tb": 100,
+      "annual_growth_percent": 0,
+      "daily_change_percent": 5,
+      "backup_window_hours": 8,
+      "hypervisor": "proxmox",
+      "vm_count": 200,
+      "platform_host_count": 4,
+      "platform_cluster_count": 1,
+      "platform_concurrent_tasks": 8,
+      "worker_task_limit": 4,
+      "deployment_mode": "software_appliance"
+    }
+    """
+
+    bundle = design_browser_bundle_from_project_text(project_json)
+    site = bundle["dashboard"]["sites"][0]
+
+    assert site["platform_worker_platform"] == "proxmox"
+    assert site["platform_worker_count"] == 2
+    assert site["platform_worker_cores_each"] == 6
+    assert site["platform_worker_ram_each"] == 6
+    assert site["bs_deployment_mode"] == "software_appliance"
+    assert "PROXMOX workers" in bundle["blueprint"]

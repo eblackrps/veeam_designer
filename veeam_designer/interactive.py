@@ -90,7 +90,28 @@ def collect_inputs_interactive() -> VeeamInput:
     wan_bandwidth_mbps = _prompt_float("WAN bandwidth for copy/replication (Mbps, 0 = none)", 500.0)
     repo_type = _prompt_str("Repo type (local_disk / san / sobr / object)", "sobr")
 
-    hypervisor = _prompt_str("Hypervisor (vmware / hyperv / nutanix_ahv / agent)", "vmware")
+    hypervisor = _prompt_str(
+        "Hypervisor (vmware / hyperv / nutanix_ahv / proxmox / agent)", "vmware"
+    )
+    deployment_mode = _prompt_str(
+        "Backup server deployment (software_appliance / windows)", "software_appliance"
+    )
+
+    proxy_deployment_mode = "managed_os"
+    if hypervisor.lower() == "vmware":
+        proxy_deployment_mode = _prompt_str(
+            "VMware proxy deployment (managed_os / infrastructure_appliance)", "managed_os"
+        )
+
+    platform_host_count = 0
+    platform_cluster_count = 1
+    platform_concurrent_tasks = 0
+    worker_task_limit = 4
+    if hypervisor.lower() in {"nutanix_ahv", "ahv", "proxmox", "proxmox_ve", "pve"}:
+        platform_host_count = _prompt_int("Platform host count", 3)
+        platform_cluster_count = _prompt_int("Platform cluster count", 1)
+        platform_concurrent_tasks = _prompt_int("Desired concurrent worker tasks", 8)
+        worker_task_limit = _prompt_int("Maximum tasks per worker", 4)
 
     # Transport selection (replaces the bad On-host/HotAdd yes/no)
     transport_default = CONFIG.get("proxy_transport_default", "auto")
@@ -133,6 +154,12 @@ def collect_inputs_interactive() -> VeeamInput:
         hypervisor=hypervisor,
         has_san_access=has_san_access,
         on_host_proxy=on_host_proxy,
+        deployment_mode=deployment_mode,
+        proxy_deployment_mode=proxy_deployment_mode,
+        platform_host_count=platform_host_count,
+        platform_cluster_count=platform_cluster_count,
+        platform_concurrent_tasks=platform_concurrent_tasks,
+        worker_task_limit=worker_task_limit,
     )
 
 
@@ -149,13 +176,22 @@ def print_human_summary(d: VeeamDesign) -> None:
         f"  Backup server         : {d.roles.backup_server.cores} vCPU, "
         f"{d.roles.backup_server.ram_gb} GB RAM"
     )
-    print(
-        f"  Proxies               : {d.roles.proxies.proxy_count}x, "
-        f"{d.roles.proxies.cores_per_proxy} cores each "
-        f"({d.roles.proxies.total_proxy_cores} total cores, "
-        f"{d.roles.proxies.total_parallel_tasks} total tasks, "
-        f"{d.roles.proxies.estimated_capacity_mb_s:.1f} MB/s effective)"
-    )
+    if d.roles.platform_workers:
+        workers = d.roles.platform_workers
+        print(
+            f"  {workers.platform.upper()} workers      : {workers.worker_count}x, "
+            f"{workers.cores_per_worker} vCPU / {workers.ram_gb_per_worker} GB RAM / "
+            f"{workers.disk_gb_per_worker} GB disk each "
+            f"({workers.total_concurrent_tasks} total tasks)"
+        )
+    else:
+        print(
+            f"  Proxies               : {d.roles.proxies.proxy_count}x, "
+            f"{d.roles.proxies.cores_per_proxy} cores each "
+            f"({d.roles.proxies.total_proxy_cores} total cores, "
+            f"{d.roles.proxies.total_parallel_tasks} total tasks, "
+            f"{d.roles.proxies.estimated_capacity_mb_s:.1f} MB/s effective)"
+        )
     if d.roles.hardened_repos:
         print(
             f"  Hardened repo hosts   : {d.roles.hardened_repos.count} "

@@ -36,6 +36,94 @@ Reference:
 
 - [Veeam Best Practice Guide: VMware proxy sizing](https://bp.veeam.com/vbr/Support/configurations/vmware_proxy.html)
 
+### Proxmox VE workers
+
+Veeam Designer 5 sizes Proxmox VE workers from Veeam's task-based worker requirements instead of
+reusing VMware proxy throughput assumptions:
+
+- default worker: `6 vCPU`, `6 GB RAM`, `100 GB` disk
+- default concurrency: `4 tasks` per worker
+- each task above four adds `1 vCPU` and `1 GB RAM` to that worker
+- one processing task is created for each protected VM
+- host count, cluster count, desired concurrent tasks, and worker task limit are explicit inputs
+
+For Hot-Add coverage, the calculator warns when the supplied Proxmox host count is greater than the
+calculated worker count. Veeam best practice recommends at least one worker per Proxmox host when
+Hot-Add is desired; VMs without a same-host worker can be processed over NBD.
+
+References:
+
+- [Veeam User Guide: Proxmox VE system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/pve_system_requirements.html)
+- [Veeam Best Practice Guide: Proxmox workers](https://bp.veeam.com/vbr/2_Design_Structures/D_Veeam_Components/D_backup_proxies/proxmox_workers.html)
+
+### Nutanix AHV workers
+
+AHV now uses its native worker model rather than the VMware proxy throughput table:
+
+- default worker: `6 vCPU`, `6 GB RAM`, `100 GB` disk
+- default concurrency: `4 tasks` per worker
+- each task above four adds `1 vCPU` and `1 GB RAM`
+- the calculator keeps at least one worker per supplied AHV cluster
+- a warning is emitted if the calculated worker count exceeds the supplied host count
+
+Veeam also recommends that total worker task limits in a cluster do not exceed the cluster physical
+disk count. Veeam Designer does not yet collect AHV physical-disk count, so that check remains a
+manual validation item.
+
+References:
+
+- [Veeam User Guide: AHV system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/ahv_system_requirements.html)
+- [Veeam User Guide: AHV worker sizing guidelines](https://helpcenter.veeam.com/docs/vbr/userguide/ahv_sizing_guide.html)
+
+### Hyper-V backup proxies
+
+Veeam's Best Practice Guide directs Hyper-V proxy sizing to the vSphere proxy sizing method. Veeam
+Designer therefore sizes the aggregate Hyper-V proxy compute requirement from changed data,
+backup-window throughput, and the virtual-proxy incremental baseline, then applies Hyper-V-specific
+task and system-requirement floors:
+
+- default throughput baseline: `80 MB/s` per core for incremental virtual-proxy processing
+- optional `throughput_mb_per_core` remains available for environment-specific benchmark data
+- no more than `2 concurrent tasks per CPU core`
+- minimum `2 vCPU` per proxy/host allocation
+- off-host memory meets both the Hyper-V minimum of `2 GB + 500 MB per task` and the vSphere
+  planning allowance of up to `2 GB per core`
+- on-host memory uses the stronger Hyper-V Best Practice allowance of up to `2 GB per running task`
+- `300 MB` proxy disk footprint
+- on-host designs distribute aggregate compute across the supplied Hyper-V host count
+- off-host designs distribute aggregate compute across the requested task/proxy footprint
+
+The vSphere throughput value is an adopted planning baseline rather than a Hyper-V-specific
+performance guarantee. The Hyper-V Best Practice Guide explicitly points to the vSphere sizing
+method, but environment benchmarking remains the preferred override for production designs.
+
+References:
+
+- [Veeam Best Practice Guide: Hyper-V proxy](https://bp.veeam.com/vbr/2_Design_Structures/D_Veeam_Components/D_backup_proxies/hyperv_proxies.html)
+- [Veeam Best Practice Guide: Hyper-V backup modes](https://bp.veeam.com/vbr/Support/S_Hyper-V/backupmodes.html)
+- [Veeam User Guide: Hyper-V backup proxy system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html)
+- [Veeam User Guide: limitation of concurrent tasks](https://helpcenter.veeam.com/docs/vbr/userguide/limiting_tasks.html)
+
+### Veeam Infrastructure Appliance for VMware proxies
+
+For VMware backup proxies, Veeam Designer can model either a managed Windows/Linux proxy or a
+Veeam Infrastructure Appliance deployment. When Infrastructure Appliance is selected, the
+calculator keeps proxy role resources separate from deployment allocation:
+
+- proxy role cores continue to drive the throughput model
+- each proxy allocation adds the Infrastructure Appliance baseline of `2 vCPU` and `8 GB RAM`
+- each appliance includes a `120 GB` minimum system disk and `120 GB` minimum application-data disk
+- the appliance overhead is not counted as additional proxy throughput capacity
+
+This option is intentionally limited to VMware proxy sizing in the current calculator. Platform
+workers are deployed by their virtualization plug-ins, and Hyper-V off-host proxies cannot be
+assigned to Veeam Infrastructure Appliance.
+
+References:
+
+- [Veeam User Guide: Infrastructure Appliance system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_via.html)
+- [Veeam User Guide: VMware backup proxy system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_vmware_proxy.html)
+
 ### Backup server
 
 Backup server sizing follows the Veeam initial workload bands for VMware and physical-machine
@@ -49,9 +137,22 @@ backup environments:
 Above that range, Veeam Designer extends the largest band linearly and marks the result as a
 manual-review case.
 
-Reference:
+The workload-band result is then checked against the current backup-server system requirements for
+the selected deployment:
+
+- both Windows and Linux-based backup servers require at least `16 GB RAM + 500 MB per concurrent job`
+- Windows requires at least `8 vCPU`
+- Veeam Software Appliance requires `8 vCPU`, with `6 vCPU / 16 GB RAM` sufficient for up to five workloads
+- Veeam Software Appliance requires a minimum `240 GB` system disk and a second `240 GB`
+  application-data disk
+- Veeam documents larger SSD system-disk recommendations as protected workload count grows; the
+  calculator reports the vendor minimum and leaves that capacity choice visible as an architecture
+  review item rather than inventing a hard workload threshold for "small", "medium", or "large"
+
+References:
 
 - [Veeam Best Practice Guide: backup server sizing](https://bp.veeam.com/vbr/Support/configurations/backup_server.html)
+- [Veeam User Guide: backup server system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_backup_server.html)
 
 ### Hardened repository host compute
 
@@ -116,8 +217,8 @@ References:
 These paths remain heuristics in the current release and are labeled that way in code, notes, or
 tests:
 
-- Hyper-V, AHV, and mixed-environment proxy throughput still reuse the VMware transport table
-  unless you provide a custom `throughput_mb_per_core` override
+- Mixed-environment proxy throughput still reuses the VMware transport table unless you provide a
+  custom `throughput_mb_per_core` override
 - NBD proxy throughput is intentionally conservative rather than source-table-driven
 - VM repository capacity still uses the existing weekly-full plus incremental planning model used by
   this app
