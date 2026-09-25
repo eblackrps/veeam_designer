@@ -106,6 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--nas-retention-days", type=int, default=14)
     p.add_argument("--nas-compress-pct", type=float, default=30.0)
     p.add_argument("--nas-cft", action="store_true")
+    p.add_argument("--nas-concurrent-sources", type=int, default=1)
 
     # --- Physical / Agent flags ---
     p.add_argument("--machine-count", type=int, default=0)
@@ -249,6 +250,7 @@ def main():
                 retention_days=args.nas_retention_days,
                 compress_pct=args.nas_compress_pct,
                 storage_native_cft=args.nas_cft,
+                concurrent_sources=args.nas_concurrent_sources,
             )
             design = size_nas(nin)
             if args.json:
