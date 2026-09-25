@@ -1,9 +1,9 @@
 :root {
-  --bg: #0b1114;
-  --surface: #11191d;
-  --surface-raised: #151f24;
-  --surface-soft: #172228;
-  --surface-input: #0e161a;
+  --bg: #23282c;
+  --surface: #2b3035;
+  --surface-raised: #30363b;
+  --surface-soft: #353b40;
+  --surface-input: #262c31;
   --text: #f2f6f4;
   --muted: #98a8a1;
   --muted-strong: #c3cec9;
@@ -364,7 +364,7 @@ textarea {
 }
 
 .field select option {
-  background: #0e161a;
+  background: #262c31;
   color: var(--text);
 }
 
@@ -374,7 +374,7 @@ textarea {
 .yaml-editor:focus {
   border-color: rgba(50, 212, 109, 0.7);
   box-shadow: 0 0 0 3px rgba(50, 212, 109, 0.09);
-  background-color: #101a1f;
+  background-color: #2c3338;
 }
 
 .input-with-suffix {
@@ -546,7 +546,7 @@ textarea {
   padding: 18px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-md);
-  background: #0f171b;
+  background: #282e33;
 }
 
 /* Site cards */
@@ -558,14 +558,14 @@ textarea {
 .site-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: #0f171b;
+  background: #282e33;
   overflow: hidden;
 }
 
 .site-card-head {
   padding: 15px 17px;
   border-bottom: 1px solid var(--line-soft);
-  background: #121c21;
+  background: #30363b;
 }
 
 .site-card h3 {
@@ -753,7 +753,7 @@ textarea {
   padding: 12px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
-  background: #0f171b;
+  background: #282e33;
 }
 
 .summary-card span {
@@ -781,7 +781,7 @@ textarea {
   border: 1px dashed #34434a;
   border-radius: var(--radius-md);
   color: var(--muted);
-  background: #0e161a;
+  background: #262c31;
 }
 
 .empty-state-mark {
@@ -829,7 +829,7 @@ textarea {
   padding: 14px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
-  background: #0f171b;
+  background: #282e33;
 }
 
 .dashboard-site-head {
@@ -905,7 +905,7 @@ textarea {
 .output-block {
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
-  background: #0e161a;
+  background: #262c31;
 }
 
 .output-human {
