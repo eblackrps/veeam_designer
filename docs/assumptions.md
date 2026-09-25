@@ -96,6 +96,26 @@ References:
 - [Veeam User Guide: Hyper-V backup proxy system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html)
 - [Veeam User Guide: limitation of concurrent tasks](https://helpcenter.veeam.com/docs/vbr/userguide/limiting_tasks.html)
 
+### Veeam Infrastructure Appliance for VMware proxies
+
+For VMware backup proxies, Veeam Designer can model either a managed Windows/Linux proxy or a
+Veeam Infrastructure Appliance deployment. When Infrastructure Appliance is selected, the
+calculator keeps proxy role resources separate from deployment allocation:
+
+- proxy role cores continue to drive the throughput model
+- each proxy allocation adds the Infrastructure Appliance baseline of `2 vCPU` and `8 GB RAM`
+- each appliance includes a `120 GB` minimum system disk and `120 GB` minimum application-data disk
+- the appliance overhead is not counted as additional proxy throughput capacity
+
+This option is intentionally limited to VMware proxy sizing in the current calculator. Platform
+workers are deployed by their virtualization plug-ins, and Hyper-V off-host proxies cannot be
+assigned to Veeam Infrastructure Appliance.
+
+References:
+
+- [Veeam User Guide: Infrastructure Appliance system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_via.html)
+- [Veeam User Guide: VMware backup proxy system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_vmware_proxy.html)
+
 ### Backup server
 
 Backup server sizing follows the Veeam initial workload bands for VMware and physical-machine
