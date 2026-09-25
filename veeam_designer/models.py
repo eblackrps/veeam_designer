@@ -42,6 +42,7 @@ class VeeamInput:
     platform_concurrent_tasks: int = 0
     worker_task_limit: int = 4
     deployment_mode: str = ""
+    proxy_deployment_mode: str = "managed_os"
 
     # Round 2: backup server sizing
     workload_count: int = 0
@@ -128,6 +129,13 @@ class ProxySizing:
     disk_gb_per_proxy: float = 0.0
     sizing_basis: str = ""
     source_url: str = ""
+    deployment_mode: str = "managed_os"
+    allocated_cores_per_proxy: int = 0
+    allocated_ram_gb_per_proxy: int = 0
+    total_allocated_proxy_cores: int = 0
+    total_allocated_proxy_ram_gb: int = 0
+    infrastructure_system_disk_gb: int = 0
+    infrastructure_data_disk_gb: int = 0
     notes: List[str] = field(default_factory=list)
 
 
