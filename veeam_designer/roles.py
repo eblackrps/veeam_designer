@@ -12,6 +12,7 @@ from .models import (
     RolePlan,
     VeeamInput,
 )
+from .platforms import size_platform_workers, uses_platform_workers
 from .workload_math import projected_daily_change_tb, tb_to_mb
 
 VMWARE_INCREMENTAL_MB_PER_CORE: dict[tuple[str, str], float] = {
@@ -29,6 +30,9 @@ _HYPERVISOR_TRANSPORT: dict[str, list[str]] = {
     "hyperv": ["hotadd", "nbd", "auto"],
     "ahv": ["nbd", "auto"],
     "nutanix_ahv": ["nbd", "auto"],
+    "proxmox": ["hotadd", "nbd", "auto"],
+    "proxmox_ve": ["hotadd", "nbd", "auto"],
+    "pve": ["hotadd", "nbd", "auto"],
     "physical": ["nbd", "auto"],
     "mixed": ["hotadd", "nbd", "auto"],
 }
@@ -79,11 +83,12 @@ def _proxy_throughput_mb_per_core(vin: VeeamInput, transport: str) -> tuple[floa
 
 def size_proxies(vin: VeeamInput) -> ProxySizing:
     """
-    Size proxy resources using Veeam published throughput guidance where available.
-    """
-    transport = _resolve_transport(vin)
-    mb_per_core, throughput_basis = _proxy_throughput_mb_per_core(vin, transport)
+    Size data-mover resources.
 
+    VMware and legacy paths retain throughput-based proxy sizing. Proxmox VE and
+    Nutanix AHV use their vendor-published worker task model and expose the
+    compatibility result through the existing proxy payload.
+    """
     daily_change_size_tb = projected_daily_change_tb(
         total_data_tb=vin.total_data_tb,
         daily_change_percent=vin.daily_change_percent,
@@ -97,6 +102,28 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
         raise ValueError("backup_window_hours must be > 0")
 
     required_throughput_mb_s = daily_backup_mb / backup_window_sec
+
+    if uses_platform_workers(vin.hypervisor):
+        workers = size_platform_workers(vin)
+        if workers is None:
+            raise ValueError(f"Worker sizing unavailable for platform {vin.hypervisor!r}")
+        return ProxySizing(
+            proxy_count=workers.worker_count,
+            cores_per_proxy=workers.cores_per_worker,
+            total_proxy_cores=workers.total_worker_cores,
+            total_parallel_tasks=workers.total_concurrent_tasks,
+            required_throughput_mb_s=round(required_throughput_mb_s, 1),
+            estimated_capacity_mb_s=0.0,
+            throughput_basis=(
+                "Veeam platform worker task sizing; no vendor throughput-per-core value applied"
+            ),
+            ram_gb_per_proxy=workers.ram_gb_per_worker,
+            total_proxy_ram_gb=workers.total_worker_ram_gb,
+            transport_mode="worker",
+        )
+
+    transport = _resolve_transport(vin)
+    mb_per_core, throughput_basis = _proxy_throughput_mb_per_core(vin, transport)
     total_proxy_cores = max(
         1,
         math.ceil((required_throughput_mb_s / mb_per_core) * vin.read_write_overhead),
@@ -111,37 +138,7 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
     ram_per_proxy = max(4, math.ceil(total_proxy_ram_gb / proxy_count))
     estimated_capacity_mb_s = total_proxy_cores * mb_per_core / max(vin.read_write_overhead, 1.0)
 
-    # Hypervisor-transport compatibility notes
-    notes: list[str] = []
-    allowed = _HYPERVISOR_TRANSPORT.get(vin.hypervisor.lower(), [])
-    if allowed and transport not in allowed:
-        notes.append(
-            f"Transport '{transport}' is not recommended for hypervisor "
-            f"'{vin.hypervisor}'. Recommended: {', '.join(allowed)}."
-        )
-    if transport == "nbd":
-        notes.append(
-            "NBD transport throughput is modeled conservatively because Veeam does not publish a "
-            "separate per-core NBD throughput table in the cited sizing guide."
-        )
-    if vin.throughput_mb_per_core > 0:
-        notes.append(
-            "A custom proxy throughput override was supplied. The calculator used that value "
-            "instead of the built-in Veeam transport guidance."
-        )
-    else:
-        notes.append(
-            "Proxy sizing uses Veeam vSphere proxy incremental-throughput guidance and keeps the "
-            "best-practice target of two proxy tasks per CPU core."
-        )
-    if vin.hypervisor.lower() != "vmware" and vin.throughput_mb_per_core <= 0:
-        notes.append(
-            "Hyper-V, AHV, and mixed-environment proxy throughput still reuse the VMware transport "
-            "table as a planning heuristic unless you provide a custom throughput override."
-        )
-    notes.append("The calculator recommends at least two proxy servers per site for availability.")
-
-    sizing = ProxySizing(
+    return ProxySizing(
         proxy_count=proxy_count,
         cores_per_proxy=cores_per_proxy,
         total_proxy_cores=total_proxy_cores,
@@ -153,7 +150,6 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
         total_proxy_ram_gb=total_proxy_ram_gb,
         transport_mode=transport,
     )
-    return sizing
 
 
 def size_backup_server(proxies: ProxySizing, vin: VeeamInput) -> BackupServerSizing:
@@ -207,10 +203,33 @@ def size_backup_server(proxies: ProxySizing, vin: VeeamInput) -> BackupServerSiz
         )
     notes.append("Always verify against the current Veeam system requirements minimums.")
 
+    deployment_mode = (vin.deployment_mode or "").strip().lower()
+    if not deployment_mode:
+        deployment_mode = "software_appliance" if vin.v13_appliance else "windows"
+
+    system_disk_gb = 0
+    if deployment_mode == "software_appliance":
+        appliance_min_cores = 6 if workload_count <= 5 else 8
+        appliance_min_ram = max(16, math.ceil(16 + (0.5 * concurrency_hint)))
+        total_cores = max(total_cores, appliance_min_cores)
+        ram_gb = max(ram_gb, appliance_min_ram)
+        system_disk_gb = 240
+        notes.append(
+            "Veeam Software Appliance minimums are enforced: 8 vCPU (6 for up to 5 workloads), "
+            "16 GB RAM plus 500 MB per concurrent job, and a 240 GB system disk."
+        )
+    else:
+        notes.append(
+            "Windows backup-server mode selected; workload-band sizing is retained and current "
+            "Windows system requirements must still be validated."
+        )
+
     return BackupServerSizing(
         cores=total_cores,
         ram_gb=ram_gb,
-        v13_appliance=vin.v13_appliance,
+        v13_appliance=deployment_mode == "software_appliance",
+        deployment_mode=deployment_mode,
+        system_disk_gb=system_disk_gb,
         notes=notes,
     )
 
@@ -285,6 +304,7 @@ def build_role_plan(vin: VeeamInput, repo: RepoSizing) -> RolePlan:
       - Hardened repositories
       - Gateways ONLY for object storage
     """
+    platform_workers = size_platform_workers(vin)
     proxies = size_proxies(vin)
     backup_server = size_backup_server(proxies, vin)
     hardened = size_hardened_repo(repo, proxies.total_proxy_cores, vin.refs_xfs)
@@ -295,6 +315,7 @@ def build_role_plan(vin: VeeamInput, repo: RepoSizing) -> RolePlan:
     return RolePlan(
         backup_server=backup_server,
         proxies=proxies,
+        platform_workers=platform_workers,
         hardened_repos=hardened,
         gateways=gateways,
     )
