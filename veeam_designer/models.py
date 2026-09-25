@@ -53,6 +53,7 @@ class VeeamInput:
     # Round 3: filesystem + immutability + synthetic full period
     refs_xfs: bool = True
     immutability_enabled: bool = False
+    immutability_days: int = 0
     block_generation_days: int = 10
 
     # Round 5: capacity tier
@@ -111,6 +112,10 @@ class RepoSizing:
     primary_repo_tb: float
     gfs_repo_tb: float
     total_repo_tb: float
+    short_term_data_tb: float = 0.0
+    operational_headroom_tb: float = 0.0
+    calculation_basis: str = ""
+    notes: List[str] = field(default_factory=list)
 
 
 @dataclass

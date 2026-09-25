@@ -18,43 +18,33 @@ def estimate_repo_perf(vin: VeeamInput, repo: RepoSizing, jobs: JobSet) -> RepoP
 
     required_mb_s = daily_backup_mb / backup_window_sec
 
-    if "synthetic" in vin.backup_type:
-        # Round 3: spread synthetic full load over block_generation_days windows
-        block_days = max(1, vin.block_generation_days)
-        syn_mb = tb_to_mb(
+    if "synthetic" in vin.backup_type and vin.refs_xfs and vin.repo_type != "object":
+        synthetic_full_mb_s = 0.0
+        notes.append(
+            "ReFS/XFS Fast Clone selected: synthetic fulls are block-cloned rather than "
+            "rewritten as complete byte copies. No fabricated full-copy MB/s requirement is emitted."
+        )
+    elif "synthetic" in vin.backup_type:
+        synthetic_full_mb = tb_to_mb(
             projected_total_data_tb(
                 total_data_tb=vin.total_data_tb,
                 annual_growth_percent=vin.annual_growth_percent,
                 years_to_plan_for=vin.years_to_plan_for,
             )
         )
-        syn_window_sec = block_days * (vin.backup_window_hours * 3600 or 1)
-        synthetic_full_mb_s = syn_mb / syn_window_sec
+        synthetic_full_mb_s = synthetic_full_mb / backup_window_sec
         notes.append(
-            f"Synthetic full rebuilds spread over {block_days}-day block generation period: "
-            f"requires {synthetic_full_mb_s:.1f} MB/s sustained repository I/O during that window."
+            "Without Fast Clone, synthetic-full planning throughput assumes the full synthesis "
+            "must fit inside the configured backup window. This is a conservative planning assumption."
         )
     else:
         synthetic_full_mb_s = 0.0
 
-    # Round 3: ReFS/XFS block-clone note
-    if vin.refs_xfs:
-        notes.append(
-            "ReFS/XFS with block cloning enabled: synthetic full I/O cost is significantly "
-            "reduced — clone operations are near-instantaneous on compatible filesystems."
-        )
-    else:
-        notes.append(
-            "ReFS/XFS not selected: synthetic full operations require full byte-copy reads/writes. "
-            "Consider XFS (Linux) or ReFS (Windows) for better synthetic full performance."
-        )
-
     # Round 3: immutability note
-    if vin.immutability_enabled and not vin.refs_xfs:
+    if vin.immutability_enabled and vin.repo_type != "object" and not vin.refs_xfs:
         notes.append(
-            "Immutability requested but ReFS/XFS is not enabled. "
-            "Object-lock immutability on Linux hardened repos requires XFS; "
-            "enable refs_xfs or choose an object storage target."
+            "Hardened-repository immutability requires a supported Linux/XFS repository design; "
+            "review the repository filesystem before deployment."
         )
 
     if repo.total_repo_tb > 300:
