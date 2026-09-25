@@ -5,6 +5,28 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a4] - 2026-09-25
+
+### Fixed
+
+- Rebuilt VM repository capacity around VBR 13 N+1 retention, backup-chain behavior, compound
+  growth, separate operational headroom, and explicit immutability duration instead of blanket
+  weekly-full math or arbitrary immutability percentages
+- Separated CDP short-term retention from CDP RPO, corrected steady-state replication bandwidth,
+  and aligned WAN accelerator Auto, Low, High, and Direct modes with explicit reduction assumptions
+- Replaced fabricated precision in NAS, Agent, tape, Veeam ONE, and licensing with isolated formulas,
+  known-answer tests, and explicit assumptions where Veeam does not define a universal value
+- Removed inherited repository compression/deduplication from the automatic WAN sizing path
+
+### Changed
+
+- Added UI inputs for immutability duration, WAN accelerator mode, NAS source concurrency, Agent
+  proxy concurrency, and CDP retention/measured write I/O without redesigning the interface
+- Updated reports and summaries to separate retained data from operational headroom and to label
+  configured cost values as planning assumptions
+- Updated sizing documentation to describe the hardened formulas, source ambiguities, and remaining
+  engineering assumptions
+
 ## [5.0.0a3] - 2026-09-25
 
 ### Changed

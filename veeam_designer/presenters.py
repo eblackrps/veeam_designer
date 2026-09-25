@@ -75,10 +75,11 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             {"label": "Data Movers", "value": str(data_movers)},
             {"label": "WAN Targets", "value": f"{wan_targets_met}/{len(sites)} met"},
             {
-                "label": "Yearly Cost",
+                "label": "Planning Cost/yr",
                 "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('yearly_onprem_usd', 0.0)) for site in sites):,.0f}",
             },
         ]
+
     if kind == "vm":
         repo = payload.get("repo") or {}
         roles = payload.get("roles") or {}
@@ -112,35 +113,71 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             },
             {"label": "WAN / RPO", "value": f"{wan_required:.0f} Mbps · {wan_status}"},
             {"label": "Risk", "value": str(risk.get("level", "unknown")).upper()},
-            {"label": "Yearly Cost", "value": f"${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}"},
+            {
+                "label": "Planning Cost/yr",
+                "value": f"${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}",
+            },
         ]
+
     if kind == "nas":
         result = payload.get("result") or {}
+        cache_tb = float(result.get("cache_repo_tb", 0.0))
+        cache_value = f"{cache_tb * 1024.0:.0f} GB" if 0 < cache_tb < 1 else f"{cache_tb:.1f} TB"
         return [
             {"label": "Repository", "value": f"{float(result.get('total_repo_tb', 0.0)):.1f} TB"},
-            {"label": "File Proxies", "value": str(int(result.get("file_proxy_cores", 0)))},
-            {"label": "Cache Repo", "value": f"{float(result.get('cache_repo_tb', 0.0)):.1f} TB"},
+            {"label": "File Proxies", "value": str(int(result.get("file_proxy_count", 0)))},
+            {
+                "label": "Proxy Compute",
+                "value": (
+                    f"{int(result.get('file_proxy_cores', 0))}c / "
+                    f"{int(result.get('file_proxy_ram_gb', 0))} GB"
+                ),
+            },
+            {"label": "Cache Repo", "value": cache_value},
         ]
+
     if kind == "physical":
         result = payload.get("result") or {}
         return [
             {"label": "Repository", "value": f"{float(result.get('total_repo_tb', 0.0)):.1f} TB"},
-            {"label": "Coordinator Cores", "value": str(int(result.get("coordinator_cores", 0)))},
-            {"label": "Coordinator RAM", "value": f"{int(result.get('coordinator_ram_gb', 0))} GB"},
+            {
+                "label": "General Proxy",
+                "value": (
+                    f"{int(result.get('coordinator_cores', 0))}c / "
+                    f"{int(result.get('coordinator_ram_gb', 0))} GB"
+                ),
+            },
+            {
+                "label": "Required Network",
+                "value": f"{float(result.get('required_mbps', 0.0)):.1f} Mbps",
+            },
         ]
+
     if kind == "replication":
         result = payload.get("result") or {}
-        return [
+        cards = [
             {
-                "label": "Required WAN",
+                "label": "Average WAN",
                 "value": f"{float(result.get('required_mbps', 0.0)):.1f} Mbps",
             },
             {
                 "label": "Replica Storage",
                 "value": f"{float(result.get('replica_storage_tb', 0.0)):.1f} TB",
             },
-            {"label": "RPO Status", "value": "Pass" if result.get("meets_rpo") else "Risk"},
+            {
+                "label": "Steady-State WAN",
+                "value": "Sufficient" if result.get("meets_rpo") else "Insufficient",
+            },
         ]
+        if float(result.get("cdp_journal_tb", 0.0)) > 0:
+            cards.append(
+                {
+                    "label": "CDP Retention",
+                    "value": f"{float(result.get('cdp_journal_tb', 0.0)):.2f} TB",
+                }
+            )
+        return cards
+
     return []
 
 
@@ -150,42 +187,68 @@ def render_blueprint_human(payload: JSONDict) -> str:
     kind = payload.get("kind")
     if kind in {"multi-site", "vm"}:
         return _render_vm_blueprint(payload)
+
     if kind == "nas":
         result = payload.get("result") or {}
         return (
             "NAS / unstructured sizing\n"
             f"- Total repository: {float(result.get('total_repo_tb', 0.0)):.1f} TB\n"
-            f"- Cache repository: {float(result.get('cache_repo_tb', 0.0)):.1f} TB\n"
-            f"- File proxy sizing: {int(result.get('file_proxy_cores', 0))} cores / "
-            f"{int(result.get('file_proxy_ram_gb', 0))} GB RAM\n"
+            f"- File proxies: {int(result.get('file_proxy_count', 0))} x "
+            f"{int(result.get('file_proxy_cores_each', 0))} vCPU / "
+            f"{int(result.get('file_proxy_ram_gb_each', 0))} GB RAM\n"
+            f"- Cache-repository compute: {int(result.get('cache_repo_cores', 0))} vCPU / "
+            f"{int(result.get('cache_repo_ram_gb', 0))} GB RAM\n"
         )
+
     if kind == "physical":
         result = payload.get("result") or {}
         return (
             "Physical / agent sizing\n"
             f"- Total repository: {float(result.get('total_repo_tb', 0.0)):.1f} TB\n"
-            f"- Coordinator sizing: {int(result.get('coordinator_cores', 0))} cores / "
+            f"- Retained short-term data: {float(result.get('short_term_data_tb', 0.0)):.1f} TB\n"
+            f"- Operational headroom: "
+            f"{float(result.get('operational_headroom_tb', 0.0)):.1f} TB\n"
+            f"- General-purpose proxy: {int(result.get('coordinator_cores', 0))} vCPU / "
             f"{int(result.get('coordinator_ram_gb', 0))} GB RAM\n"
+            f"- Average required network: {float(result.get('required_mbps', 0.0)):.1f} Mbps\n"
         )
+
     if kind == "replication":
         result = payload.get("result") or {}
-        return (
-            "Replication sizing\n"
-            f"- Required bandwidth: {float(result.get('required_mbps', 0.0)):.1f} Mbps\n"
-            f"- Replica storage: {float(result.get('replica_storage_tb', 0.0)):.1f} TB\n"
-            f"- Meets target RPO: {'yes' if result.get('meets_rpo') else 'no'}\n"
-        )
+        lines = [
+            "Replication sizing",
+            f"- Average changed-data bandwidth: {float(result.get('required_mbps', 0.0)):.1f} Mbps",
+            f"- Replica storage: {float(result.get('replica_storage_tb', 0.0)):.1f} TB",
+            (
+                "- WAN carries the average changed-data rate: "
+                f"{'yes' if result.get('meets_rpo') else 'no'}"
+            ),
+        ]
+        if int(result.get("cdp_proxy_count_per_side", 0)) > 0:
+            lines.extend(
+                [
+                    (
+                        f"- CDP proxies per side: {int(result.get('cdp_proxy_count_per_side', 0))} x "
+                        f"{int(result.get('cdp_proxy_cores', 0))} vCPU / "
+                        f"{int(result.get('cdp_proxy_ram_gb', 0))} GB RAM"
+                    ),
+                    f"- CDP short-term retention capacity: "
+                    f"{float(result.get('cdp_journal_tb', 0.0)):.2f} TB",
+                ]
+            )
+        return "\n".join(lines) + "\n"
+
     return "No design output available.\n"
 
 
 def render_cost_human(payload: JSONDict) -> str:
-    """Render a compact cost summary."""
+    """Render configured planning-rate estimates without presenting them as live pricing."""
 
     kind = payload.get("kind")
     if kind == "multi-site":
         total_on_prem = 0.0
         total_object = 0.0
-        lines = ["Cost overview"]
+        lines = ["Cost planning assumptions"]
         for site in payload.get("sites", []):
             design = site.get("design") or {}
             cost = design.get("cost") or {}
@@ -195,20 +258,24 @@ def render_cost_human(payload: JSONDict) -> str:
             total_object += monthly_object * 12.0
             lines.append(
                 f"- {site.get('name', 'Site')}: "
-                f"on-prem ${yearly_on_prem:,.0f}/yr, "
-                f"object ${monthly_object * 12.0:,.0f}/yr"
+                f"configured on-prem ${yearly_on_prem:,.0f}/yr, "
+                f"configured object ${monthly_object * 12.0:,.0f}/yr"
             )
-        lines.append(f"- Total on-prem: ${total_on_prem:,.0f}/yr")
-        lines.append(f"- Total object: ${total_object:,.0f}/yr")
+        lines.append(f"- Total configured on-prem: ${total_on_prem:,.0f}/yr")
+        lines.append(f"- Total configured object: ${total_object:,.0f}/yr")
+        lines.append(
+            "- These are configured planning rates, not Veeam quotes or live market pricing."
+        )
         return "\n".join(lines) + "\n"
 
     if kind == "vm":
         cost = payload.get("cost") or {}
         return (
-            "Cost overview\n"
-            f"- On-prem yearly estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}\n"
-            f"- Object storage yearly estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}\n"
-            f"- Break-even vs cloud: {float(cost.get('break_even_years', 0.0)):.1f} years\n"
+            "Cost planning assumptions\n"
+            f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr\n"
+            f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr\n"
+            f"- Modeled break-even: {float(cost.get('break_even_years', 0.0)):.1f} years\n"
+            "- Rates are configuration inputs, not Veeam pricing or live market quotes.\n"
         )
 
     return "Cost projection is not generated for this calculator mode.\n"
@@ -236,6 +303,10 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "total_repo_tb": float(repo.get("total_repo_tb", 0.0)),
         "primary_repo_tb": float(repo.get("primary_repo_tb", 0.0)),
         "gfs_repo_tb": float(repo.get("gfs_repo_tb", 0.0)),
+        "short_term_data_tb": float(repo.get("short_term_data_tb", 0.0)),
+        "operational_headroom_tb": float(repo.get("operational_headroom_tb", 0.0)),
+        "repo_calculation_basis": str(repo.get("calculation_basis", "")),
+        "repo_notes": repo.get("notes", []) or [],
         "capacity_tier_tb": float(sobr.get("capacity_tier_tb", 0.0)),
         "proxy_count": int(proxies.get("proxy_count", 0)),
         "total_proxy_cores": total_proxy_cores,
@@ -338,6 +409,10 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
             workers = roles.get("platform_workers") or {}
             lines.append(f"{site.get('name', 'Site')}")
             lines.append(f"- Total repo: {float(repo.get('total_repo_tb', 0.0)):.1f} TB")
+            lines.append(f"- Retained data: {float(repo.get('short_term_data_tb', 0.0)):.1f} TB")
+            lines.append(
+                f"- Operational headroom: {float(repo.get('operational_headroom_tb', 0.0)):.1f} TB"
+            )
             if workers:
                 lines.append(
                     f"- {str(workers.get('platform', 'platform')).upper()} workers: "
@@ -351,7 +426,8 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
                     f"({int(proxies.get('total_proxy_cores', 0))} cores)"
                 )
             lines.append(
-                f"- Required WAN: {float((design.get('network') or {}).get('required_mbps', 0.0)):.1f} Mbps"
+                f"- Required WAN: "
+                f"{float((design.get('network') or {}).get('required_mbps', 0.0)):.1f} Mbps"
             )
             lines.append("")
         return "\n".join(lines).strip() + "\n"
@@ -376,9 +452,14 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
             f"{int(proxies.get('total_proxy_ram_gb', 0))} GB RAM)\n"
         )
     )
+    basis = str(repo.get("calculation_basis", "")).strip()
+    basis_line = f"- Repository basis: {basis}\n" if basis else ""
     return (
         "VM backup sizing\n"
         f"- Total repository: {float(repo.get('total_repo_tb', 0.0)):.1f} TB\n"
+        f"- Retained short-term data: {float(repo.get('short_term_data_tb', 0.0)):.1f} TB\n"
+        f"- Operational headroom: {float(repo.get('operational_headroom_tb', 0.0)):.1f} TB\n"
+        f"{basis_line}"
         f"{mover_line}"
         f"- Backup server: {int(backup_server.get('cores', 0))} cores / "
         f"{int(backup_server.get('ram_gb', 0))} GB RAM "
