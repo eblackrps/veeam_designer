@@ -16,9 +16,13 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "GitHub Pages browser edition" in index_html
     assert "pyodide.js" in index_html
     assert "Action failed." in index_html
+    assert "Proxmox VE" in index_html
+    assert "Veeam Software Appliance" in index_html
     assert (output_dir / "assets" / "app.css").exists()
     assert (output_dir / "assets" / "app.js").exists()
     assert (output_dir / "assets" / fake_wheel.name).exists()
     assert "veeam-designer-print-frame" in app_js
+    assert "platform_concurrent_tasks" in app_js
+    assert "deployment_mode" in app_js
     assert "frame.srcdoc = markup;" in app_js
     assert 'window.open("", "_blank"' not in app_js
