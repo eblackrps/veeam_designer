@@ -73,7 +73,16 @@
                 <option value="vmware" selected>VMware vSphere</option>
                 <option value="hyperv">Microsoft Hyper-V</option>
                 <option value="ahv">Nutanix AHV</option>
+                <option value="proxmox">Proxmox VE</option>
                 <option value="mixed">Mixed environment</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Backup Server Deployment</span>
+              <select id="deployment-mode">
+                <option value="software_appliance" selected>Veeam Software Appliance</option>
+                <option value="windows">Microsoft Windows</option>
               </select>
             </label>
 
@@ -318,13 +327,17 @@
       </div>
 
       <details class="advanced-panel">
-        <summary>Advanced retention and concurrency</summary>
+        <summary>Advanced retention, concurrency, and platform workers</summary>
         <div class="settings-grid">
           <label class="field"><span>GFS Weekly</span><input type="number" min="0" step="1" data-field="gfs_weekly_count"></label>
           <label class="field"><span>GFS Monthly</span><input type="number" min="0" step="1" data-field="gfs_monthly_count"></label>
           <label class="field"><span>GFS Yearly</span><input type="number" min="0" step="1" data-field="gfs_yearly_count"></label>
           <label class="field"><span>Block Generation (days)</span><input type="number" min="1" step="1" data-field="block_generation_days"></label>
           <label class="field"><span>Concurrent Jobs</span><input type="number" min="1" step="1" data-field="concurrent_jobs"></label>
+          <label class="field"><span>Platform Host Count</span><input type="number" min="0" step="1" data-field="platform_host_count"></label>
+          <label class="field"><span>Platform Cluster Count</span><input type="number" min="1" step="1" data-field="platform_cluster_count"></label>
+          <label class="field"><span>Worker Concurrent Tasks</span><input type="number" min="0" step="1" data-field="platform_concurrent_tasks"></label>
+          <label class="field"><span>Tasks per Worker</span><input type="number" min="1" step="1" data-field="worker_task_limit"></label>
           <label class="field field-wide"><span>Notes</span><textarea rows="3" data-field="notes"></textarea></label>
         </div>
       </details>
