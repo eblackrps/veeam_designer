@@ -9,6 +9,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ### Changed
 
+- Cleaned the repository documentation and package metadata around the current v5 workflow
+- Removed obsolete 4.x screenshots and their package/ignore references
+- Refreshed the checked-in example project and added a smoke test to keep it executable
+- Aligned contributor validation steps with the browser JavaScript CI gate
+- Corrected the package maturity classifier to Alpha while the 5.0 prerelease line is active
 - Replaced the ambiguous `VD` hero mark with a neutral stacked-infrastructure icon
 - Shortened the hero heading and supporting copy to direct product language
 - Removed browser-engine readiness/status copy from the visible interface
