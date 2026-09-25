@@ -482,8 +482,8 @@ class VeeamOneInput:
 
 @dataclass
 class VeeamOneDesign:
-    server_cores: int
-    server_ram_gb: int
+    server_cores: float
+    server_ram_gb: float
     database_size_gb: int
     em_cores: int = 0
     em_ram_gb: int = 0
