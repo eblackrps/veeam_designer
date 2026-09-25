@@ -113,11 +113,13 @@ The default experience is the browser calculator at `/run`.
 
 ### Builder and YAML Workflow
 
-The UI keeps a live YAML workspace next to the calculator:
+The primary UI is architecture-first: platform, protection, retention, data-mover, and repository
+inputs stay in the main workflow, while tuning overrides and YAML are available as advanced tools.
 
-- `Builder Sync` keeps YAML generated from the form
+- `Builder Sync` keeps YAML generated from the architecture fields
 - `Manual YAML` lets you hand-edit the project definition directly
 - `Rebuild YAML` replaces manual edits with the current calculator state
+- raw structured JSON remains available from an advanced results section
 
 ### Results
 
