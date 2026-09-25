@@ -9,7 +9,7 @@ capacity, WAN, risk, and cost guidance.
 
 **Live calculator:** https://eblackrps.github.io/veeam_designer/
 
-Current development line: **5.0.0a3**
+Current development line: **5.0.0a4**
 
 ## What It Sizes
 
@@ -18,9 +18,9 @@ Current development line: **5.0.0a3**
 - **Microsoft Hyper-V** — throughput-aware proxy sizing with Hyper-V CPU, RAM, disk, and task minimums
 - **Nutanix AHV** — native Veeam worker sizing
 - **Proxmox VE** — native Veeam worker sizing with Hot-Add/NBD placement guidance
-- **NAS** — file proxy, cache, repository, retention, and growth planning
-- **Physical** — agent/coordinator and repository sizing
-- **Replication / CDP** — replica capacity, WAN, RPO, and CDP pressure
+- **NAS** — file proxy, metadata cache, repository, retention, and growth planning
+- **Physical** — Agent repository and general-purpose proxy sizing
+- **Replication / CDP** — replica capacity, steady-state WAN demand, CDP proxy resources, and journal retention
 
 The same Python sizing engine is used by the browser edition, FastAPI service, CLI, and Docker image.
 
@@ -139,8 +139,9 @@ proxy_deployment_mode: managed_os
 
 Veeam Designer distinguishes published vendor guidance from planning heuristics. Current platform
 models include VMware proxies, Hyper-V proxies, AHV workers, Proxmox workers, backup-server
-deployment requirements, hardened repository compute, WAN acceleration, NAS, replication/CDP,
-Veeam ONE, tape, licensing, and cost modeling.
+deployment requirements, retention-aware repository capacity, hardened repository compute,
+WAN acceleration, NAS, replication/CDP, Veeam ONE, tape, licensing consumption, and optional
+user-configured cost modeling.
 
 See [docs/assumptions.md](docs/assumptions.md) for formulas, caveats, and source links.
 
