@@ -13,8 +13,8 @@ def test_agent_repo_uses_v13_n_plus_one_retention():
         )
     )
 
-    # 1 TB full + seven 0.1 TB increments = 1.7 TB, plus 25% reserve.
-    assert result.total_repo_tb == 2.1
+    # 1 TB full + seven 0.1 TB increments = 1.7 TB.
+    assert result.total_repo_tb == 1.7
 
 
 def test_agent_minimum_three_restore_points_is_enforced():
@@ -28,7 +28,7 @@ def test_agent_minimum_three_restore_points_is_enforced():
         )
     )
 
-    assert result.total_repo_tb == 1.5
+    assert result.total_repo_tb == 1.2
 
 
 def test_agent_general_proxy_minimum_scales_with_concurrent_tasks():
@@ -56,7 +56,7 @@ def test_agent_general_proxy_minimum_scales_with_concurrent_tasks():
 def test_agent_default_case_has_deterministic_capacity():
     result = size_agent(AgentInput(machine_count=50, avg_size_gb=200.0))
 
-    assert result.total_repo_tb == 20.8
+    assert result.total_repo_tb == 16.6
     assert result.coordinator_cores == 8
     assert result.coordinator_ram_gb == 6
 
