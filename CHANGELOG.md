@@ -16,6 +16,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Added Veeam Software Appliance deployment sizing and exposed deployment mode in the browser and CLI
 - Added current Windows/Linux backup-server concurrency memory minimums and both Software Appliance
   minimum disks to architecture output
+- Added Veeam Infrastructure Appliance deployment sizing for VMware proxies, separating proxy-role
+  throughput resources from appliance allocation and disk overhead
 - Added platform-worker details to API payloads, dashboards, browser reports, and human summaries
 - Added Proxmox VE to the web calculator and CLI/interactive workflows
 
