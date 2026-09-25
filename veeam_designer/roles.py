@@ -314,6 +314,32 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
     total_proxy_ram_gb = proxy_count * ram_per_proxy
     estimated_capacity_mb_s = total_proxy_cores * mb_per_core / max(vin.read_write_overhead, 1.0)
 
+    notes: list[str] = []
+    if transport == "nbd":
+        notes.append(
+            "NBD throughput is modeled conservatively because Veeam does not publish a dedicated "
+            "per-core NBD throughput table in the cited proxy sizing guide."
+        )
+    if vin.throughput_mb_per_core > 0:
+        notes.append(
+            "A custom proxy throughput override was supplied and used instead of the built-in "
+            "Veeam transport guidance."
+        )
+    else:
+        notes.append(
+            "Proxy sizing uses Veeam incremental-throughput guidance and the best-practice target "
+            "of up to two proxy tasks per CPU core."
+        )
+    if vin.hypervisor.lower() == "mixed":
+        notes.append(
+            "Mixed-environment sizing reuses the VMware proxy throughput model as a planning "
+            "heuristic. Validate each platform-specific data mover separately before deployment."
+        )
+    notes.append(
+        "For production availability, Veeam Best Practice recommends at least two proxy servers "
+        "per site."
+    )
+
     sizing = ProxySizing(
         proxy_count=proxy_count,
         cores_per_proxy=cores_per_proxy,
@@ -325,8 +351,10 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
         ram_gb_per_proxy=ram_per_proxy,
         total_proxy_ram_gb=total_proxy_ram_gb,
         transport_mode=transport,
+        disk_gb_per_proxy=0.75,
         sizing_basis="Veeam VMware incremental proxy guidance",
         source_url="https://bp.veeam.com/vbr/Support/configurations/vmware_proxy.html",
+        notes=notes,
     )
     return _apply_proxy_deployment(sizing, vin)
 
