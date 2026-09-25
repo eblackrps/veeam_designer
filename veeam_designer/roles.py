@@ -81,6 +81,71 @@ def _proxy_throughput_mb_per_core(vin: VeeamInput, transport: str) -> tuple[floa
     )
 
 
+def _size_hyperv_proxies(
+    vin: VeeamInput,
+    required_throughput_mb_s: float,
+) -> ProxySizing:
+    """Size Hyper-V proxy resources from current Veeam task-based requirements."""
+
+    requested_tasks = (
+        vin.platform_concurrent_tasks
+        if vin.platform_concurrent_tasks > 0
+        else max(1, vin.concurrent_jobs)
+    )
+    tasks_per_proxy = max(1, vin.worker_task_limit or 4)
+    calculated_count = max(1, math.ceil(requested_tasks / tasks_per_proxy))
+
+    on_host = vin.on_host_proxy
+    if on_host and vin.platform_host_count > 0:
+        proxy_count = max(calculated_count, vin.platform_host_count)
+    else:
+        proxy_count = calculated_count
+
+    cores_per_proxy = max(2, math.ceil(tasks_per_proxy / 2))
+    ram_gb_per_proxy = max(2, math.ceil(2 + (0.5 * tasks_per_proxy)))
+    total_proxy_cores = proxy_count * cores_per_proxy
+    total_proxy_ram_gb = proxy_count * ram_gb_per_proxy
+    total_parallel_tasks = proxy_count * tasks_per_proxy
+
+    notes = [
+        "Hyper-V proxy CPU and memory use Veeam 13.1.1 task-based system requirements.",
+        "CPU is sized at a minimum of 2 vCPU with no more than 2 concurrent tasks per CPU core.",
+        "Memory is sized at 2 GB base plus 500 MB for each concurrent task.",
+        "Veeam does not publish a direct Hyper-V throughput-per-core value for this calculator, "
+        "so effective MB/s capacity is not inferred from CPU count.",
+    ]
+    if on_host:
+        notes.append(
+            "On-host mode is selected. Hyper-V hosts performing the proxy role need the additional "
+            "CPU and memory resources shown by this sizing result."
+        )
+    elif vin.has_san_access:
+        notes.append(
+            "Off-host SAN mode is selected; validate the required transportable VSS hardware "
+            "provider for CSV-backed storage."
+        )
+
+    return ProxySizing(
+        proxy_count=proxy_count,
+        cores_per_proxy=cores_per_proxy,
+        total_proxy_cores=total_proxy_cores,
+        total_parallel_tasks=total_parallel_tasks,
+        required_throughput_mb_s=round(required_throughput_mb_s, 1),
+        estimated_capacity_mb_s=0.0,
+        throughput_basis="Veeam Hyper-V task sizing; throughput capacity not inferred",
+        ram_gb_per_proxy=ram_gb_per_proxy,
+        total_proxy_ram_gb=total_proxy_ram_gb,
+        transport_mode="on-host" if on_host else "off-host",
+        disk_gb_per_proxy=0.3,
+        sizing_basis="Veeam 13.1.1 Hyper-V backup proxy system requirements",
+        source_url=(
+            "https://helpcenter.veeam.com/docs/vbr/userguide/"
+            "system_requirements_hv_proxy.html"
+        ),
+        notes=notes,
+    )
+
+
 def size_proxies(vin: VeeamInput) -> ProxySizing:
     """
     Size data-mover resources.
@@ -103,6 +168,9 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
 
     required_throughput_mb_s = daily_backup_mb / backup_window_sec
 
+    if vin.hypervisor.lower() in {"hyperv", "hyper-v"}:
+        return _size_hyperv_proxies(vin, required_throughput_mb_s)
+
     if uses_platform_workers(vin.hypervisor):
         workers = size_platform_workers(vin)
         if workers is None:
@@ -120,6 +188,10 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
             ram_gb_per_proxy=workers.ram_gb_per_worker,
             total_proxy_ram_gb=workers.total_worker_ram_gb,
             transport_mode="worker",
+            disk_gb_per_proxy=float(workers.disk_gb_per_worker),
+            sizing_basis=workers.sizing_basis,
+            source_url=workers.source_url,
+            notes=list(workers.notes),
         )
 
     transport = _resolve_transport(vin)
@@ -149,6 +221,8 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
         ram_gb_per_proxy=ram_per_proxy,
         total_proxy_ram_gb=total_proxy_ram_gb,
         transport_mode=transport,
+        sizing_basis="Veeam VMware incremental proxy guidance",
+        source_url="https://bp.veeam.com/vbr/Support/configurations/vmware_proxy.html",
     )
 
 
