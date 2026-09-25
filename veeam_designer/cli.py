@@ -104,7 +104,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--nas-file-count-millions", type=float, default=1.0)
     p.add_argument("--nas-daily-change-pct", type=float, default=5.0)
     p.add_argument("--nas-retention-days", type=int, default=14)
-    p.add_argument("--nas-compress-pct", type=float, default=30.0)
+    p.add_argument("--nas-compress-pct", type=float, default=0.0)
     p.add_argument("--nas-cft", action="store_true")
     p.add_argument("--nas-concurrent-sources", type=int, default=1)
 
