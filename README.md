@@ -4,9 +4,10 @@ Veeam Designer is a web-first sizing and architecture calculator for Veeam backu
 It helps Veeam administrators model repository footprint, proxy and backup server requirements,
 WAN feasibility, replication pressure, NAS protection, licensing, tape, compliance, and
 high-level cost tradeoffs from a guided UI, YAML project files, Docker, GitHub Pages, or the CLI.
-The `5.0.0a1` development line introduces platform-aware component sizing while `4.0.4` remains
-the stable release. Proxmox VE and Nutanix AHV now use native Veeam worker models, and backup-server
-sizing can account for the Linux-based Veeam Software Appliance.
+The `5.0.0a2` development line combines platform-aware component sizing with a cleaner,
+context-aware web experience. Proxmox VE and Nutanix AHV use native Veeam worker models, Hyper-V
+uses throughput-aware proxy sizing, and the same polished interface is shared by the local server,
+Docker deployment, and GitHub Pages edition.
 
 ## Why It Exists
 
@@ -20,22 +21,7 @@ multiple spreadsheets. Veeam Designer puts those planning paths into one calcula
 - export structured JSON, CSV, and printable HTML reports
 - run the same engine in the browser, over REST, from the CLI, or in Docker
 
-## Screenshots
-
-VM planner with multi-site infrastructure inputs and live YAML:
-
-![VM planner overview](docs/screenshots/vm-planner-overview.png)
-
-Replication sizing workflow in the restored calculator UI:
-
-![Replication planner](docs/screenshots/replication-planner.png)
-
-Results dashboard after a design run:
-
-![Results dashboard](docs/screenshots/results-dashboard.png)
-
-## Quick Start
-
+1751
 ### Local Install
 
 Create a virtual environment, install the package, and launch the web app:
@@ -76,7 +62,6 @@ You can also run the published image directly:
 
 ```bash
 docker run --rm -p 8000:8000 emb079/veeam-designer:latest
-docker run --rm -p 8000:8000 emb079/veeam-designer:v4.0.4
 ```
 
 ### GitHub Pages
@@ -96,8 +81,8 @@ The Pages edition keeps the calculator, YAML workflow, JSON export, CSV export, 
 the browser. The local FastAPI app remains the best fit when you want REST endpoints or server-side
 report/export routes.
 
-Pushes to `main` publish the Pages edition and refresh the `latest` Docker image. Version tags such
-as `v4.0.4` also publish the matching versioned Docker image and release artifacts.
+Pushes to `main` publish the Pages edition and refresh the `latest` Docker image. Version tags
+publish matching versioned Docker images and release artifacts.
 
 ## Web UI
 
@@ -113,8 +98,9 @@ The default experience is the browser calculator at `/run`.
 
 ### Builder and YAML Workflow
 
-The primary UI is architecture-first: platform, protection, retention, data-mover, and repository
-inputs stay in the main workflow, while tuning overrides and YAML are available as advanced tools.
+The primary UI is architecture-first and context-aware: platform, protection, retention,
+data-mover, and repository inputs stay in the main workflow, platform-specific controls only appear
+when they apply, and tuning overrides plus YAML remain available as advanced tools.
 
 - `Builder Sync` keeps YAML generated from the architecture fields
 - `Manual YAML` lets you hand-edit the project definition directly
@@ -125,9 +111,9 @@ inputs stay in the main workflow, while tuning overrides and YAML are available 
 
 A completed design run produces:
 
-- a headline summary with repo, proxy, and cost metrics
-- per-site dashboard cards for VM designs
-- operator-facing blueprint and cost summaries
+- a compact headline summary with repository, data-mover, backup-server, WAN, risk, and cost metrics
+- per-site architecture cards for VM designs
+- readable operator-facing blueprint and cost summaries
 - the full structured JSON payload used by the REST API
 - CSV export for the last run
 - a print-friendly report path in both the local app and the GitHub Pages edition

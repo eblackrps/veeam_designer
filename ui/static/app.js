@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireResetButtons();
   wireExportButtons();
   restoreState();
-  syncProxyDeploymentAvailability();
+  syncContextVisibility();
   updateEditorModeNote();
   if (getEditorMode() === "builder") {
     updateYamlFromBuilder();
@@ -284,7 +284,7 @@ function handleSubmit(event) {
 }
 
 function handleMutation() {
-  syncProxyDeploymentAvailability();
+  syncContextVisibility();
   if (getEditorMode() === "builder") {
     updateYamlFromBuilder();
   }
@@ -402,11 +402,14 @@ function getCurrentWorkload() {
 
 function setWorkloadType(workload) {
   workloadButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.workload === workload);
+    const active = button.dataset.workload === workload;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
   });
   document.querySelectorAll(".mode-panel").forEach((panel) => {
     panel.classList.toggle("is-active", panel.id === `mode-${workload}`);
   });
+  syncContextVisibility();
 }
 
 function getEditorMode() {
@@ -434,16 +437,34 @@ function updateEditorModeNote() {
       : "Manual YAML leaves the editor writable. Use Rebuild YAML to replace it with the calculator state.";
 }
 
-function syncProxyDeploymentAvailability() {
-  const select = document.getElementById("proxy-deployment-mode");
-  if (!(select instanceof HTMLSelectElement)) {
-    return;
-  }
+function syncContextVisibility() {
+  const workload = getCurrentWorkload();
+  const hypervisor = getFieldValue("hypervisor") || "vmware";
 
-  const vmwareSelected = (getFieldValue("hypervisor") || "vmware") === "vmware";
-  select.disabled = !vmwareSelected;
-  if (!vmwareSelected) {
-    select.value = "managed_os";
+  document.querySelectorAll("[data-workload-scope]").forEach((element) => {
+    const scopes = (element.dataset.workloadScope || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    element.classList.toggle("is-context-hidden", scopes.length > 0 && !scopes.includes(workload));
+  });
+
+  document.querySelectorAll("[data-platforms]").forEach((element) => {
+    const platforms = (element.dataset.platforms || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const shouldShow = workload === "vm" && (platforms.length === 0 || platforms.includes(hypervisor));
+    element.classList.toggle("is-context-hidden", !shouldShow);
+  });
+
+  const proxySelect = document.getElementById("proxy-deployment-mode");
+  if (proxySelect instanceof HTMLSelectElement) {
+    const vmwareSelected = workload === "vm" && hypervisor === "vmware";
+    proxySelect.disabled = !vmwareSelected;
+    if (!vmwareSelected) {
+      proxySelect.value = "managed_os";
+    }
   }
 }
 
@@ -688,14 +709,38 @@ function renderResultBundle(bundle) {
   renderSummaryCards(bundle?.summary_cards || []);
   renderDashboard(bundle?.dashboard || null);
 
-  blueprintOutput.textContent = bundle?.blueprint || "No blueprint summary yet.";
-  costOutput.textContent = bundle?.cost || "No cost summary yet.";
+  renderHumanOutput(blueprintOutput, bundle?.blueprint || "");
+  renderHumanOutput(costOutput, bundle?.cost || "");
   jsonOutput.textContent = hasBundle ? `${JSON.stringify(bundle.payload, null, 2)}\n` : "No payload yet.";
 
   downloadJsonButton.disabled = !hasBundle;
   downloadCsvButton.disabled = !hasBundle;
   printReportButton.disabled = !hasBundle || (!isStaticRuntime && !bundle?.dashboard);
 }
+
+function renderHumanOutput(target, value) {
+  const lines = String(value || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) {
+    target.innerHTML = '<div class="output-placeholder">No summary yet.</div>';
+    return;
+  }
+
+  const [heading, ...items] = lines;
+  const listItems = items
+    .map((line) => line.replace(/^[-•]\s*/, ""))
+    .map((line) => `<li>${escapeHtml(line)}</li>`)
+    .join("");
+
+  target.innerHTML = `
+    <div class="output-human-title">${escapeHtml(heading)}</div>
+    ${listItems ? `<ul class="output-human-list">${listItems}</ul>` : ""}
+  `;
+}
+
 
 function renderSummaryCards(cards) {
   summaryCards.innerHTML = "";
@@ -773,7 +818,7 @@ function setBusy(isBusy) {
     return;
   }
   runButton.disabled = isBusy;
-  runButton.textContent = isBusy ? "Running Design..." : "Run Full Design";
+  runButton.textContent = isBusy ? "Calculating..." : "Build Architecture";
 }
 
 async function prepareStaticEngine() {

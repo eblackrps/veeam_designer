@@ -5,6 +5,28 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a2] - 2026-09-25
+
+### Changed
+
+- Rebuilt the shared server/Pages interface around a flatter, professional architecture-workbench
+  visual system with clearer hierarchy, tighter spacing, and fewer competing panels
+- Added platform-aware and workload-aware progressive disclosure so VMware-only, Hyper-V, AHV, and
+  Proxmox controls appear only when relevant
+- Reorganized VM site inputs into capacity/protection and data-path/repository sections
+- Made the architecture-results panel sticky on desktop and simplified export controls
+- Replaced terminal-style blueprint and cost blocks with readable decision summaries while keeping
+  raw JSON in the advanced results section
+- Reduced the visual weight of YAML/API editing and advanced sizing controls without removing them
+- Improved responsive behavior for tablet and mobile layouts
+- Removed stale 4.x UI screenshots from the README so the repository landing page does not
+  misrepresent the 5.x interface
+
+### Added
+
+- Added visible unit suffixes for capacity, percentage, time, bandwidth, and throughput inputs
+- Added explicit browser-state visibility synchronization for workload and platform changes
+
 ## [5.0.0a1] - 2026-09-25
 
 ### Added
