@@ -218,6 +218,7 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "bs_ram_gb": int(backup_server.get("ram_gb", 0)),
         "bs_deployment_mode": str(backup_server.get("deployment_mode", "")),
         "bs_system_disk_gb": int(backup_server.get("system_disk_gb", 0)),
+        "bs_secondary_disk_gb": int(backup_server.get("secondary_disk_gb", 0)),
         "repo_host_count": int(hardened_repos.get("count", 0)) if hardened_repos else 0,
         "repo_host_tb": float(hardened_repos.get("tb_per_host", 0.0)) if hardened_repos else 0.0,
         "repo_host_cores": int(hardened_repos.get("cpu_cores_each", 0)) if hardened_repos else 0,
