@@ -16,6 +16,9 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "GitHub Pages browser edition" in index_html
     assert "pyodide.js" in index_html
     assert "Action failed." in index_html
+    assert "Protection architecture builder" in index_html
+    assert "YAML and API project definition" in index_html
+    assert "Advanced sizing overrides" in index_html
     assert "Proxmox VE" in index_html
     assert "Veeam Software Appliance" in index_html
     assert "Veeam Infrastructure Appliance" in index_html
