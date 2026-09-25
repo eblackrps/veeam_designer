@@ -25,7 +25,6 @@ const printReportButton = document.getElementById("print-report");
 const FORM_STORAGE_KEY = "veeam-designer-form-v5";
 const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v5";
 const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v5";
-const PRINT_FRAME_ID = "veeam-designer-print-frame";
 
 const browserEngine = {
   loadPromise: null,
@@ -251,29 +250,19 @@ function wireExportButtons() {
       return;
     }
 
-    if (isStaticRuntime) {
-      downloadTextFile(
-        "veeam-designer-results.csv",
-        currentResultBundle.csv || "",
-        "text/csv;charset=utf-8",
-      );
+    const csv = currentResultBundle.csv || "";
+    if (!csv) {
+      applyError("CSV export is unavailable for the current result.");
       return;
     }
-
-    window.location.href = "/export/csv";
+    downloadTextFile("veeam-designer-results.csv", csv, "text/csv;charset=utf-8");
   });
 
   printReportButton?.addEventListener("click", () => {
     if (!currentResultBundle) {
       return;
     }
-
-    if (isStaticRuntime) {
-      printBrowserReport(currentResultBundle);
-      return;
-    }
-
-    window.open("/export/report", "_blank", "noopener");
+    openBrowserReport(currentResultBundle);
   });
 }
 
@@ -735,7 +724,7 @@ function renderResultBundle(bundle) {
 
   downloadJsonButton.disabled = !hasBundle;
   downloadCsvButton.disabled = !hasBundle;
-  printReportButton.disabled = !hasBundle || (!isStaticRuntime && !bundle?.dashboard);
+  printReportButton.disabled = !hasBundle;
 }
 
 function renderHumanOutput(target, value) {
@@ -924,53 +913,24 @@ async function designInBrowser(projectJson) {
   return JSON.parse(bundleJson);
 }
 
-function printBrowserReport(bundle) {
+function openBrowserReport(bundle) {
   applyError("");
-  const frame = getPrintFrame();
-  const markup = buildBrowserReportMarkup(bundle);
-  const onLoad = () => {
-    const frameWindow = frame.contentWindow;
-    if (!frameWindow) {
-      applyError("Unable to prepare the printable report in this browser.");
-      return;
-    }
-
-    window.setTimeout(() => {
-      try {
-        frameWindow.focus();
-        frameWindow.print();
-      } catch (error) {
-        applyError(`Unable to open the printable report: ${normalizeError(error)}`);
-      }
-    }, 50);
-  };
-
-  frame.addEventListener("load", onLoad, { once: true });
-  frame.srcdoc = markup;
-}
-
-function getPrintFrame() {
-  const existingFrame = document.getElementById(PRINT_FRAME_ID);
-  if (existingFrame instanceof HTMLIFrameElement) {
-    return existingFrame;
+  const reportWindow = window.open("about:blank", "_blank");
+  if (!reportWindow) {
+    applyError("The report window was blocked by the browser. Allow pop-ups for this site and try again.");
+    return;
   }
 
-  const frame = document.createElement("iframe");
-  frame.id = PRINT_FRAME_ID;
-  frame.title = "Printable Veeam Designer report";
-  frame.setAttribute("aria-hidden", "true");
-  Object.assign(frame.style, {
-    position: "fixed",
-    width: "1px",
-    height: "1px",
-    right: "0",
-    bottom: "0",
-    border: "0",
-    opacity: "0",
-    pointerEvents: "none",
-  });
-  document.body.appendChild(frame);
-  return frame;
+  try {
+    reportWindow.opener = null;
+    reportWindow.document.open();
+    reportWindow.document.write(buildBrowserReportMarkup(bundle));
+    reportWindow.document.close();
+    reportWindow.focus();
+  } catch (error) {
+    reportWindow.close();
+    applyError(`Unable to open the report: ${normalizeError(error)}`);
+  }
 }
 
 function buildBrowserReportMarkup(bundle) {
@@ -1017,14 +977,21 @@ function buildBrowserReportMarkup(bundle) {
   <style>
     body { font-family: Arial, sans-serif; margin: 2rem; color: #102224; }
     h1, h2 { margin-bottom: 0.4rem; }
+    .report-actions { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+    .report-actions button { border: 1px solid #8eaaa3; border-radius: 8px; background: #f7fbf9; color: #102224; padding: 0.65rem 0.9rem; font: inherit; cursor: pointer; }
     .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1.5rem 0; }
     .summary-card, .dashboard-site { border: 1px solid #d7e7e2; border-radius: 14px; padding: 1rem; background: #f7fbf9; }
     .summary-card span { display: block; color: #4d6661; font-size: 0.85rem; }
     .summary-card strong { display: block; margin-top: 0.35rem; font-size: 1.5rem; }
     pre { background: #091617; color: #eff8f2; padding: 1rem; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    @media print {
+      .report-actions { display: none; }
+      body { margin: 0.5in; }
+    }
   </style>
 </head>
 <body>
+  <div class="report-actions"><button type="button" onclick="window.print()">Print / Save PDF</button></div>
   <h1>Veeam Designer ${escapeHtml(bootstrap.version || "")}</h1>
   <p>Generated in the browser-hosted GitHub Pages edition.</p>
   <div class="summary-grid">${summaryMarkup}</div>
@@ -1044,7 +1011,7 @@ function downloadTextFile(filename, content, mimeType) {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function formatNumber(value, digits = 1) {

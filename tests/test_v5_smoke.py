@@ -186,6 +186,23 @@ def test_infrastructure_appliance_proxy_mode_rejects_non_vmware(hypervisor: str)
         )
 
 
+def test_server_result_bundle_exposes_csv_and_report_route_is_inline():
+    client = TestClient(app)
+    project = _vm_project("vmware")
+
+    page_response = client.post(
+        "/run",
+        data={"yaml_content": project, "run_blueprint": "1", "run_cost": "1"},
+    )
+    assert page_response.status_code == 200
+    assert '"csv":' in page_response.text
+
+    report_response = client.get("/export/report")
+    assert report_response.status_code == 200
+    assert report_response.headers["content-type"].startswith("text/html")
+    assert report_response.headers["content-disposition"].startswith("inline;")
+
+
 def test_api_and_server_report_smoke_for_proxmox():
     client = TestClient(app)
     project = _vm_project("proxmox")

@@ -76,6 +76,7 @@ def _server_result_bundle(
         "dashboard": build_dashboard_from_payload(payload),
         "blueprint": blueprint_output or render_blueprint_human(payload),
         "cost": cost_output or render_cost_human(payload),
+        "csv": build_csv_from_payload(payload),
     }
 
 
@@ -223,7 +224,7 @@ async def export_report(request: Request) -> PlainTextResponse:
     return PlainTextResponse(
         content=html_content,
         media_type="text/html",
-        headers={"Content-Disposition": "attachment; filename=veeam-design-report.html"},
+        headers={"Content-Disposition": "inline; filename=veeam-design-report.html"},
     )
 
 

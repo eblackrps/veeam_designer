@@ -34,11 +34,13 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert (output_dir / "assets" / "app.css").exists()
     assert (output_dir / "assets" / "app.js").exists()
     assert (output_dir / "assets" / fake_wheel.name).exists()
-    assert "veeam-designer-print-frame" in app_js
+    assert "veeam-designer-print-frame" not in app_js
+    assert 'window.open("about:blank", "_blank")' in app_js
+    assert "Print / Save PDF" in app_js
+    assert "frame.srcdoc = markup;" not in app_js
     assert "platform_concurrent_tasks" in app_js
     assert "deployment_mode" in app_js
     assert "proxy_deployment_mode" in app_js
     assert "syncContextVisibility" in app_js
     assert "renderHumanOutput" in app_js
-    assert "frame.srcdoc = markup;" in app_js
     assert 'window.open("", "_blank"' not in app_js
