@@ -26,7 +26,8 @@ def build_blueprint(
     )
     if not network.meets_target:
         notes.append(
-            "WAN does not meet target RPO; prioritize replication/copy redesign or bandwidth upgrade."
+            "WAN cannot carry the projected changed data inside the configured transfer window; "
+            "review bandwidth, scheduling, or copy design."
         )
     if sobr.capacity_tier_tb > 0:
         notes.append(
