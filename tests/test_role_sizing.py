@@ -165,7 +165,7 @@ deployment_mode: software_appliance
     assert payload["roles"]["backup_server"]["secondary_disk_gb"] == 240
 
 
-def test_hyperv_uses_native_task_resource_model():
+def test_hyperv_uses_throughput_method_plus_native_task_resources():
     result = size_proxies(
         _vm_input(
             hypervisor="hyperv",
@@ -180,9 +180,36 @@ def test_hyperv_uses_native_task_resource_model():
     assert result.ram_gb_per_proxy == 4
     assert result.disk_gb_per_proxy == 0.3
     assert result.total_parallel_tasks == 8
-    assert result.estimated_capacity_mb_s == 0.0
-    assert "Hyper-V task sizing" in result.throughput_basis
-    assert "system_requirements_hv_proxy.html" in result.source_url
+    assert result.estimated_capacity_mb_s >= result.required_throughput_mb_s
+    assert "Hyper-V BP uses vSphere proxy sizing method" in result.throughput_basis
+    assert "hyperv_proxies.html" in result.source_url
+
+
+def test_hyperv_short_window_scales_proxy_compute_from_throughput():
+    baseline = size_proxies(
+        _vm_input(
+            hypervisor="hyperv",
+            on_host_proxy=False,
+            platform_concurrent_tasks=8,
+            worker_task_limit=4,
+            daily_change_percent=5.0,
+            backup_window_hours=8.0,
+        )
+    )
+    pressured = size_proxies(
+        _vm_input(
+            hypervisor="hyperv",
+            on_host_proxy=False,
+            platform_concurrent_tasks=8,
+            worker_task_limit=4,
+            daily_change_percent=20.0,
+            backup_window_hours=2.0,
+        )
+    )
+
+    assert pressured.required_throughput_mb_s > baseline.required_throughput_mb_s
+    assert pressured.total_proxy_cores > baseline.total_proxy_cores
+    assert pressured.estimated_capacity_mb_s >= pressured.required_throughput_mb_s
 
 
 def test_hyperv_on_host_mode_accounts_for_supplied_hosts():
@@ -198,7 +225,7 @@ def test_hyperv_on_host_mode_accounts_for_supplied_hosts():
 
     assert result.proxy_count == 4
     assert result.transport_mode == "on-host"
-    assert result.total_parallel_tasks == 16
+    assert result.total_parallel_tasks == 8
     assert any("On-host mode" in note for note in result.notes)
 
 
