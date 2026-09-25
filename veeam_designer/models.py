@@ -155,6 +155,7 @@ class BackupServerSizing:
     v13_appliance: bool = True
     deployment_mode: str = "software_appliance"
     system_disk_gb: int = 240
+    secondary_disk_gb: int = 0
     sizing_basis: str = "Veeam workload bands plus deployment minimums"
     notes: List[str] = field(default_factory=list)
 
