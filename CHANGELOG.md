@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Added native Hyper-V proxy CPU, RAM, disk, and concurrent-task sizing without inventing a
   throughput-per-core estimate
 - Added Veeam Software Appliance deployment sizing and exposed deployment mode in the browser and CLI
+- Added current Windows/Linux backup-server concurrency memory minimums and both Software Appliance
+  minimum disks to architecture output
 - Added platform-worker details to API payloads, dashboards, browser reports, and human summaries
 - Added Proxmox VE to the web calculator and CLI/interactive workflows
 
