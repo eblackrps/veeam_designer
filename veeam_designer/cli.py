@@ -67,6 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["software_appliance", "windows"],
         default="software_appliance",
     )
+    p.add_argument(
+        "--proxy-deployment-mode",
+        choices=["managed_os", "infrastructure_appliance"],
+        default="managed_os",
+    )
     p.add_argument("--platform-host-count", type=int, default=0)
     p.add_argument("--platform-cluster-count", type=int, default=1)
     p.add_argument("--platform-concurrent-tasks", type=int, default=0)
@@ -298,6 +303,7 @@ def main():
                 has_san_access=args.has_san_access,
                 on_host_proxy=args.on_host_proxy,
                 deployment_mode=args.deployment_mode,
+                proxy_deployment_mode=args.proxy_deployment_mode,
                 platform_host_count=args.platform_host_count,
                 platform_cluster_count=args.platform_cluster_count,
                 platform_concurrent_tasks=args.platform_concurrent_tasks,
