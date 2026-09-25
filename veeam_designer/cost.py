@@ -3,10 +3,6 @@ from __future__ import annotations
 from .config import CONFIG
 from .models import CostEstimate, RepoSizing, SobrDesign, VeeamInput
 
-# ---------------------------------------------------------------------------
-# Round 9: multi-cloud provider registry
-# ---------------------------------------------------------------------------
-
 _CLOUD_PROVIDERS = {
     "aws_s3": "aws_s3_cost_per_tb_month",
     "azure_blob": "azure_blob_cost_per_tb_month",
@@ -15,109 +11,96 @@ _CLOUD_PROVIDERS = {
 }
 
 
-def _provider_rate(key: str, default: float) -> float:
-    return float(CONFIG.get(key, default))
+def _rate(key: str) -> float:
+    return max(0.0, float(CONFIG.get(key, 0.0)))
 
 
 def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostEstimate:
-    """
-    Estimate infrastructure costs for the design.
+    """Calculate cost only from explicitly configured rates; never embed market pricing."""
 
-    Year 1 costs are returned as monthly_object_usd / yearly_object_usd /
-    yearly_onprem_usd for backwards-compatible output.
+    object_rate = _rate("object_cost_usd_per_tb_month")
+    onprem_rate = _rate("onprem_cost_usd_per_tb_year")
+    provider_rates = {
+        provider: _rate(config_key)
+        for provider, config_key in _CLOUD_PROVIDERS.items()
+        if _rate(config_key) > 0
+    }
 
-    Round 9 additions:
-      - cloud_comparison: {provider: year-1 cost USD} for all cloud options
-      - three_year_tco: {onprem: total, <best_cloud>: total, provider: name}
-      - break_even_years: float — when cloud cumulative = onprem cumulative
-    """
-    object_cost_per_tb_month = float(CONFIG.get("object_cost_usd_per_tb_month", 20.0))
-    onprem_cost_per_tb_year = float(CONFIG.get("onprem_cost_usd_per_tb_year", 20.0))
-    annual_growth = vin.annual_growth_percent / 100.0
+    configured = object_rate > 0 or onprem_rate > 0 or bool(provider_rates)
+    if not configured:
+        return CostEstimate(
+            monthly_object_usd=0.0,
+            yearly_object_usd=0.0,
+            yearly_onprem_usd=0.0,
+            configured=False,
+            notes=[
+                "Cost model is not configured. No live cloud, hardware, licensing, or contract "
+                "pricing is assumed by Veeam Designer."
+            ],
+            cloud_comparison={},
+            three_year_tco={},
+            break_even_years=0.0,
+        )
 
-    # Capacity tier TB (Round 5)
+    annual_growth = max(-1.0, vin.annual_growth_percent / 100.0)
     capacity_tb = (
         sobr.capacity_tier_tb if (vin.capacity_tier_enabled or vin.direct_to_object) else 0.0
     )
-
     onprem_tb = max(0.0, repo.total_repo_tb - capacity_tb)
 
-    # Year-1 costs
-    monthly_object_usd = capacity_tb * object_cost_per_tb_month
-    yearly_object_usd = monthly_object_usd * 12
-    yearly_onprem_usd = onprem_tb * onprem_cost_per_tb_year
+    monthly_object_usd = capacity_tb * object_rate if object_rate > 0 else 0.0
+    yearly_object_usd = monthly_object_usd * 12.0
+    yearly_onprem_usd = onprem_tb * onprem_rate if onprem_rate > 0 else 0.0
 
-    notes: list[str] = []
-    if capacity_tb > 0:
-        notes.append(
-            f"{capacity_tb:.1f} TB in object/capacity tier at "
-            f"${object_cost_per_tb_month:.2f}/TB/month "
-            f"(${monthly_object_usd:.2f}/mo, ${yearly_object_usd:.2f}/yr)."
-        )
-    if onprem_tb > 0:
-        notes.append(
-            f"{onprem_tb:.1f} TB on-premises at "
-            f"${onprem_cost_per_tb_year:.2f}/TB/yr "
-            f"(${yearly_onprem_usd:.2f}/yr)."
-        )
+    def _three_year(year_one: float) -> float:
+        return round(sum(year_one * ((1.0 + annual_growth) ** year) for year in range(3)), 2)
 
-    # ---------------------------------------------------------------------------
-    # Round 9: 3-year TCO
-    # ---------------------------------------------------------------------------
+    base_year_one = yearly_onprem_usd + yearly_object_usd
+    three_year_tco: dict[str, float | str] = {}
+    if base_year_one > 0:
+        three_year_tco["configured_design"] = _three_year(base_year_one)
 
-    def _three_year(yearly_yr1: float) -> float:
-        total = 0.0
-        for y in range(3):
-            total += yearly_yr1 * ((1.0 + annual_growth) ** y)
-        return round(total, 2)
-
-    tco_onprem = _three_year(yearly_onprem_usd + yearly_object_usd)
-
-    # Cloud comparison: use capacity_tb if set, else full repo TB
     cloud_tb = capacity_tb if capacity_tb > 0 else repo.total_repo_tb
-    cloud_comparison: dict[str, float] = {}
-    for provider, cfg_key in _CLOUD_PROVIDERS.items():
-        rate = _provider_rate(cfg_key, object_cost_per_tb_month)
-        cloud_comparison[provider] = round(cloud_tb * rate * 12, 2)
-
-    # Best cloud (lowest year-1 cost)
-    best_provider = min(cloud_comparison, key=lambda provider: cloud_comparison[provider])
-    best_rate = _provider_rate(_CLOUD_PROVIDERS[best_provider], object_cost_per_tb_month)
-    best_cloud_yr1 = cloud_tb * best_rate * 12
-    onprem_residual_yr1 = onprem_tb * onprem_cost_per_tb_year
-    tco_best_cloud = _three_year(best_cloud_yr1 + onprem_residual_yr1)
-
-    three_year_tco: dict[str, float | str] = {
-        "onprem": tco_onprem,
-        best_provider: tco_best_cloud,
-        "provider": best_provider,
+    cloud_comparison = {
+        provider: round(cloud_tb * rate * 12.0, 2)
+        for provider, rate in provider_rates.items()
     }
 
-    # Break-even calculation
-    if tco_best_cloud < tco_onprem:
-        break_even_years = 0.0
-    else:
-        break_even_years = 10.0
-        cum_onprem = 0.0
-        cum_cloud = 0.0
-        for y in range(1, 11):
-            growth = (1.0 + annual_growth) ** (y - 1)
-            cum_onprem += (yearly_onprem_usd + yearly_object_usd) * growth
-            cum_cloud += (best_cloud_yr1 + onprem_residual_yr1) * growth
-            if cum_cloud <= cum_onprem:
-                break_even_years = float(y)
-                break
+    break_even_years = 0.0
+    if cloud_comparison and onprem_rate > 0:
+        best_provider = min(cloud_comparison, key=cloud_comparison.get)
+        best_cloud_year_one = cloud_comparison[best_provider]
+        onprem_all_year_one = repo.total_repo_tb * onprem_rate
+        three_year_tco["onprem_all"] = _three_year(onprem_all_year_one)
+        three_year_tco[best_provider] = _three_year(best_cloud_year_one)
+        three_year_tco["provider"] = best_provider
 
-    notes.append(
-        f"3-year TCO — On-prem: ${tco_onprem:,.0f} | "
-        f"Best cloud ({best_provider}): ${tco_best_cloud:,.0f}. "
-        f"Break-even: {'< 1 yr' if break_even_years == 0 else f'{break_even_years:.0f} yr(s)'}."
-    )
+        if best_cloud_year_one >= onprem_all_year_one:
+            break_even_years = 10.0
+            cumulative_onprem = 0.0
+            cumulative_cloud = 0.0
+            for year in range(1, 11):
+                growth = (1.0 + annual_growth) ** (year - 1)
+                cumulative_onprem += onprem_all_year_one * growth
+                cumulative_cloud += best_cloud_year_one * growth
+                if cumulative_cloud <= cumulative_onprem:
+                    break_even_years = float(year)
+                    break
+
+    notes = [
+        "Cost output uses only rates explicitly configured in config.json. Values do not include "
+        "egress, API operations, support, hardware maintenance, power, facilities, discounts, or taxes."
+    ]
+    if object_rate <= 0 and capacity_tb > 0:
+        notes.append("Object-storage rate is not configured; object cost is omitted.")
+    if onprem_rate <= 0 and onprem_tb > 0:
+        notes.append("On-premises $/TB/year rate is not configured; on-premises cost is omitted.")
 
     return CostEstimate(
         monthly_object_usd=round(monthly_object_usd, 2),
         yearly_object_usd=round(yearly_object_usd, 2),
         yearly_onprem_usd=round(yearly_onprem_usd, 2),
+        configured=True,
         notes=notes,
         cloud_comparison=cloud_comparison,
         three_year_tco=three_year_tco,
