@@ -138,10 +138,7 @@ def _size_hyperv_proxies(
         transport_mode="on-host" if on_host else "off-host",
         disk_gb_per_proxy=0.3,
         sizing_basis="Veeam 13.1.1 Hyper-V backup proxy system requirements",
-        source_url=(
-            "https://helpcenter.veeam.com/docs/vbr/userguide/"
-            "system_requirements_hv_proxy.html"
-        ),
+        source_url=("https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html"),
         notes=notes,
     )
 
@@ -165,9 +162,7 @@ def _apply_proxy_deployment(
         sizing.allocated_cores_per_proxy = sizing.cores_per_proxy + 2
         sizing.allocated_ram_gb_per_proxy = sizing.ram_gb_per_proxy + 8
         sizing.total_allocated_proxy_cores = sizing.proxy_count * sizing.allocated_cores_per_proxy
-        sizing.total_allocated_proxy_ram_gb = (
-            sizing.proxy_count * sizing.allocated_ram_gb_per_proxy
-        )
+        sizing.total_allocated_proxy_ram_gb = sizing.proxy_count * sizing.allocated_ram_gb_per_proxy
         sizing.infrastructure_system_disk_gb = 120
         sizing.infrastructure_data_disk_gb = 120
         sizing.notes.append(
@@ -239,7 +234,9 @@ def size_proxies(vin: VeeamInput) -> ProxySizing:
             total_allocated_proxy_ram_gb=workers.total_worker_ram_gb,
             notes=list(workers.notes),
         )
-        if (vin.proxy_deployment_mode or "managed_os").strip().lower() == "infrastructure_appliance":
+        if (
+            vin.proxy_deployment_mode or "managed_os"
+        ).strip().lower() == "infrastructure_appliance":
             raise ValueError(
                 "Platform workers are deployed by their virtualization plug-in and are not "
                 "Veeam Infrastructure Appliance proxy roles."
