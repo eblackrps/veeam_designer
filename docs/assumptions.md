@@ -75,6 +75,27 @@ References:
 - [Veeam User Guide: AHV system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/ahv_system_requirements.html)
 - [Veeam User Guide: AHV worker sizing guidelines](https://helpcenter.veeam.com/docs/vbr/userguide/ahv_sizing_guide.html)
 
+### Hyper-V backup proxies
+
+Hyper-V uses Veeam's task-based proxy requirements instead of VMware throughput-per-core values:
+
+- minimum `2 vCPU`
+- no more than `2 concurrent tasks per CPU core`
+- `2 GB RAM + 500 MB` per concurrent task
+- `300 MB` proxy disk footprint
+- on-host designs treat the supplied Hyper-V host count as the proxy footprint because source hosts
+  perform the proxy role
+- off-host designs size the required proxy count from desired concurrent tasks and per-proxy limits
+
+The calculator still reports the data rate required to finish the changed data inside the backup
+window, but it does not manufacture an effective MB/s capacity for Hyper-V because Veeam does not
+publish a direct Hyper-V throughput-per-core value for this model.
+
+References:
+
+- [Veeam User Guide: Hyper-V backup proxy system requirements](https://helpcenter.veeam.com/docs/vbr/userguide/system_requirements_hv_proxy.html)
+- [Veeam User Guide: limitation of concurrent tasks](https://helpcenter.veeam.com/docs/vbr/userguide/limiting_tasks.html)
+
 ### Backup server
 
 Backup server sizing follows the Veeam initial workload bands for VMware and physical-machine
@@ -161,8 +182,8 @@ References:
 These paths remain heuristics in the current release and are labeled that way in code, notes, or
 tests:
 
-- Hyper-V and mixed-environment proxy throughput still reuse the VMware transport table unless you
-  provide a custom `throughput_mb_per_core` override
+- Mixed-environment proxy throughput still reuses the VMware transport table unless you provide a
+  custom `throughput_mb_per_core` override
 - NBD proxy throughput is intentionally conservative rather than source-table-driven
 - VM repository capacity still uses the existing weekly-full plus incremental planning model used by
   this app
