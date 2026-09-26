@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 try:
-    from playwright.sync_api import Browser, expect, sync_playwright
+    from playwright.sync_api import Browser, expect, sync_playwright  # type: ignore[import-not-found]
 except ImportError:
     pytest.skip("Playwright is not installed", allow_module_level=True)
 
