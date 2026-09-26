@@ -208,3 +208,19 @@ def test_orw_changes_cost_without_any_move_fraction_input():
 
     assert seven_cost.total_yearly_usd == 20300.0
     assert zero_cost.total_yearly_usd == 22500.0
+
+def test_capacity_tier_object_lock_marks_cost_as_base_footprint():
+    result = estimate_costs(
+        _repo(),
+        _sobr(capacity_tb=100.0, performance_tb=100.0, policy="copy"),
+        _vin(
+            capacity_tier_enabled=True,
+            capacity_tier_policy="copy",
+            capacity_tier_immutable=True,
+        ),
+    )
+
+    assert result.total_yearly_usd == 26000.0
+    assert any("base modeled footprint" in note for note in result.notes)
+    assert any("Actual billed storage may be higher" in note for note in result.notes)
+    assert any("Block Generation" in note for note in result.notes)
