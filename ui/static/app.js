@@ -54,6 +54,8 @@ const defaultVmSites = [
     immutability_enabled: true,
     immutability_days: 30,
     capacity_tier_enabled: true,
+    capacity_tier_percent: 50,
+    capacity_tier_immutable: false,
     direct_to_object: false,
     gfs_weekly_count: 4,
     gfs_monthly_count: 12,
@@ -86,6 +88,8 @@ const defaultVmSites = [
     immutability_enabled: false,
     immutability_days: 0,
     capacity_tier_enabled: false,
+    capacity_tier_percent: 50,
+    capacity_tier_immutable: false,
     direct_to_object: false,
     gfs_weekly_count: 2,
     gfs_monthly_count: 6,
@@ -522,7 +526,10 @@ function collectVmSites() {
     immutability_enabled: getCardChecked(card, "immutability_enabled"),
     immutability_days: getCardNumber(card, "immutability_days", 0),
     capacity_tier_enabled: getCardChecked(card, "capacity_tier_enabled"),
-    direct_to_object: getCardChecked(card, "direct_to_object"),
+    capacity_tier_percent: getCardNumber(card, "capacity_tier_percent", 50),
+    capacity_tier_immutable: getCardChecked(card, "capacity_tier_immutable"),
+    direct_to_object:
+      getCardChecked(card, "direct_to_object") || getCardValue(card, "repo_type") === "object",
     gfs_weekly_count: getCardNumber(card, "gfs_weekly_count", 0),
     gfs_monthly_count: getCardNumber(card, "gfs_monthly_count", 0),
     gfs_yearly_count: getCardNumber(card, "gfs_yearly_count", 0),
@@ -674,6 +681,8 @@ function buildVmSiteYaml(
     `      immutability_enabled: ${site.immutability_enabled}`,
     `      immutability_days: ${site.immutability_days}`,
     `      capacity_tier_enabled: ${site.capacity_tier_enabled}`,
+    `      capacity_tier_fraction: ${Math.max(0, Math.min(100, site.capacity_tier_percent)) / 100}`,
+    `      capacity_tier_immutable: ${site.capacity_tier_immutable}`,
     `      direct_to_object: ${site.direct_to_object}`,
     `      block_generation_days: ${site.block_generation_days}`,
     `      concurrent_jobs: ${site.concurrent_jobs}`,
@@ -799,7 +808,6 @@ function renderDashboard(dashboard) {
         )}
         ${renderMetric("Required WAN", `${formatNumber(site.wan_required_mbps, 1)} Mbps`)}
         ${renderMetric("Yearly On-Prem", formatCurrency(site.yearly_onprem_usd))}
-        ${renderMetric("Break-even", `${formatNumber(site.break_even_years, 1)} years`)}
       </dl>
     `;
     dashboardSites.appendChild(article);

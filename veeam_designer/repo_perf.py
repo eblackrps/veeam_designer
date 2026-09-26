@@ -18,7 +18,9 @@ def estimate_repo_perf(vin: VeeamInput, repo: RepoSizing, jobs: JobSet) -> RepoP
 
     required_mb_s = daily_backup_mb / backup_window_sec
 
-    if "synthetic" in vin.backup_type and vin.refs_xfs and vin.repo_type != "object":
+    is_object_target = vin.repo_type == "object" or vin.direct_to_object
+
+    if "synthetic" in vin.backup_type and vin.refs_xfs and not is_object_target:
         synthetic_full_mb_s = 0.0
         notes.append(
             "ReFS/XFS Fast Clone selected: synthetic fulls are block-cloned rather than "
@@ -41,7 +43,7 @@ def estimate_repo_perf(vin: VeeamInput, repo: RepoSizing, jobs: JobSet) -> RepoP
         synthetic_full_mb_s = 0.0
 
     # Round 3: immutability note
-    if vin.immutability_enabled and vin.repo_type != "object" and not vin.refs_xfs:
+    if vin.immutability_enabled and not is_object_target and not vin.refs_xfs:
         notes.append(
             "Hardened-repository immutability requires a supported Linux/XFS repository design; "
             "review the repository filesystem before deployment."

@@ -341,11 +341,26 @@ Licensing output is consumption planning, not commercial quoting.
   VM count is never converted into sockets
 - commercial price, renewal, discount, edition, package, and maintenance figures are not inferred
 
+### Object storage and capacity tier
+
+Generic object targets and Direct-to-Object designs are treated as object-storage targets across
+repository, SOBR, performance, and cost calculations. Direct-object designs do not receive
+disk-repository transformation headroom or Fast Clone assumptions.
+
+The calculator rejects reverse incremental and an independently scheduled weekly synthetic-full
+mode for direct object targets. Capacity-tier percentage applies only to retained short-term and
+GFS backup data; operational transformation headroom remains on the local performance tier.
+
+Object First appliance node count is not inferred from a generic object target. Current Ootbi
+hardware is available in multiple usable-capacity models, so the optional helper requires an
+explicit node capacity and adds no fabricated immutability percentage.
+
 ### Cost planning
 
-The existing infrastructure-cost model remains configuration-driven. Values such as
-object_cost_usd_per_tb_month and onprem_cost_usd_per_tb_year are planning-rate inputs, not Veeam
-pricing or live provider quotes. Reports label these values as planning assumptions.
+The infrastructure-cost model is configuration-driven. object_cost_usd_per_tb_month and
+onprem_cost_usd_per_tb_year are planning-rate inputs, not Veeam pricing or live provider quotes.
+The calculator does not infer provider-specific prices, discounts, purchase CapEx, or a cloud
+break-even point. Reports label these values as planning assumptions.
 
 ## Remaining Planning Assumptions
 

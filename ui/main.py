@@ -32,6 +32,7 @@ app = FastAPI(title="Veeam Designer", version=__version__)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+
 def get_default_project_text() -> str:
     """Return the default YAML shown in the editor."""
 

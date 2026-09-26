@@ -320,7 +320,7 @@ class MultiSiteDesign:
 @dataclass
 class OrcaDesign:
     node_count: int
-    usable_tb_per_node: float = 96.0
+    usable_tb_per_node: float = 0.0
     total_usable_tb: float = 0.0
     concurrent_stream_capacity: int = 0
     scale_out_recommended: bool = False

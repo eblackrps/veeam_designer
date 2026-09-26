@@ -41,6 +41,9 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "platform_concurrent_tasks" in app_js
     assert "deployment_mode" in app_js
     assert "proxy_deployment_mode" in app_js
+    assert "capacity_tier_fraction" in app_js
+    assert "capacity_tier_immutable" in app_js
+    assert "Break-even" not in app_js
     assert "syncContextVisibility" in app_js
     assert "renderHumanOutput" in app_js
     assert 'window.open("", "_blank"' not in app_js

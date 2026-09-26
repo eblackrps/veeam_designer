@@ -251,6 +251,8 @@ def test_web_builder_exposes_hardened_calculation_inputs():
         "Immutability Period",
         "Concurrent Sources",
         "Forecast Horizon",
+        "Capacity Tier Offload",
+        "Capacity Tier Object Lock",
         "Concurrent Proxy Tasks",
         "CDP Retention",
         "Measured CDP Write I/O",
@@ -345,3 +347,47 @@ def test_cli_smoke_for_proxmox_json_output():
     assert payload["kind"] == "vm"
     assert payload["roles"]["platform_workers"]["platform"] == "proxmox"
     assert payload["roles"]["platform_workers"]["worker_count"] >= 1
+
+
+@pytest.mark.parametrize(
+    ("project", "expected_kind"),
+    [
+        (
+            """workload_type: nas
+source_tb: 10
+share_count: 2
+file_count_millions: 1
+retention_days: 14
+backup_window_hours: 8
+""",
+            "nas",
+        ),
+        (
+            """workload_type: physical
+machine_count: 10
+avg_size_gb: 250
+daily_change_pct: 5
+retention_days: 14
+backup_window_hours: 8
+network_bandwidth_mbps: 1000
+""",
+            "physical",
+        ),
+        (
+            """workload_type: replication
+source_tb: 10
+vm_count: 20
+wan_mbps: 1000
+daily_change_pct: 5
+""",
+            "replication",
+        ),
+    ],
+)
+def test_non_vm_browser_bundles_support_summary_csv_and_printable_content(project, expected_kind):
+    bundle = design_browser_bundle_from_project_text(project, suffix=".yml")
+
+    assert bundle["payload"]["kind"] == expected_kind
+    assert bundle["summary_cards"]
+    assert bundle["csv"].startswith("field,value")
+    assert bundle["blueprint"]

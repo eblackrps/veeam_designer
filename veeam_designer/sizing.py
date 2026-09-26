@@ -21,7 +21,6 @@ from .models import (
 )
 from .nas import size_nas
 from .network import build_network_plan
-from .orca import size_orca
 from .replication import size_replication
 from .repo_perf import estimate_repo_perf
 from .risk import compute_risk
@@ -67,9 +66,21 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
     if backup_type not in supported_types:
         raise ValueError(f"Unsupported backup type: {vin.backup_type!r}")
 
+    is_object_target = vin.repo_type == "object" or vin.direct_to_object
+
+    if is_object_target and backup_type == "reverse_incremental":
+        raise ValueError("Reverse incremental is not supported for direct object-storage targets.")
+
+    if is_object_target and backup_type == "synthetic_full_weekly":
+        raise ValueError(
+            "Scheduled synthetic full backups cannot be created independently on a direct "
+            "object-storage target. Use forever-forward incremental, an active-full schedule, "
+            "or model GFS separately."
+        )
+
     if (
         vin.immutability_enabled
-        and vin.repo_type != "object"
+        and not is_object_target
         and backup_type in {"forever_forward_incremental", "reverse_incremental"}
     ):
         raise ValueError(
@@ -88,7 +99,7 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
         immutability_days = max(0, int(vin.immutability_days))
         if immutability_days > 0:
             immutable_window_days = immutability_days
-            if vin.repo_type == "object":
+            if is_object_target:
                 block_generation_days = max(0, int(vin.block_generation_days))
                 immutable_window_days += block_generation_days
                 notes.append(
@@ -130,7 +141,7 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
     else:
         full_count = ceil(max_forward_points / weekly_chain_days)
         incremental_count = max_forward_points - full_count
-        if backup_type == "synthetic_full_weekly" and vin.refs_xfs and vin.repo_type != "object":
+        if backup_type == "synthetic_full_weekly" and vin.refs_xfs and not is_object_target:
             retained_data_tb = full_physical_tb + incremental_physical_tb * (max_forward_points - 1)
             calculation_basis = (
                 "Weekly synthetic full with Fast Clone: forward-incremental chain overlap "
@@ -153,7 +164,7 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
             )
 
     operational_headroom_tb = 0.0
-    if vin.repo_type != "object":
+    if not is_object_target:
         transformation_factor = max(0.0, float(CONFIG.get("repo_overhead_factor", 1.25)))
         operational_headroom_tb = full_physical_tb * transformation_factor
         notes.append(
@@ -263,12 +274,13 @@ def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
             "segmented from production where possible.",
         )
 
-    # Round 4: ObjectFirst Orca sizing when repo_type is object storage
+    # Vendor appliance sizing is not inferred from a generic object target.
     orca = None
-    if vin.repo_type == "object":
-        orca = size_orca(
-            total_protected_tb=repo.total_repo_tb,
-            immutability_days=30 if vin.immutability_enabled else 0,
+    if is_object_target:
+        notes["object_storage"] = (
+            "Object storage selected. Vendor appliance node count is not inferred from generic "
+            "capacity because hardware models and performance tiers vary. Use current vendor "
+            "sizing for the selected platform."
         )
 
     # v3: replication sizing

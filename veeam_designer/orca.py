@@ -1,14 +1,8 @@
-"""
-ObjectFirst Orca appliance sizing module.
+"""Optional Object First appliance capacity helper.
 
-Orca specs (as of 2025):
-  - 96 TB usable per node
-  - 10 GbE connectivity
-  - 64 concurrent Veeam streams per node
-  - Scale-out cluster supported (≥ 3 nodes recommended for HA)
-
-The calculator mirrors vm.calculator.objectfirst.com and
-nas.calculator.objectfirst.com behaviour.
+Generic object-storage designs do not call this helper automatically. Current Object First Ootbi
+hardware is sold in multiple usable-capacity models, so callers must provide the node capacity
+they are actually evaluating rather than relying on a baked-in appliance size.
 """
 
 from __future__ import annotations
@@ -17,56 +11,51 @@ from math import ceil
 
 from .models import OrcaDesign
 
-ORCA_TB_PER_NODE: float = 96.0
-ORCA_STREAMS_PER_NODE: int = 64
-ORCA_HA_THRESHOLD: int = 3  # recommend scale-out cluster at this node count
-
 
 def size_orca(
     total_protected_tb: float,
-    immutability_days: int = 30,
+    usable_tb_per_node: float,
     nas_tb: float = 0.0,
+    max_nodes_per_cluster: int = 4,
 ) -> OrcaDesign:
-    """Size an ObjectFirst Orca cluster for the given protected data volume.
+    """Size an explicitly selected Object First node capacity.
 
-    Args:
-        total_protected_tb: Combined primary + GFS repo TB to store on Orca.
-        immutability_days:  Immutability lock period in days (adds metadata overhead).
-        nas_tb:             Portion of the total that is NAS workload (informational).
-
-    Returns:
-        OrcaDesign with node count, usable TB, stream capacity, and guidance notes.
+    No extra percentage is added for immutability. The repository engine must already include the
+    retention/immutability window in the capacity passed to this helper.
     """
-    # Immutability lock keeps extra metadata proportional to the lock window.
-    # Minimum 5% overhead; scales at ~20% per year for longer lock windows.
-    overhead_factor = 1.0 + max(0.05, (immutability_days / 365.0) * 0.20)
-    effective_tb = total_protected_tb * overhead_factor
 
-    node_count = max(1, ceil(effective_tb / ORCA_TB_PER_NODE))
-    total_usable_tb = node_count * ORCA_TB_PER_NODE
-    concurrent_streams = node_count * ORCA_STREAMS_PER_NODE
-    scale_out = node_count >= ORCA_HA_THRESHOLD
+    protected_tb = max(0.0, total_protected_tb)
+    node_tb = float(usable_tb_per_node)
+    if node_tb <= 0:
+        raise ValueError(
+            "Object First node capacity must be supplied explicitly; current Ootbi models have "
+            "multiple usable-capacity options."
+        )
 
-    notes: list = []
-    if scale_out:
+    node_count = max(1, ceil(protected_tb / node_tb))
+    total_usable_tb = node_count * node_tb
+    max_nodes = max(1, int(max_nodes_per_cluster))
+    notes: list[str] = [
+        "Node count uses the explicitly supplied usable capacity. Validate the selected current "
+        "Ootbi model, performance, and cluster limits against Object First documentation."
+    ]
+
+    if node_count > max_nodes:
         notes.append(
-            f"Scale-out cluster recommended ({node_count} nodes). "
-            "Deploy as an ObjectFirst Orca cluster for high-availability."
+            f"{node_count} nodes exceeds the supplied {max_nodes}-node cluster limit; plan "
+            "multiple clusters/SOBR extents or select a larger node model."
         )
     if nas_tb > 0:
-        nas_pct = (nas_tb / total_protected_tb * 100) if total_protected_tb > 0 else 0
-        notes.append(
-            f"NAS workload comprises {nas_pct:.0f}% ({nas_tb:.1f} TB) of protected data. "
-            "Ensure Veeam NAS backup jobs point to this Orca capacity tier."
-        )
-    if total_usable_tb - effective_tb < 10:
-        notes.append("Available headroom on Orca is < 10 TB. Consider adding one additional node.")
+        nas_pct = (nas_tb / protected_tb * 100.0) if protected_tb > 0 else 0.0
+        notes.append(f"NAS workload represents {nas_pct:.0f}% ({nas_tb:.1f} TB) of modeled capacity.")
+    if total_usable_tb - protected_tb < node_tb * 0.10:
+        notes.append("Less than 10% of one node remains as capacity headroom.")
 
     return OrcaDesign(
         node_count=node_count,
-        usable_tb_per_node=ORCA_TB_PER_NODE,
+        usable_tb_per_node=round(node_tb, 1),
         total_usable_tb=round(total_usable_tb, 1),
-        concurrent_stream_capacity=concurrent_streams,
-        scale_out_recommended=scale_out,
+        concurrent_stream_capacity=0,
+        scale_out_recommended=node_count > 1,
         notes=notes,
     )
