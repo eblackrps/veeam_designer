@@ -1083,3 +1083,22 @@ textarea {
     align-items: flex-start;
   }
 }
+
+.product-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 14px 2px 4px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .product-footer {
+    display: grid;
+    gap: 4px;
+  }
+}
