@@ -152,6 +152,10 @@ age instead of an arbitrary offload percentage.
 
 See [docs/assumptions.md](docs/assumptions.md) for formulas, caveats, and source links.
 
+The verified `5.0.0a8` calculation baseline is frozen in `calculation-freeze.manifest`. CI rejects
+unintended changes to the protected sizing modules; the baseline should move only for a reproduced
+defect, a verified vendor-behavior change, or an explicitly approved calculation feature.
+
 ## Development
 
 Install the development dependencies:
