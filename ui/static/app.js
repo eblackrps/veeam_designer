@@ -1096,6 +1096,7 @@ function buildBrowserReportMarkup(bundle) {
   ${dashboardMarkup ? `<section><h2>Infrastructure Summary</h2>${dashboardMarkup}</section>` : ""}
   <section><h2>Sizing Summary</h2><pre>${escapeHtml(bundle.blueprint || "")}</pre></section>
   <section><h2>Cost Summary</h2><pre>${escapeHtml(bundle.cost || "")}</pre></section>
+  <p style="margin-top:2rem;color:#64736d;font-size:0.8rem;">Independent community project. Not affiliated with or endorsed by Veeam Software. Veeam and related marks are the property of their respective owners.</p>
 </body>
 </html>`;
 }

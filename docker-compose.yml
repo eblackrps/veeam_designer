@@ -1,7 +1,7 @@
 services:
   veeam-designer:
     build: .
-    image: emb079/veeam-designer:latest
+    image: ${VEEAM_DESIGNER_IMAGE:-emb079/veeam-designer:5.0.0}
     init: true
     restart: unless-stopped
     ports:
