@@ -41,7 +41,7 @@ def build_dashboard_from_payload(payload: JSONDict | None) -> JSONDict | None:
             "kind": "vm",
             "total_repo_tb": float((payload.get("repo") or {}).get("total_repo_tb", 0.0)),
             "sobr_note": notes.get("sobr"),
-            "sites": [_build_dashboard_site(payload, "Current Design")],
+            "sites": [_build_dashboard_site(payload, "Current Site")],
         }
 
     return None
@@ -75,7 +75,7 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             {"label": "Data Movers", "value": str(data_movers)},
             {"label": "WAN Targets", "value": f"{wan_targets_met}/{len(sites)} met"},
             {
-                "label": "Storage Planning/yr",
+                "label": "Modeled Storage / Year",
                 "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('total_yearly_usd', 0.0)) for site in sites):,.0f}",
             },
         ]
@@ -114,7 +114,7 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             {"label": "WAN / RPO", "value": f"{wan_required:.0f} Mbps · {wan_status}"},
             {"label": "Risk", "value": str(risk.get("level", "unknown")).upper()},
             {
-                "label": "Storage Planning/yr",
+                "label": "Modeled Storage / Year",
                 "value": f"${float(cost.get('total_yearly_usd', 0.0)):,.0f}",
             },
         ]
@@ -220,8 +220,8 @@ def render_blueprint_human(payload: JSONDict) -> str:
             f"- Average changed-data bandwidth: {float(result.get('required_mbps', 0.0)):.1f} Mbps",
             f"- Replica storage: {float(result.get('replica_storage_tb', 0.0)):.1f} TB",
             (
-                "- WAN carries the average changed-data rate: "
-                f"{'yes' if result.get('meets_rpo') else 'no'}"
+                "- WAN capacity for average changed-data rate: "
+                f"{'Yes' if result.get('meets_rpo') else 'No'}"
             ),
         ]
         if int(result.get("cdp_proxy_count_per_side", 0)) > 0:
@@ -238,7 +238,7 @@ def render_blueprint_human(payload: JSONDict) -> str:
             )
         return "\n".join(lines) + "\n"
 
-    return "No design output available.\n"
+    return "No sizing output available.\n"
 
 
 def render_cost_human(payload: JSONDict) -> str:
@@ -248,7 +248,7 @@ def render_cost_human(payload: JSONDict) -> str:
     if kind == "multi-site":
         total_on_prem = 0.0
         total_object = 0.0
-        lines = ["Cost planning assumptions"]
+        lines = ["Storage cost model"]
         for site in payload.get("sites", []):
             design = site.get("design") or {}
             cost = design.get("cost") or {}
@@ -258,11 +258,11 @@ def render_cost_human(payload: JSONDict) -> str:
             total_object += monthly_object * 12.0
             lines.append(
                 f"- {site.get('name', 'Site')}: "
-                f"configured on-prem ${yearly_on_prem:,.0f}/yr, "
-                f"configured object ${monthly_object * 12.0:,.0f}/yr"
+                f"local storage ${yearly_on_prem:,.0f}/yr, "
+                f"object storage ${monthly_object * 12.0:,.0f}/yr"
             )
-        lines.append(f"- Total configured on-prem: ${total_on_prem:,.0f}/yr")
-        lines.append(f"- Total configured object: ${total_object:,.0f}/yr")
+        lines.append(f"- Total local storage: ${total_on_prem:,.0f}/yr")
+        lines.append(f"- Total object storage: ${total_object:,.0f}/yr")
         seen_notes: set[str] = set()
         for site in payload.get("sites", []):
             cost = (site.get("design") or {}).get("cost") or {}
@@ -276,15 +276,15 @@ def render_cost_human(payload: JSONDict) -> str:
     if kind == "vm":
         cost = payload.get("cost") or {}
         lines = [
-            "Cost planning assumptions",
-            f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr",
-            f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr",
-            f"- Total storage planning estimate: ${float(cost.get('total_yearly_usd', 0.0)):,.0f}/yr",
+            "Storage cost model",
+            f"- Local storage: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr",
+            f"- Object storage: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr",
+            f"- Total modeled storage: ${float(cost.get('total_yearly_usd', 0.0)):,.0f}/yr",
         ]
         lines.extend(f"- {note}" for note in (cost.get("notes") or []))
         return "\n".join(lines) + "\n"
 
-    return "Cost projection is not generated for this calculator mode.\n"
+    return "Storage cost model is not available for this workload.\n"
 
 
 def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
