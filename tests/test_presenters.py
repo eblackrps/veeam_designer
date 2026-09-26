@@ -76,7 +76,6 @@ def test_dashboard_reports_platform_workers_for_proxmox():
     assert "PROXMOX workers" in bundle["blueprint"]
 
 
-
 def test_vm_summary_uses_total_storage_planning_cost_for_direct_object():
     project_json = """
     {

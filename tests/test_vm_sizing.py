@@ -176,7 +176,6 @@ def test_capacity_tier_fraction_does_not_offload_operational_headroom():
     assert sobr.extent_size_tb == 120.0
 
 
-
 def test_capacity_tier_copy_keeps_full_local_footprint():
     vin = _base_input(
         backup_type="synthetic_full_weekly",
@@ -220,7 +219,6 @@ def test_capacity_tier_rejects_unknown_policy():
 
     with pytest.raises(ValueError, match="capacity_tier_policy"):
         design_sobr(size_repository(vin), vin)
-
 
 
 def test_forever_forward_capacity_tier_move_is_modeled_as_copy():

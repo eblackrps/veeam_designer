@@ -31,15 +31,11 @@ def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostE
     ]
     if object_tb > 0:
         notes.append(
-            f"{object_tb:.1f} TB object capacity at "
-            + "$"
-            + f"{object_rate:.2f}/modeled-TB/month."
+            f"{object_tb:.1f} TB object capacity at " + "$" + f"{object_rate:.2f}/modeled-TB/month."
         )
     if local_tb > 0:
         notes.append(
-            f"{local_tb:.1f} TB local capacity at "
-            + "$"
-            + f"{onprem_rate:.2f}/modeled-TB/year."
+            f"{local_tb:.1f} TB local capacity at " + "$" + f"{onprem_rate:.2f}/modeled-TB/year."
         )
 
     if policy == "copy":

@@ -38,9 +38,7 @@ def design_sobr(repo: RepoSizing, vin: VeeamInput) -> SobrDesign:
         policy = "copy"
 
     cap_fraction = (
-        max(0.0, min(1.0, vin.capacity_tier_fraction))
-        if vin.capacity_tier_enabled
-        else 0.0
+        max(0.0, min(1.0, vin.capacity_tier_fraction)) if vin.capacity_tier_enabled else 0.0
     )
     tier_eligible_tb = max(0.0, repo.short_term_data_tb + repo.gfs_repo_tb)
 
