@@ -5,6 +5,35 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0] - 2026-09-25
+
+### Added
+
+- Added Playwright browser E2E coverage for VM, NAS, Physical, and Replication calculation flows,
+  JSON/CSV downloads, report generation, and a mobile viewport
+- Added CodeQL, dependency-review, and Dependabot automation
+- Added automated stable GitHub Release publishing with wheel, source distribution, and SHA-256
+  checksums after the matching Docker and CI runs pass
+- Added independent-project and trademark notices to the site and generated reports
+- Added explicit production upgrade and rollback guidance
+
+### Security
+
+- Pinned third-party GitHub Actions to immutable commit SHAs
+- Pinned the Python 3.12.14 slim container base to an immutable image digest
+- Added SBOM and provenance attestations to published container images
+
+### Changed
+
+- Promoted package metadata from Alpha to Production/Stable
+- Production Docker and Compose examples now default to the exact `5.0.0` image rather than
+  floating `latest`
+
+### Calculation Baseline
+
+- No protected calculation logic changed from the verified 5.0.0a8 baseline
+- The calculation-freeze CI gate remains authoritative for sizing-engine changes
+
 ## [5.0.0a9] - 2026-09-25
 
 ### Added
