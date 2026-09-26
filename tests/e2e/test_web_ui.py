@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-playwright = pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import Browser, expect, sync_playwright
+try:
+    from playwright.sync_api import Browser, expect, sync_playwright
+except ImportError:
+    pytest.skip("Playwright is not installed", allow_module_level=True)
 
 BASE_URL = "http://127.0.0.1:8000/run"
 
