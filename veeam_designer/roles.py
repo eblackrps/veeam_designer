@@ -525,10 +525,14 @@ def build_role_plan(vin: VeeamInput, repo: RepoSizing) -> RolePlan:
     platform_workers = size_platform_workers(vin)
     proxies = size_proxies(vin)
     backup_server = size_backup_server(proxies, vin)
-    hardened = size_hardened_repo(repo, proxies.total_proxy_cores, vin.refs_xfs)
+    is_object_target = vin.repo_type == "object" or vin.direct_to_object
+    hardened = (
+        None if is_object_target else size_hardened_repo(repo, proxies.total_proxy_cores, vin.refs_xfs)
+    )
 
-    # Gateways ONLY for repo_type == object
-    gateways = size_gateways(repo) if vin.repo_type == "object" else None
+    # Object repositories may use direct data-mover access or a gateway. The current input model
+    # does not select between those architectures, so a gateway quantity is not inferred.
+    gateways = None
 
     return RolePlan(
         backup_server=backup_server,

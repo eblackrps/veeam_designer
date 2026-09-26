@@ -207,6 +207,7 @@ def size_repository(vin: VeeamInput) -> RepoSizing:
 
 
 def design_veeam_environment(vin: VeeamInput) -> VeeamDesign:
+    is_object_target = vin.repo_type == "object" or vin.direct_to_object
     repo = size_repository(vin)
     jobs = build_jobs(vin)
     roles = build_role_plan(vin, repo)

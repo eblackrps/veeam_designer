@@ -82,9 +82,10 @@ def compute_risk(design: VeeamDesign) -> RiskScore:
         design.roles.proxies.total_parallel_tasks,
     )
     growth_score = score_growth_risk(design.input.annual_growth_percent)
+    object_target = design.input.repo_type == "object" or design.input.direct_to_object
     immutability_score = score_immutability_risk(
         design.input.immutability_enabled,
-        design.input.repo_type,
+        "object" if object_target else design.input.repo_type,
     )
     rpo_score = score_rpo_margin_risk(
         required_mbps=design.network.required_mbps,

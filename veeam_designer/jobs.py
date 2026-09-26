@@ -6,6 +6,8 @@ from .models import JobDefinition, JobSet, VeeamInput
 
 
 def build_jobs(vin: VeeamInput) -> JobSet:
+    repo_target = "object" if (vin.repo_type == "object" or vin.direct_to_object) else vin.repo_type
+
     if vin.vm_count <= 0 or vin.avg_vm_size_gb <= 0:
         total_tb = vin.total_data_tb
         job = JobDefinition(
@@ -14,7 +16,7 @@ def build_jobs(vin: VeeamInput) -> JobSet:
             total_tb=total_tb,
             mode=vin.backup_type,
             schedule="daily",
-            repo_target=vin.repo_type,
+            repo_target=repo_target,
         )
         return JobSet(jobs=[job])
 
@@ -43,7 +45,7 @@ def build_jobs(vin: VeeamInput) -> JobSet:
                 total_tb=round(tb_here, 2),
                 mode=vin.backup_type,
                 schedule="daily",
-                repo_target=vin.repo_type,
+                repo_target=repo_target,
             )
         )
 
