@@ -57,7 +57,7 @@ def test_run_page_renders_builder():
     r = client.get("/run")
     assert r.status_code == 200
     assert "Veeam Infrastructure Sizing" in r.text
-    assert "Model backup capacity, infrastructure requirements, WAN demand, and storage cost" in r.text
+    assert (\n        "Model backup capacity, infrastructure requirements, WAN demand, and storage cost" in r.text\n    )
     assert "Sizing inputs" in r.text
     assert "YAML / API input" in r.text
     assert "Sizing results" in r.text
