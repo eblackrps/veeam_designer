@@ -97,11 +97,11 @@ def _render_page(
             "available_profiles": load_profile_names(),
             "form_action": "/run",
             "form_method": "post",
-            "hero_pill": "Interactive sizing studio",
+            "hero_pill": "Web calculator",
             "hero_meta_lines": [
                 f"Version {__version__}",
-                "REST API available at /api/design",
-                "Docker-ready via uvicorn ui.main:app",
+                "API endpoint: /api/design",
+                "Container deployment supported",
             ],
             "static_css_href": str(request.url_for("static", path="app.css")),
             "app_js_href": str(request.url_for("static", path="app.js")),
@@ -150,7 +150,7 @@ async def post_run(
         return _render_page(
             request,
             yaml_content=yaml_content[:4096],
-            error_message="Project input exceeds the 1 MB limit.",
+            error_message="Input exceeds the 1 MB limit.",
         )
 
     if not (run_blueprint or run_cost):
@@ -162,7 +162,7 @@ async def post_run(
         return _render_page(
             request,
             yaml_content=yaml_content,
-            error_message=f"Unable to run the design: {exc}",
+            error_message=f"Calculation failed: {exc}",
         )
 
     return _render_page(

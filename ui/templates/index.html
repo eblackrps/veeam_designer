@@ -19,11 +19,11 @@
             </svg>
           </div>
           <div>
-            <span class="eyebrow">Veeam Designer {{ version }}</span>
-            <h1>Plan your Veeam architecture.</h1>
+            <span class="eyebrow">Veeam Designer</span>
+            <h1>Veeam Infrastructure Sizing</h1>
           </div>
         </div>
-        <p>Size capacity, data movers, WAN, and cost from your workload, platform, and retention requirements.</p>
+        <p>Model backup capacity, infrastructure requirements, WAN demand, and storage cost across supported platforms.</p>
       </div>
       <div class="hero-panel">
         <div class="hero-panel-top">
@@ -39,7 +39,7 @@
     </header>
 
     <section id="error-alert" class="alert alert-error is-hidden" aria-live="polite">
-      <strong>Action failed.</strong>
+      <strong>Calculation error.</strong>
       <span id="error-message-text"></span>
     </section>
 
@@ -56,10 +56,10 @@
         <section class="panel panel-builder">
           <div class="panel-header panel-header-primary">
             <div>
-              <span class="section-tag">Architecture Inputs</span>
-              <h2>Protection architecture builder</h2>
+              <span class="section-tag">Configuration</span>
+              <h2>Sizing inputs</h2>
               <p class="panel-copy">
-                Start with the workload and platform. Only controls that affect the selected design path are shown.
+                Define workload, platform, retention, and infrastructure assumptions.
               </p>
             </div>
             <div class="panel-actions">
@@ -70,8 +70,8 @@
           <div class="context-block">
             <div class="context-block-head">
               <div>
-                <span class="context-kicker">Design context</span>
-                <p>Global assumptions applied to this calculation.</p>
+                <span class="context-kicker">Environment</span>
+                <p>Defaults applied to the current sizing model.</p>
               </div>
             </div>
 
@@ -134,7 +134,7 @@
             </div>
 
             <details class="advanced-panel global-advanced" data-workload-scope="vm">
-              <summary>Advanced sizing overrides</summary>
+              <summary>Advanced parameters</summary>
               <div class="settings-grid">
                 <label class="field">
                   <span>Compression Ratio</span>
@@ -158,7 +158,7 @@
           <div class="mode-strip">
             <div>
               <span class="section-tag">Workload</span>
-              <h3>What are you designing?</h3>
+              <h3>Workload type</h3>
             </div>
             <div class="tab-row" role="tablist" aria-label="Calculator mode">
               <button type="button" class="mode-tab is-active" data-workload="vm">VM Backup</button>
@@ -172,7 +172,7 @@
             <div class="mode-panel-header">
               <div>
                 <h3>Virtual machine protection</h3>
-                <p>Size repository, data movers, backup server resources, retention, and WAN requirements by site.</p>
+                <p>Repository, data mover, backup server, retention, and WAN sizing by site.</p>
               </div>
               <button type="button" id="add-site" class="button button-secondary">Add Site</button>
             </div>
@@ -183,7 +183,7 @@
             <div class="mode-panel-header">
               <div>
                 <h3>NAS / unstructured data</h3>
-                <p>Size file proxies, cache, primary repository, and growth for unstructured workloads.</p>
+                <p>File proxy, cache, repository, retention, and growth sizing for unstructured data.</p>
               </div>
             </div>
             <div class="mode-form-card">
@@ -211,7 +211,7 @@
             <div class="mode-panel-header">
               <div>
                 <h3>Physical / agent workloads</h3>
-                <p>Estimate general-purpose proxy, repository, and network requirements for protected Windows and Linux systems.</p>
+                <p>Proxy, repository, and network sizing for protected Windows and Linux systems.</p>
               </div>
             </div>
             <div class="mode-form-card">
@@ -239,7 +239,7 @@
             <div class="mode-panel-header">
               <div>
                 <h3>Replication / CDP</h3>
-                <p>Validate replica capacity, network demand, and CDP pressure against the recovery objective.</p>
+                <p>Replica capacity, WAN demand, and CDP sizing against the selected recovery objective.</p>
               </div>
             </div>
             <div class="mode-form-card">
@@ -262,31 +262,31 @@
 
           <div class="submission-row">
             <div>
-              <strong>Ready to calculate?</strong>
-              <p class="submission-hint">Generate sizing, architecture warnings, capacity, and cost in one pass.</p>
+              <strong>Run sizing</strong>
+              <p class="submission-hint">Calculate capacity, infrastructure requirements, risk indicators, and storage cost.</p>
             </div>
-            <button type="submit" id="run-design" class="button button-primary button-large">Build Architecture</button>
+            <button type="submit" id="run-design" class="button button-primary button-large">Calculate</button>
           </div>
         </section>
 
         <details class="panel panel-editor editor-details">
           <summary class="editor-details-summary">
             <div>
-              <span class="section-tag">Automation</span>
-              <h2>YAML and API project definition</h2>
+              <span class="section-tag">Advanced</span>
+              <h2>YAML / API input</h2>
             </div>
-            <span class="summary-hint">Advanced</span>
+            <span class="summary-hint">Developer</span>
           </summary>
 
           <div class="editor-details-body">
             <div class="panel-header editor-controls">
               <p id="editor-mode-note" class="editor-note">
-                Builder Sync keeps YAML generated from the architecture fields. Switch to Manual YAML to hand-edit.
+                Form fields are synchronized to YAML. Switch to Manual YAML to edit the definition directly.
               </p>
               <div class="editor-toggle">
-                <button type="button" id="editor-mode-builder" class="button button-pill is-active">Builder Sync</button>
+                <button type="button" id="editor-mode-builder" class="button button-pill is-active">Sync with Form</button>
                 <button type="button" id="editor-mode-manual" class="button button-pill">Manual YAML</button>
-                <button type="button" id="sync-yaml" class="button button-ghost">Rebuild</button>
+                <button type="button" id="sync-yaml" class="button button-ghost">Refresh YAML</button>
               </div>
             </div>
             <textarea id="yaml-editor" name="yaml_content" class="yaml-editor" spellcheck="false">{{ yaml_content }}</textarea>
@@ -297,9 +297,9 @@
       <aside class="panel panel-results">
         <div class="panel-header results-header">
           <div>
-            <span class="section-tag">Architecture Output</span>
-            <h2>Recommended design</h2>
-            <p class="panel-copy">Sizing, risk, and infrastructure guidance from the current design.</p>
+            <span class="section-tag">Results</span>
+            <h2>Sizing results</h2>
+            <p class="panel-copy">Calculated capacity, infrastructure, risk, and cost.</p>
           </div>
         </div>
 
@@ -315,23 +315,23 @@
         <div id="summary-cards" class="summary-cards is-hidden"></div>
         <div id="results-empty-state" class="empty-state">
           <div class="empty-state-mark">01</div>
-          <strong>No design calculated yet</strong>
-          <span>Complete the inputs and build the architecture to see sizing and recommendations.</span>
+          <strong>No results yet</strong>
+          <span>Enter sizing inputs and select Calculate.</span>
         </div>
 
         <section id="dashboard-section" class="results-section is-hidden">
-          <div class="section-title">Architecture Snapshot</div>
+          <div class="section-title">Infrastructure Summary</div>
           <div id="dashboard-sites" class="dashboard-sites"></div>
         </section>
 
         <section class="results-section">
-          <div class="section-title">Blueprint Summary</div>
-          <div id="blueprint-output" class="output-block output-human"><div class="output-placeholder">No summary yet.</div></div>
+          <div class="section-title">Sizing Summary</div>
+          <div id="blueprint-output" class="output-block output-human"><div class="output-placeholder">No results.</div></div>
         </section>
 
         <section class="results-section">
           <div class="section-title">Cost Summary</div>
-          <div id="cost-output" class="output-block output-human"><div class="output-placeholder">No summary yet.</div></div>
+          <div id="cost-output" class="output-block output-human"><div class="output-placeholder">No results.</div></div>
         </section>
 
         <details class="results-section result-details">
@@ -339,7 +339,7 @@
             <span>Structured JSON</span>
             <span class="summary-hint">Advanced</span>
           </summary>
-          <pre id="json-output" class="output-block output-json">No payload yet.</pre>
+          <pre id="json-output" class="output-block output-json">No results.</pre>
         </details>
       </aside>
     </section>
@@ -349,7 +349,7 @@
     <article class="site-card">
       <div class="site-card-head">
         <div>
-          <span class="site-label">Protection Site</span>
+          <span class="site-label">Site</span>
           <h3 data-site-title>Site</h3>
         </div>
         <button type="button" class="button button-compact button-ghost remove-site">Remove</button>
@@ -418,7 +418,7 @@
       </div>
 
       <details class="advanced-panel">
-        <summary>Advanced retention and data-mover controls</summary>
+        <summary>Advanced site parameters</summary>
         <div class="settings-grid">
           <label class="field"><span>GFS Weekly</span><input type="number" min="0" step="1" data-field="gfs_weekly_count"></label>
           <label class="field"><span>GFS Monthly</span><input type="number" min="0" step="1" data-field="gfs_monthly_count"></label>

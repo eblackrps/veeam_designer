@@ -9,7 +9,7 @@ capacity, WAN, risk, and cost guidance.
 
 **Live calculator:** https://eblackrps.github.io/veeam_designer/
 
-Current development line: **5.0.0a8**
+Current development line: **5.0.0a9**
 
 ## What It Sizes
 
@@ -68,15 +68,15 @@ Open `http://localhost:8000/run`.
 
 ## Web UI
 
-The shared web interface is architecture-first and context-aware:
+The shared web interface is streamlined for day-to-day sizing work:
 
 - platform-specific controls appear only when they apply
-- advanced sizing overrides stay out of the primary workflow
+- advanced parameters stay out of the primary workflow
 - YAML remains available for automation and hand editing
 - raw JSON stays under the advanced results section
 - the same frontend is used by FastAPI, Docker, and GitHub Pages
 
-A completed design produces architecture summary cards, per-site sizing, warnings, configured
+A completed calculation produces summary metrics, per-site sizing, warnings, configured
 planning-cost output, structured JSON, CSV, and a printable report.
 
 ## CLI
@@ -151,6 +151,10 @@ reduction is derived from the configured operational restore window and modeled 
 age instead of an arbitrary offload percentage.
 
 See [docs/assumptions.md](docs/assumptions.md) for formulas, caveats, and source links.
+
+The verified `5.0.0a8` calculation baseline is frozen in `calculation-freeze.manifest`. CI rejects
+unintended changes to the protected sizing modules; the baseline should move only for a reproduced
+defect, a verified vendor-behavior change, or an explicitly approved calculation feature.
 
 ## Development
 

@@ -5,6 +5,29 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a9] - 2026-09-25
+
+### Added
+
+- Added `calculation-freeze.manifest` and a CI calculation-freeze gate that pins the verified
+  5.0.0a8 sizing engine and configuration baseline
+
+### Changed
+
+- Reworked product-facing copy across the calculator, results panel, YAML/API section, browser
+  report, and server-rendered report to use concise enterprise sizing terminology
+- Replaced conversational and project-oriented labels such as architecture builder, build
+  architecture, recommended design, and architecture snapshot with direct sizing terminology
+- Simplified result and storage-cost labels while preserving the existing layout, behavior, and
+  color palette
+- Bumped the presentation-only release line to 5.0.0a9
+
+### Calculation Baseline
+
+- No protected calculation logic changed from 5.0.0a8
+- Future changes to the frozen sizing modules require an intentional baseline update tied to a
+  reproduced defect, verified vendor behavior change, or explicitly approved calculation feature
+
 ## [5.0.0a8] - 2026-09-25
 
 ### Fixed

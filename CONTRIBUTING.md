@@ -30,6 +30,21 @@ python -m build
 python tools/build_pages.py --output _site
 ```
 
+## Calculation Freeze
+
+The sizing engine is frozen at the verified `5.0.0a8` calculation baseline. CI validates the
+protected engine files against `calculation-freeze.manifest`.
+
+Do not change the frozen calculation files for cleanup, refactoring, wording, or convenience.
+Advance the baseline only when one of these conditions is met:
+
+- a calculation defect is reproduced and corrected with exact known-answer regression coverage
+- verified Veeam behavior or requirements changed and the model must be updated
+- an explicitly approved calculation feature requires new math and corresponding validation
+
+Presentation-only work should stay outside the frozen files. Any approved baseline change must be
+reviewed as a calculation change, not bundled into unrelated UI or documentation work.
+
 ## UI Work
 
 - Keep the web UI grounded in actual Veeam planning workflows

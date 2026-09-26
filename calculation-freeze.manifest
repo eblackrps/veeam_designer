@@ -1,0 +1,34 @@
+# Veeam Designer calculation baseline
+# Frozen at 5.0.0a8 / main commit 00e37dd7f10881bb969550d00756e452a3a3e050.
+# Format: <git-blob-sha>  <path>
+# Advance this baseline only for a reproduced calculation defect, a verified vendor behavior change,
+# or an explicitly approved calculation feature with updated known-answer tests.
+
+168fbe8fc495c734912fd3cc4e2699a8882dc9ee  veeam_designer/agent.py
+7e6f4cf5da1ff968639829365fb20f837c9c525c  veeam_designer/blueprint.py
+46c0e1bba71c15776e7f4d955a8255d3a40dd3ea  veeam_designer/compliance.py
+8c4bbbf2a252224b169ae5d26a7563404e62cb97  veeam_designer/config.py
+bd10cf6f800e9ba521d9c33dfa52590dc13ec4bb  veeam_designer/cost.py
+6a6843394bbfdaa68c9f17c31e2be152c77fcf7c  veeam_designer/jobs.py
+be87cba5fa979c493d6bf0eaae2f8386183a5e88  veeam_designer/licensing.py
+0b5d181882739d600c5a7a2146922950a69cc1b5  veeam_designer/models.py
+615ba13985feaa8dadc580b6a0728425785d38f0  veeam_designer/nas.py
+a8503fa05523dc87a0b35cb0ad5d0f3ab0474ff8  veeam_designer/network.py
+9ee65ce728c9574157a3a55a6bbb2d4f35e70580  veeam_designer/orca.py
+0e63fd9f286d0f9453db03aded6f6a5d61c123cc  veeam_designer/parser.py
+b3daf2f5841860fc4cbe90ca1271b49d48e3fc1c  veeam_designer/platforms.py
+0b7c1cc524f83ead40f710ab1ebfab5c10938f3d  veeam_designer/replication.py
+848f5d9764fe0948e517a41139be27141582787a  veeam_designer/repo_perf.py
+3a6c4d9a0e9d6f6f7d699d20c60bb66fcb0af842  veeam_designer/risk.py
+a989a9d87f18962da885619a79cc14fa2ae9a1ca  veeam_designer/roles.py
+fbfca1df0e3cef29de9680e14db046e1f21958e9  veeam_designer/service.py
+1fcf471b3016d1d4ebff6194a98cdf3881b146a4  veeam_designer/sizing.py
+b8b2835c0b18ffb06c71f89f86ec93e5c5159e06  veeam_designer/sobr.py
+f78e454c42f7f3e79c1264f51afa04a4e5dc607c  veeam_designer/tape.py
+4f68a152fc5ba5e3a12578dfe4af3419a64397aa  veeam_designer/veeam_one.py
+7ebbb10a8abffbb0bc2cac6414312a055ed20227  veeam_designer/wan_accel.py
+46db0553fb3ff928b0c8b7eb2ed670ff8d1a1d66  veeam_designer/workload_math.py
+28a5c50224cac293159f2c73b6d69a29d27958af  config.json
+0e93427ad21d31e6c9a76a360c8c4a139e133131  profiles.json
+28a5c50224cac293159f2c73b6d69a29d27958af  veeam_designer/resources/config.json
+0e93427ad21d31e6c9a76a360c8c4a139e133131  veeam_designer/resources/profiles.json
