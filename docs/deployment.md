@@ -21,11 +21,23 @@ It supports the guided builder, YAML workflow, JSON/CSV export, and printable re
 
 ## Docker
 
-Run the published image:
+Run the published image with production-oriented runtime controls:
 
 ```bash
-docker run --rm -p 8000:8000 emb079/veeam-designer:latest
+docker run --rm \
+  --read-only \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --pids-limit 256 \
+  --tmpfs /tmp:size=64m,mode=1777 \
+  -p 127.0.0.1:8000:8000 \
+  emb079/veeam-designer:latest
 ```
+
+The image runs as dedicated non-root UID/GID `10001:10001` and includes a Docker `HEALTHCHECK`
+against `/api/health`. The sample Compose file applies the same hardening defaults and binds only
+to loopback. Change the host-side bind address deliberately if the service must be reachable from
+other systems, and place it behind the environment's normal reverse proxy, TLS, and access controls.
 
 The same image is also published to GitHub Container Registry:
 
