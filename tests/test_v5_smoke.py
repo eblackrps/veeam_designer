@@ -513,7 +513,6 @@ def test_cli_replication_cdp_inputs_reach_engine():
     assert payload["input"]["cdp_network_encryption"] is True
 
 
-
 def test_capacity_tier_orw_round_trips_through_yaml_parser_and_presenter():
     project = """workload_type: vm
 total_data_tb: 100

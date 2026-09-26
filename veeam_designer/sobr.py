@@ -163,8 +163,7 @@ def design_sobr(repo: RepoSizing, vin: VeeamInput) -> SobrDesign:
 
     backup_type = _normalized_backup_type(vin.backup_type)
     has_gfs = any(
-        count > 0
-        for count in (vin.gfs_weekly_count, vin.gfs_monthly_count, vin.gfs_yearly_count)
+        count > 0 for count in (vin.gfs_weekly_count, vin.gfs_monthly_count, vin.gfs_yearly_count)
     )
     forever_forward_move_ignored = (
         vin.capacity_tier_enabled

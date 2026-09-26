@@ -146,7 +146,6 @@ def test_cost_model_does_not_emit_fake_provider_or_break_even_precision():
     assert any("retrieval/egress" in note for note in result.notes)
 
 
-
 def test_orw_driven_move_cost_known_answer_end_to_end():
     vin = _vin(
         daily_change_percent=10.0,
