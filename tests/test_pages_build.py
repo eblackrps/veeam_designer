@@ -16,9 +16,9 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "Browser edition" in index_html
     assert "pyodide.js" in index_html
     assert "Calculation error." in index_html
-    assert "Veeam infrastructure sizing." in index_html
+    assert "Veeam Infrastructure Sizing" in index_html
     assert "Model backup capacity, infrastructure requirements, WAN demand, and storage cost" in index_html
-    assert "Design inputs" in index_html
+    assert "Sizing inputs" in index_html
     assert "YAML / API input" in index_html
     assert "Advanced parameters" in index_html
     assert "Proxmox VE" in index_html
