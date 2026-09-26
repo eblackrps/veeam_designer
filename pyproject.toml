@@ -20,7 +20,7 @@ dependencies = [
 ]
 keywords = ["veeam", "backup", "sizing", "architecture", "capacity-planning", "disaster-recovery"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Web Environment",
   "Framework :: FastAPI",
   "Intended Audience :: Information Technology",
