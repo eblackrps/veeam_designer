@@ -106,7 +106,7 @@ def test_vm_summary_uses_total_storage_planning_cost_for_direct_object():
     assert cost["yearly_onprem_usd"] == 0.0
     assert cost["yearly_object_usd"] > 0.0
     assert cost["total_yearly_usd"] == cost["yearly_object_usd"]
-    assert summary["Storage Planning/yr"] != "$0"
+    assert summary["Modeled Storage / Year"] != "$0"
 
 
 def test_vm_cost_summary_surfaces_object_lock_cost_guardrail():
