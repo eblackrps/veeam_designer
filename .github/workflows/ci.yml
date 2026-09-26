@@ -10,6 +10,42 @@ permissions:
   contents: read
 
 jobs:
+  calculation-freeze:
+    name: Calculation freeze
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verify 5.0.0a8 calculation baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+
+          while read -r expected path; do
+            if [[ -z "${expected}" || "${expected:0:1}" == "#" ]]; then
+              continue
+            fi
+
+            if [[ ! -f "${path}" ]]; then
+              echo "::error file=${path}::Frozen calculation file is missing."
+              failed=1
+              continue
+            fi
+
+            actual="$(git hash-object "${path}")"
+            if [[ "${actual}" != "${expected}" ]]; then
+              echo "::error file=${path}::Calculation baseline changed. Expected ${expected}, found ${actual}."
+              failed=1
+            fi
+          done < calculation-freeze.manifest
+
+          if [[ "${failed}" -ne 0 ]]; then
+            echo "::error::Calculation logic is frozen at 5.0.0a8. Advance calculation-freeze.manifest only for an approved, verified calculation change."
+            exit 1
+          fi
+
   validate:
     runs-on: ubuntu-latest
     strategy:
