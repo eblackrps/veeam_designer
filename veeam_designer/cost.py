@@ -45,14 +45,15 @@ def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostE
         )
     elif policy == "move":
         notes.append(
-            "Capacity Tier Move reduces local capacity only by the explicit modeled move fraction. "
-            "Actual moved data depends on inactive backup chains and the operational restore window."
+            "Capacity Tier Move local capacity is derived from sealed-chain restore points that "
+            "are older than the configured operational restore window; no percentage offload "
+            "assumption is used."
         )
     elif policy == "copy_move":
         notes.append(
-            "Capacity Tier Copy + Move models a full object copy plus local reduction from the "
-            "explicit move fraction. Actual local aging depends on chain state and the operational "
-            "restore window."
+            "Capacity Tier Copy + Move models the retained/GFS object copy and removes from local "
+            "capacity only the sealed short-term data that is older than the configured "
+            "operational restore window."
         )
 
     notes.append(

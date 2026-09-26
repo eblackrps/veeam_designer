@@ -99,7 +99,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--block-generation-days", type=int, default=10)
     # Round 5
     p.add_argument("--capacity-tier", action="store_true")
-    p.add_argument("--capacity-tier-fraction", type=float, default=0.5)
+    p.add_argument(
+        "--capacity-tier-fraction",
+        type=float,
+        default=0.5,
+        help=argparse.SUPPRESS,
+    )
+    p.add_argument(
+        "--capacity-tier-operational-restore-days",
+        type=int,
+        default=7,
+        help="Operational restore window in days for Capacity Tier Move (0 is valid).",
+    )
     p.add_argument(
         "--capacity-tier-policy",
         choices=["move", "copy", "copy_move"],
@@ -371,6 +382,7 @@ def main():
                 capacity_tier_enabled=args.capacity_tier,
                 capacity_tier_fraction=args.capacity_tier_fraction,
                 capacity_tier_policy=args.capacity_tier_policy,
+                capacity_tier_operational_restore_days=args.capacity_tier_operational_restore_days,
                 direct_to_object=args.direct_to_object,
                 capacity_tier_immutable=args.capacity_tier_immutable,
                 object_cost_usd_per_tb_month=args.object_cost_usd_per_tb_month,

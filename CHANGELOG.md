@@ -5,6 +5,32 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a7] - 2026-09-25
+
+### Fixed
+
+- Replaced Capacity Tier percentage-offload sizing with an operational-restore-window model based
+  on inactive weekly forward-incremental chains
+- Move now removes local capacity only for sealed short-term restore points that are strictly older
+  than the configured operational restore window
+- Copy + Move now keeps the complete modeled object copy while reducing local capacity only by the
+  ORW-eligible short-term footprint
+- Fast Clone synthetic-full Move savings are conservatively limited to changed-block reclaim;
+  shared baseline blocks remain local while referenced
+- Active-full/non-Fast-Clone weekly chains now count eligible full and incremental files explicitly
+- GFS Move savings are no longer guessed from GFS counts alone; they remain local unless age/schedule
+  information is available
+- Legacy capacity_tier_fraction input is retained only for compatibility and no longer changes
+  sizing or cost results
+
+### Changed
+
+- Replaced the Modeled Move Fraction UI control with Operational Restore Window (days)
+- Added ORW and Move-model basis to dashboard/report payloads and printable design output
+- Added CLI and interactive ORW inputs and browser-state migration for projects saved before a7
+- Added exact known-answer ORW regression tests for 0-day, 7-day, long-window, Fast Clone,
+  active-full, Copy, Move, Copy + Move, GFS, cost, YAML, CLI, and legacy-fraction behavior
+
 ## [5.0.0a6] - 2026-09-25
 
 ### Fixed

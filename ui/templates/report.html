@@ -407,12 +407,18 @@
     <tr><td class="label">Hardened repo hosts</td><td class="value">{{ site.repo_host_count }}</td></tr>
     <tr><td class="label">Per repo host target</td><td class="value">{{ site.repo_host_cores }} cores / {{ site.repo_host_ram_gb }} GB / {{ "%.1f" | format(site.repo_host_tb | default(0)) }} TB</td></tr>
     {% endif %}
-    {% if site.capacity_tier_tb %}
+    {% if site.capacity_tier_tb or site.capacity_tier_policy != "none" %}
     <tr><td class="label">Capacity tier policy</td><td class="value">{{ site.capacity_tier_policy | replace("_", " ") | title }}</td></tr>
+    {% if site.capacity_tier_policy in ["move", "copy_move"] %}
+    <tr><td class="label">Operational restore window</td><td class="value">{{ site.operational_restore_window_days }} days</td></tr>
+    {% endif %}
     <tr><td class="label">Object storage footprint</td><td class="value">{{ "%.1f" | format(site.capacity_tier_tb) }} TB</td></tr>
     <tr><td class="label">Local performance footprint</td><td class="value">{{ "%.1f" | format(site.performance_tier_tb) }} TB</td></tr>
     {% if site.moved_to_capacity_tb %}
     <tr><td class="label">Modeled moved from local</td><td class="value">{{ "%.1f" | format(site.moved_to_capacity_tb) }} TB</td></tr>
+    {% endif %}
+    {% if site.move_model_basis %}
+    <tr><td class="label">Move model basis</td><td class="value">{{ site.move_model_basis }}</td></tr>
     {% endif %}
     {% endif %}
   </tbody>

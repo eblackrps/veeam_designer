@@ -348,8 +348,33 @@ repository, SOBR, performance, and cost calculations. Direct-object designs do n
 disk-repository transformation headroom or Fast Clone assumptions.
 
 The calculator rejects reverse incremental and an independently scheduled weekly synthetic-full
-mode for direct object targets. Capacity-tier percentage applies only to retained short-term and
-GFS backup data; operational transformation headroom remains on the local performance tier.
+mode for direct object targets. For SOBR Capacity Tier, Copy, Move, and Copy + Move are modeled as
+different policies:
+
+- Copy places the modeled retained short-term/GFS backup footprint in object storage immediately
+  while preserving the full local performance-tier footprint.
+- Move considers only restore points in inactive chains. The calculator uses
+  capacity_tier_operational_restore_days as the Veeam operational restore window and does not use a
+  percentage offload shortcut.
+- Copy + Move keeps the Copy object footprint while removing from local storage only the short-term
+  data that the Move model identifies as older than the operational restore window.
+
+For weekly forward-incremental chains, the model uses a conservative steady-state phase in which the
+newest seven daily restore points remain the active chain. Older points are considered sealed; only
+sealed points strictly older than the operational restore window are eligible for Move. For weekly
+synthetic fulls on ReFS/XFS, local reclaim credit is limited to changed-block size because Fast
+Clone fulls can share blocks still referenced by the active chain. For active fulls and non-Fast
+Clone synthetic fulls, eligible full and incremental files are counted at their modeled physical
+sizes.
+
+Veeam documents that forever-forward incremental normally has no inactive chain, so Move is ignored
+and Copy behavior applies. GFS can create synthetic fulls that make such chains inactive, but the
+current GFS inputs are counts rather than dated schedules. The calculator therefore does not claim
+additional GFS Move savings without explicit age data. Reverse-incremental Move savings are also not
+credited because the model does not define a periodic full event that proves an inactive chain.
+
+Operational transformation headroom is always kept local and is never treated as Capacity Tier
+data. GFS capacity is conservatively kept local for Move-only sizing unless its age is explicit.
 
 Object First appliance node count is not inferred from a generic object target. Current Ootbi
 hardware is available in multiple usable-capacity models, so the optional helper requires an
@@ -359,6 +384,14 @@ Object-storage role planning does not automatically create a hardened repository
 Veeam supports direct data-mover access to object storage as well as gateway-mediated access; the
 calculator does not invent that topology without an explicit project input.
 
+References:
+
+- [Veeam: Add Capacity Tier](https://helpcenter.veeam.com/docs/vbr/userguide/new_capacity_tier.html?ver=13)
+- [Veeam: Moving Backups to Capacity Tier](https://helpcenter.veeam.com/docs/vbr/userguide/capacity_tier_move.html?ver=13)
+- [Veeam: Copying Backups to Capacity Tier](https://helpcenter.veeam.com/docs/vbr/userguide/capacity_tier_copy.html?ver=13)
+- [Veeam: Backup Chain Detection](https://helpcenter.veeam.com/docs/vbr/userguide/capacity_tier_inactive_backup_chain.html?ver=13)
+- [Veeam: Capacity Tier Data Transfer](https://helpcenter.veeam.com/docs/vbr/userguide/capacity_tier_data_transfer.html?ver=13)
+
 ### Cost planning
 
 Storage cost output is driven by explicit per-site planning rates:
@@ -366,19 +399,8 @@ Storage cost output is driven by explicit per-site planning rates:
 - object_cost_usd_per_tb_month is the modeled effective object-storage cost per TB per month
 - onprem_cost_usd_per_tb_year is the modeled effective local-storage cost per TB per year
 
-Capacity Tier policy changes the capacity basis:
-
-- Copy models the full retained/GFS footprint in object storage while preserving the full local
-  performance-tier footprint
-- Move models only the explicit move fraction in object storage and subtracts that modeled moved
-  amount from local capacity
-- Copy + Move models the full object copy and subtracts only the explicit modeled move fraction
-  from local capacity
-- for forever-forward incremental chains, Move is modeled as Copy because Veeam documents that an
-  always-active forever-forward chain cannot be moved as an inactive chain
-
-The move fraction is deliberately a scenario input, not a hidden prediction. Actual Move behavior
-depends on inactive backup chains and the operational restore window.
+Capacity Tier cost uses the capacity footprints produced by the policy model above. There is no
+provider-price lookup, percentage offload estimate, or inferred cloud break-even point.
 
 These rates are not Veeam pricing or live provider quotes. The storage-rate model does not infer
 provider-specific API charges, retrieval/egress, minimum-storage-duration charges, taxes, hardware

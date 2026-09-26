@@ -156,11 +156,12 @@ def test_direct_object_rejects_unsupported_backup_chain_modes(backup_type):
         )
 
 
-def test_capacity_tier_fraction_does_not_offload_operational_headroom():
+def test_capacity_tier_move_uses_operational_restore_window_known_answer():
     vin = _base_input(
         backup_type="synthetic_full_weekly",
         capacity_tier_enabled=True,
-        capacity_tier_fraction=0.5,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=7,
     )
     repo = size_repository(vin)
     sobr = design_sobr(repo, vin)
@@ -168,20 +169,70 @@ def test_capacity_tier_fraction_does_not_offload_operational_headroom():
     assert repo.short_term_data_tb == 230.0
     assert repo.operational_headroom_tb == 125.0
     assert repo.total_repo_tb == 355.0
-    assert sobr.capacity_tier_tb == 115.0
-    assert sobr.performance_tier_tb == 240.0
-    assert sobr.moved_to_capacity_tb == 115.0
+    assert sobr.operational_restore_window_days == 7
+    assert sobr.move_eligible_short_term_tb == 60.0
+    assert sobr.capacity_tier_tb == 60.0
+    assert sobr.performance_tier_tb == 295.0
+    assert sobr.moved_to_capacity_tb == 60.0
     assert sobr.capacity_tier_policy == "move"
     assert sobr.extent_count == 2
-    assert sobr.extent_size_tb == 120.0
+    assert sobr.extent_size_tb == 147.5
+    assert "6 sealed restore point" in sobr.move_model_basis
+
+
+def test_capacity_tier_zero_day_window_moves_all_sealed_fast_clone_changes():
+    vin = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=0,
+    )
+    sobr = design_sobr(size_repository(vin), vin)
+
+    assert sobr.capacity_tier_tb == 70.0
+    assert sobr.performance_tier_tb == 285.0
+    assert sobr.moved_to_capacity_tb == 70.0
+
+
+def test_capacity_tier_long_window_keeps_all_short_term_data_local():
+    vin = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=30,
+    )
+    sobr = design_sobr(size_repository(vin), vin)
+
+    assert sobr.capacity_tier_tb == 0.0
+    assert sobr.performance_tier_tb == 355.0
+    assert sobr.moved_to_capacity_tb == 0.0
+    assert "No sealed short-term restore point" in sobr.move_model_basis
+
+
+def test_capacity_tier_active_full_moves_full_and_incremental_files_by_age():
+    vin = _base_input(
+        backup_type="active_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=7,
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.short_term_data_tb == 320.0
+    assert repo.total_repo_tb == 445.0
+    assert sobr.capacity_tier_tb == 150.0
+    assert sobr.performance_tier_tb == 295.0
+    assert sobr.moved_to_capacity_tb == 150.0
+    assert "1 full and 5 incremental" in sobr.move_model_basis
 
 
 def test_capacity_tier_copy_keeps_full_local_footprint():
     vin = _base_input(
         backup_type="synthetic_full_weekly",
         capacity_tier_enabled=True,
-        capacity_tier_fraction=0.5,
         capacity_tier_policy="copy",
+        capacity_tier_operational_restore_days=30,
     )
     repo = size_repository(vin)
     sobr = design_sobr(repo, vin)
@@ -193,21 +244,63 @@ def test_capacity_tier_copy_keeps_full_local_footprint():
     assert sobr.capacity_tier_policy == "copy"
 
 
-def test_capacity_tier_copy_move_copies_all_and_moves_modeled_fraction():
+def test_capacity_tier_copy_move_copies_all_and_uses_orw_for_local_aging():
     vin = _base_input(
         backup_type="synthetic_full_weekly",
         capacity_tier_enabled=True,
-        capacity_tier_fraction=0.5,
         capacity_tier_policy="copy_move",
+        capacity_tier_operational_restore_days=7,
     )
     repo = size_repository(vin)
     sobr = design_sobr(repo, vin)
 
     assert repo.total_repo_tb == 355.0
     assert sobr.capacity_tier_tb == 230.0
-    assert sobr.performance_tier_tb == 240.0
-    assert sobr.moved_to_capacity_tb == 115.0
+    assert sobr.performance_tier_tb == 295.0
+    assert sobr.moved_to_capacity_tb == 60.0
     assert sobr.capacity_tier_policy == "copy_move"
+
+
+def test_legacy_capacity_fraction_no_longer_changes_move_sizing():
+    low = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_fraction=0.0,
+        capacity_tier_operational_restore_days=7,
+    )
+    high = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_fraction=1.0,
+        capacity_tier_operational_restore_days=7,
+    )
+
+    low_sobr = design_sobr(size_repository(low), low)
+    high_sobr = design_sobr(size_repository(high), high)
+
+    assert low_sobr.capacity_tier_tb == 60.0
+    assert high_sobr.capacity_tier_tb == 60.0
+    assert low_sobr.performance_tier_tb == high_sobr.performance_tier_tb
+
+
+def test_capacity_tier_move_keeps_gfs_local_without_dated_gfs_schedule():
+    vin = _base_input(
+        backup_type="synthetic_full_weekly",
+        gfs_weekly_count=1,
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=7,
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.gfs_repo_tb == 100.0
+    assert repo.total_repo_tb == 455.0
+    assert sobr.capacity_tier_tb == 60.0
+    assert sobr.performance_tier_tb == 395.0
+    assert "GFS Move savings are not deducted" in sobr.recommendation
 
 
 def test_capacity_tier_rejects_unknown_policy():
@@ -221,12 +314,12 @@ def test_capacity_tier_rejects_unknown_policy():
         design_sobr(size_repository(vin), vin)
 
 
-def test_forever_forward_capacity_tier_move_is_modeled_as_copy():
+def test_forever_forward_capacity_tier_move_is_modeled_as_copy_without_gfs():
     vin = _base_input(
         backup_type="forever_forward_incremental",
         capacity_tier_enabled=True,
-        capacity_tier_fraction=0.5,
         capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=7,
     )
     repo = size_repository(vin)
     sobr = design_sobr(repo, vin)
@@ -236,4 +329,22 @@ def test_forever_forward_capacity_tier_move_is_modeled_as_copy():
     assert sobr.capacity_tier_tb == 170.0
     assert sobr.performance_tier_tb == 295.0
     assert sobr.moved_to_capacity_tb == 0.0
-    assert "ignores Move" in sobr.recommendation
+    assert "Move is ignored" in sobr.recommendation
+
+
+def test_forever_forward_gfs_move_does_not_invent_gfs_age_savings():
+    vin = _base_input(
+        backup_type="forever_forward_incremental",
+        gfs_weekly_count=1,
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=7,
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.total_repo_tb == 395.0
+    assert sobr.capacity_tier_policy == "move"
+    assert sobr.capacity_tier_tb == 0.0
+    assert sobr.performance_tier_tb == 395.0
+    assert "GFS can create synthetic fulls" in sobr.recommendation

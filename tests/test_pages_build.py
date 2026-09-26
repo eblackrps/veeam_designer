@@ -43,12 +43,15 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "platform_concurrent_tasks" in app_js
     assert "deployment_mode" in app_js
     assert "proxy_deployment_mode" in app_js
-    assert "capacity_tier_fraction" in app_js
+    assert "capacity_tier_fraction" not in app_js
+    assert "capacity_tier_operational_restore_days" in app_js
     assert "capacity_tier_policy" in app_js
     assert "capacity_tier_immutable" in app_js
     assert "object_cost_usd_per_tb_month" in app_js
     assert "onprem_cost_usd_per_tb_year" in app_js
     assert "Storage Planning Cost/yr" in app_js
+    assert "Operational Restore Window" in index_html
+    assert "Modeled Move Fraction" not in index_html
     assert "Break-even" not in app_js
     assert "syncContextVisibility" in app_js
     assert "renderHumanOutput" in app_js
