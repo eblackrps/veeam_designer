@@ -105,9 +105,7 @@ def collect_inputs_interactive() -> VeeamInput:
     repo_type = _prompt_str("Repo type (local_disk / san / sobr / object)", "sobr").lower()
 
     immutability_enabled = _prompt_bool("Enable immutability", False)
-    immutability_days = (
-        _prompt_int("Immutability period (days)", 30) if immutability_enabled else 0
-    )
+    immutability_days = _prompt_int("Immutability period (days)", 30) if immutability_enabled else 0
     block_generation_days = (
         _prompt_int("Object block generation planning days", 10)
         if immutability_enabled and repo_type == "object"
@@ -122,9 +120,7 @@ def collect_inputs_interactive() -> VeeamInput:
         if capacity_tier_enabled:
             offload_percent = _prompt_float("Capacity tier offload (%)", 50.0)
             capacity_tier_fraction = max(0.0, min(100.0, offload_percent)) / 100.0
-            capacity_tier_immutable = _prompt_bool(
-                "Enable object lock on capacity tier", False
-            )
+            capacity_tier_immutable = _prompt_bool("Enable object lock on capacity tier", False)
 
     hypervisor = _prompt_str(
         "Hypervisor (vmware / hyperv / nutanix_ahv / proxmox / agent)", "vmware"

@@ -7,6 +7,7 @@ from .models import CostEstimate, RepoSizing, SobrDesign, VeeamInput
 # Round 9: multi-cloud provider registry
 # ---------------------------------------------------------------------------
 
+
 def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostEstimate:
     """Estimate configured infrastructure planning costs.
 
