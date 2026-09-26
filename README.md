@@ -9,7 +9,7 @@ capacity, WAN, risk, and cost guidance.
 
 **Live calculator:** https://eblackrps.github.io/veeam_designer/
 
-Current development line: **5.0.0a5**
+Current development line: **5.0.0a6**
 
 ## What It Sizes
 
@@ -145,8 +145,9 @@ deployment requirements, hardened repository compute, WAN acceleration, NAS, rep
 Veeam ONE, tape, licensing consumption, and configured cost planning.
 
 Repository outputs separate retained backup data from operational headroom. Commercial licensing
-pricing is not inferred, and any workload-dependent reduction or cost factor is labeled as an input
-or planning assumption.
+pricing is not inferred. Storage cost output uses explicit local/object planning rates, and Capacity
+Tier cost modeling distinguishes Copy, Move, and Copy + Move semantics rather than treating all
+object-tier use as local-capacity reduction.
 
 See [docs/assumptions.md](docs/assumptions.md) for formulas, caveats, and source links.
 

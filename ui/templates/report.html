@@ -332,6 +332,7 @@
         <th>Data Movers</th>
         <th>Configured On-Prem / Year</th>
         <th>Configured Object / Year</th>
+        <th>Storage Planning / Year</th>
       </tr>
     </thead>
     <tbody>
@@ -353,25 +354,26 @@
         </td>
         <td>${{ "{:,.0f}".format(site.yearly_onprem_usd | default(0)) }}</td>
         <td>
-          {% if site.monthly_object_usd %}
-            ${{ "{:,.0f}".format(site.monthly_object_usd * 12) }}/yr
+          {% if site.yearly_object_usd %}
+            ${{ "{:,.0f}".format(site.yearly_object_usd) }}/yr
           {% else %}
             —
           {% endif %}
         </td>
+        <td>${{ "{:,.0f}".format(site.total_yearly_usd | default(0)) }}/yr</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  {% set ns = namespace(total_onprem=0, total_repo=0) %}
+  {% set ns = namespace(total_storage_cost=0, total_repo=0) %}
   {% for site in dashboard.sites %}
-    {% set ns.total_onprem = ns.total_onprem + (site.yearly_onprem_usd | default(0)) %}
-    {% set ns.total_repo   = ns.total_repo   + (site.total_repo_tb   | default(0)) %}
+    {% set ns.total_storage_cost = ns.total_storage_cost + (site.total_yearly_usd | default(0)) %}
+    {% set ns.total_repo = ns.total_repo + (site.total_repo_tb | default(0)) %}
   {% endfor %}
   <p style="font-size:9.5pt;color:#444;margin-top:2mm;">
     Aggregate: <strong>{{ "%.1f" | format(ns.total_repo) }} TB</strong> total repository &nbsp;|&nbsp;
-    <strong>${{ "{:,.0f}".format(ns.total_onprem) }}</strong> configured yearly on-prem planning cost across all sites.
+    <strong>${{ "{:,.0f}".format(ns.total_storage_cost) }}</strong> configured yearly storage planning cost across all sites.
   </p>
 </div>
 
@@ -406,7 +408,12 @@
     <tr><td class="label">Per repo host target</td><td class="value">{{ site.repo_host_cores }} cores / {{ site.repo_host_ram_gb }} GB / {{ "%.1f" | format(site.repo_host_tb | default(0)) }} TB</td></tr>
     {% endif %}
     {% if site.capacity_tier_tb %}
-    <tr><td class="label">SOBR capacity tier (object)</td><td class="value">{{ "%.1f" | format(site.capacity_tier_tb) }} TB</td></tr>
+    <tr><td class="label">Capacity tier policy</td><td class="value">{{ site.capacity_tier_policy | replace("_", " ") | title }}</td></tr>
+    <tr><td class="label">Object storage footprint</td><td class="value">{{ "%.1f" | format(site.capacity_tier_tb) }} TB</td></tr>
+    <tr><td class="label">Local performance footprint</td><td class="value">{{ "%.1f" | format(site.performance_tier_tb) }} TB</td></tr>
+    {% if site.moved_to_capacity_tb %}
+    <tr><td class="label">Modeled moved from local</td><td class="value">{{ "%.1f" | format(site.moved_to_capacity_tb) }} TB</td></tr>
+    {% endif %}
     {% endif %}
   </tbody>
 </table>
@@ -655,30 +662,40 @@
 <!-- ------------------------------------------------------------------ -->
 <!-- Cost summary                                                         -->
 <!-- ------------------------------------------------------------------ -->
-<div class="sub-heading">Cost Overview</div>
+<div class="sub-heading">Storage Cost Planning</div>
 <div class="card-grid avoid-break">
   <div class="card">
-    <div class="card-title">On-Premises</div>
+    <div class="card-title">Local Storage</div>
     <div class="card-row">
-      <span class="clabel">Yearly cost (est.)</span>
+      <span class="clabel">Yearly planning cost</span>
       <span class="cval">${{ "{:,.0f}".format(site.yearly_onprem_usd | default(0)) }}</span>
     </div>
-    <p class="note">Uses configured planning rates only; no live provider pricing or break-even model is inferred.</p>
   </div>
 
   <div class="card">
     <div class="card-title">Object Storage</div>
     {% if site.monthly_object_usd %}
     <div class="card-row">
-      <span class="clabel">Monthly</span>
+      <span class="clabel">Monthly planning cost</span>
       <span class="cval">${{ "{:,.0f}".format(site.monthly_object_usd) }}</span>
     </div>
     <div class="card-row">
-      <span class="clabel">Yearly</span>
-      <span class="cval">${{ "{:,.0f}".format(site.monthly_object_usd * 12) }}</span>
+      <span class="clabel">Yearly planning cost</span>
+      <span class="cval">${{ "{:,.0f}".format(site.yearly_object_usd | default(0)) }}</span>
     </div>
     {% else %}
     <p class="text-muted">No object storage configured</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Total Storage Plan</div>
+    <div class="card-row">
+      <span class="clabel">Yearly planning cost</span>
+      <span class="cval">${{ "{:,.0f}".format(site.total_yearly_usd | default(0)) }}</span>
+    </div>
+    {% if site.cost_notes %}
+    <p class="note">{{ site.cost_notes | join(" ") }}</p>
     {% endif %}
   </div>
 </div>

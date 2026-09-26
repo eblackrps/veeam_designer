@@ -60,8 +60,13 @@ class VeeamInput:
     # Round 5: capacity tier
     capacity_tier_enabled: bool = False
     capacity_tier_fraction: float = 0.5
+    capacity_tier_policy: str = "move"
     direct_to_object: bool = False
     capacity_tier_immutable: bool = False
+
+    # Cost planning rates are explicit assumptions, not live pricing.
+    object_cost_usd_per_tb_month: float = CONFIG["object_cost_usd_per_tb_month"]
+    onprem_cost_usd_per_tb_year: float = CONFIG["onprem_cost_usd_per_tb_year"]
 
     # v3: optional sub-workload inputs
     compliance_framework: str = "none"
@@ -220,6 +225,9 @@ class SobrDesign:
     capacity_tier_tb: float
     archive_tier_tb: float
     recommendation: str
+    performance_tier_tb: float = 0.0
+    moved_to_capacity_tb: float = 0.0
+    capacity_tier_policy: str = "none"
 
 
 @dataclass
@@ -257,6 +265,7 @@ class CostEstimate:
     monthly_object_usd: float
     yearly_object_usd: float
     yearly_onprem_usd: float
+    total_yearly_usd: float
     notes: List[str] = field(default_factory=list)
     # Round 9: 3-year TCO + multi-cloud comparison
     cloud_comparison: Dict[str, float] = field(default_factory=dict)

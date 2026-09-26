@@ -75,8 +75,8 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             {"label": "Data Movers", "value": str(data_movers)},
             {"label": "WAN Targets", "value": f"{wan_targets_met}/{len(sites)} met"},
             {
-                "label": "Planning Cost/yr",
-                "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('yearly_onprem_usd', 0.0)) for site in sites):,.0f}",
+                "label": "Storage Planning/yr",
+                "value": f"${sum(float((site.get('design', {}).get('cost', {}) or {}).get('total_yearly_usd', 0.0)) for site in sites):,.0f}",
             },
         ]
 
@@ -114,8 +114,8 @@ def build_result_summary(payload: JSONDict | None) -> list[dict[str, str]]:
             {"label": "WAN / RPO", "value": f"{wan_required:.0f} Mbps · {wan_status}"},
             {"label": "Risk", "value": str(risk.get("level", "unknown")).upper()},
             {
-                "label": "Planning Cost/yr",
-                "value": f"${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}",
+                "label": "Storage Planning/yr",
+                "value": f"${float(cost.get('total_yearly_usd', 0.0)):,.0f}",
             },
         ]
 
@@ -274,7 +274,8 @@ def render_cost_human(payload: JSONDict) -> str:
             "Cost planning assumptions\n"
             f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr\n"
             f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr\n"
-            "- Rates are configuration inputs, not Veeam pricing or live market quotes. "
+            f"- Total storage planning estimate: ${float(cost.get('total_yearly_usd', 0.0)):,.0f}/yr\n"
+            "- Rates are explicit storage-planning inputs, not Veeam pricing or live market quotes. "
             "No provider comparison or break-even point is inferred.\n"
         )
 
@@ -357,7 +358,13 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "risk_score": int(risk.get("total_score", 0)),
         "risk_details": risk.get("details", {}) or {},
         "yearly_onprem_usd": float(cost.get("yearly_onprem_usd", 0.0)),
+        "yearly_object_usd": float(cost.get("yearly_object_usd", 0.0)),
         "monthly_object_usd": float(cost.get("monthly_object_usd", 0.0)),
+        "total_yearly_usd": float(cost.get("total_yearly_usd", 0.0)),
+        "cost_notes": cost.get("notes", []) or [],
+        "capacity_tier_policy": str(sobr.get("capacity_tier_policy", "none")),
+        "performance_tier_tb": float(sobr.get("performance_tier_tb", 0.0)),
+        "moved_to_capacity_tb": float(sobr.get("moved_to_capacity_tb", 0.0)),
         "cloud_comparison": cost.get("cloud_comparison", {}) or {},
         "three_year_tco": cost.get("three_year_tco", {}) or {},
         "break_even_years": float(cost.get("break_even_years", 0.0)),

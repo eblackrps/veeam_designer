@@ -100,8 +100,23 @@ def build_parser() -> argparse.ArgumentParser:
     # Round 5
     p.add_argument("--capacity-tier", action="store_true")
     p.add_argument("--capacity-tier-fraction", type=float, default=0.5)
+    p.add_argument(
+        "--capacity-tier-policy",
+        choices=["move", "copy", "copy_move"],
+        default="move",
+    )
     p.add_argument("--direct-to-object", action="store_true")
     p.add_argument("--capacity-tier-immutable", action="store_true")
+    p.add_argument(
+        "--object-cost-usd-per-tb-month",
+        type=float,
+        default=CONFIG["object_cost_usd_per_tb_month"],
+    )
+    p.add_argument(
+        "--onprem-cost-usd-per-tb-year",
+        type=float,
+        default=CONFIG["onprem_cost_usd_per_tb_year"],
+    )
 
     # --- NAS flags ---
     p.add_argument("--nas-source-tb", type=float)
@@ -355,8 +370,11 @@ def main():
                 block_generation_days=args.block_generation_days,
                 capacity_tier_enabled=args.capacity_tier,
                 capacity_tier_fraction=args.capacity_tier_fraction,
+                capacity_tier_policy=args.capacity_tier_policy,
                 direct_to_object=args.direct_to_object,
                 capacity_tier_immutable=args.capacity_tier_immutable,
+                object_cost_usd_per_tb_month=args.object_cost_usd_per_tb_month,
+                onprem_cost_usd_per_tb_year=args.onprem_cost_usd_per_tb_year,
             )
 
     design = design_veeam_environment(vin)

@@ -251,8 +251,11 @@ def test_web_builder_exposes_hardened_calculation_inputs():
         "Immutability Period",
         "Concurrent Sources",
         "Forecast Horizon",
-        "Capacity Tier Offload",
+        "Capacity Tier Policy",
+        "Modeled Move Fraction",
         "Capacity Tier Object Lock",
+        "Object Storage Planning Rate",
+        "Local Storage Planning Rate",
         "Concurrent Proxy Tasks",
         "CDP Retention",
         "Measured CDP Write I/O",
@@ -423,12 +426,25 @@ def test_cli_vm_hardened_inputs_reach_engine():
         "--immutability",
         "--immutability-days",
         "30",
+        "--capacity-tier",
+        "--capacity-tier-policy",
+        "copy_move",
+        "--capacity-tier-fraction",
+        "0.25",
+        "--object-cost-usd-per-tb-month",
+        "12.5",
+        "--onprem-cost-usd-per-tb-year",
+        "75",
     )
 
     assert payload["input"]["years_to_plan_for"] == 2
     assert payload["input"]["wan_accel_mode"] == "direct"
     assert payload["input"]["direct_to_object"] is True
     assert payload["input"]["immutability_days"] == 30
+    assert payload["input"]["capacity_tier_policy"] == "copy_move"
+    assert payload["input"]["capacity_tier_fraction"] == 0.25
+    assert payload["input"]["object_cost_usd_per_tb_month"] == 12.5
+    assert payload["input"]["onprem_cost_usd_per_tb_year"] == 75.0
     assert payload["repo"]["operational_headroom_tb"] == 0.0
     assert payload["roles"]["hardened_repos"] is None
 

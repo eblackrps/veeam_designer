@@ -5,6 +5,33 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a6] - 2026-09-25
+
+### Fixed
+
+- Corrected storage-cost summaries so direct-object and capacity-tier object costs are included in
+  the headline yearly planning total instead of showing only local/on-premises cost
+- Rebuilt Capacity Tier cost allocation around Veeam Copy, Move, and Copy + Move behavior
+- Capacity Tier Copy now preserves the full local performance-tier footprint while adding an
+  object-storage copy
+- Capacity Tier Move reduces local storage only by an explicit modeled move fraction
+- Copy + Move now models the full object copy plus the explicit local-aging fraction
+- Forever-forward incremental chains no longer receive false local-capacity savings from Move;
+  Veeam ignores Move for an always-active forever-forward chain and applies Copy behavior
+- Replaced weak cost assertions with exact known-answer dollar tests for local-only, Move, Copy,
+  Copy + Move, direct-object, and custom-rate scenarios
+
+### Changed
+
+- Added an explicit Capacity Tier Policy selector: Move, Copy, or Copy + Move
+- Renamed the old generic offload percentage to Modeled Move Fraction so it is clearly an
+  engineering scenario input rather than a Veeam setting
+- Added visible per-site Object Storage Planning Rate and Local Storage Planning Rate inputs
+- Reports and dashboard now show combined yearly storage planning cost, plus local/object
+  components and modeled performance/object footprints
+- Cost notes explicitly exclude API calls, retrieval/egress, minimum-duration charges, taxes,
+  hardware acquisition, support, power, rack space, and discounts
+
 ## [5.0.0a5] - 2026-09-25
 
 ### Fixed

@@ -114,13 +114,27 @@ def collect_inputs_interactive() -> VeeamInput:
 
     capacity_tier_enabled = False
     capacity_tier_fraction = 0.5
+    capacity_tier_policy = "move"
     capacity_tier_immutable = False
     if repo_type == "sobr":
         capacity_tier_enabled = _prompt_bool("Enable SOBR capacity tier", False)
         if capacity_tier_enabled:
-            offload_percent = _prompt_float("Capacity tier offload (%)", 50.0)
-            capacity_tier_fraction = max(0.0, min(100.0, offload_percent)) / 100.0
+            capacity_tier_policy = _prompt_str(
+                "Capacity tier policy (move / copy / copy_move)", "move"
+            ).lower()
+            if capacity_tier_policy in {"move", "copy_move"}:
+                move_percent = _prompt_float("Modeled move fraction (%)", 50.0)
+                capacity_tier_fraction = max(0.0, min(100.0, move_percent)) / 100.0
             capacity_tier_immutable = _prompt_bool("Enable object lock on capacity tier", False)
+
+    object_cost_usd_per_tb_month = _prompt_float(
+        "Object storage planning rate ($/TB/month)",
+        float(CONFIG["object_cost_usd_per_tb_month"]),
+    )
+    onprem_cost_usd_per_tb_year = _prompt_float(
+        "Local storage planning rate ($/TB/year)",
+        float(CONFIG["onprem_cost_usd_per_tb_year"]),
+    )
 
     hypervisor = _prompt_str(
         "Hypervisor (vmware / hyperv / nutanix_ahv / proxmox / agent)", "vmware"
@@ -199,8 +213,11 @@ def collect_inputs_interactive() -> VeeamInput:
         block_generation_days=block_generation_days,
         capacity_tier_enabled=capacity_tier_enabled,
         capacity_tier_fraction=capacity_tier_fraction,
+        capacity_tier_policy=capacity_tier_policy,
         capacity_tier_immutable=capacity_tier_immutable,
         direct_to_object=repo_type == "object",
+        object_cost_usd_per_tb_month=object_cost_usd_per_tb_month,
+        onprem_cost_usd_per_tb_year=onprem_cost_usd_per_tb_year,
     )
 
 
@@ -276,7 +293,8 @@ def print_human_summary(d: VeeamDesign) -> None:
     print("Cost planning assumptions:")
     print(f"  Monthly object        : ${d.cost.monthly_object_usd:.2f}")
     print(f"  Yearly object         : ${d.cost.yearly_object_usd:.2f}")
-    print(f"  Yearly on-prem        : ${d.cost.yearly_onprem_usd:.2f}\n")
+    print(f"  Yearly on-prem        : ${d.cost.yearly_onprem_usd:.2f}")
+    print(f"  Total storage plan    : ${d.cost.total_yearly_usd:.2f}\n")
 
     print("Risk:")
     print(f"  Overall               : {d.risk.level.upper()} (score {d.risk.total_score})")
