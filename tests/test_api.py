@@ -56,9 +56,9 @@ def test_run_page_renders_builder():
     client = TestClient(app)
     r = client.get("/run")
     assert r.status_code == 200
-    assert "Veeam infrastructure sizing." in r.text
+    assert "Veeam Infrastructure Sizing" in r.text
     assert "Model backup capacity, infrastructure requirements, WAN demand, and storage cost" in r.text
-    assert "Design inputs" in r.text
+    assert "Sizing inputs" in r.text
     assert "YAML / API input" in r.text
     assert "Sizing results" in r.text
     assert 'data-platforms="vmware"' in r.text
