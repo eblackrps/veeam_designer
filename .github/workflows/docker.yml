@@ -6,10 +6,75 @@ on:
       - main
     tags:
       - "v*"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  container-security:
+    name: Container security
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build candidate image
+        run: docker build --pull -t veeam-designer:scan .
+
+      - name: Verify non-root runtime and healthcheck metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect veeam-designer:scan --format '{{.Config.User}}')" = "10001:10001"
+          docker image inspect veeam-designer:scan --format '{{json .Config.Healthcheck.Test}}' | grep -q '/api/health'
+          docker compose config -q
+
+      - name: Smoke test hardened runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker rm -f veeam-designer-scan >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker run -d --name veeam-designer-scan \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 256 \
+            --tmpfs /tmp:size=64m,mode=1777 \
+            -p 127.0.0.1:18000:8000 \
+            veeam-designer:scan
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs veeam-designer-scan
+          exit 1
+
+      - name: Scan image for high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: veeam-designer:scan
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
   build-push:
+    name: Build and publish
+    if: github.event_name != 'pull_request'
+    needs:
+      - container-security
     runs-on: ubuntu-latest
     permissions:
       contents: read
