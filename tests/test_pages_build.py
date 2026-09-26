@@ -17,7 +17,10 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "pyodide.js" in index_html
     assert "Calculation error." in index_html
     assert "Veeam Infrastructure Sizing" in index_html
-    assert (\n        "Model backup capacity, infrastructure requirements, WAN demand, and storage cost"\n        in index_html\n    )
+    assert (
+        "Model backup capacity, infrastructure requirements, WAN demand, and storage cost"
+        in index_html
+    )
     assert "Sizing inputs" in index_html
     assert "YAML / API input" in index_html
     assert "Advanced parameters" in index_html
