@@ -18,11 +18,7 @@ def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostE
     onprem_cost_per_tb_year = float(CONFIG.get("onprem_cost_usd_per_tb_year", 20.0))
 
     is_object_target = vin.repo_type == "object" or vin.direct_to_object
-    capacity_tb = (
-        sobr.capacity_tier_tb
-        if (vin.capacity_tier_enabled or is_object_target)
-        else 0.0
-    )
+    capacity_tb = sobr.capacity_tier_tb if (vin.capacity_tier_enabled or is_object_target) else 0.0
     onprem_tb = max(0.0, repo.total_repo_tb - capacity_tb)
 
     monthly_object_usd = capacity_tb * object_cost_per_tb_month

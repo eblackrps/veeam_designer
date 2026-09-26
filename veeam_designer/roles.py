@@ -527,7 +527,9 @@ def build_role_plan(vin: VeeamInput, repo: RepoSizing) -> RolePlan:
     backup_server = size_backup_server(proxies, vin)
     is_object_target = vin.repo_type == "object" or vin.direct_to_object
     hardened = (
-        None if is_object_target else size_hardened_repo(repo, proxies.total_proxy_cores, vin.refs_xfs)
+        None
+        if is_object_target
+        else size_hardened_repo(repo, proxies.total_proxy_cores, vin.refs_xfs)
     )
 
     # Object repositories may use direct data-mover access or a gateway. The current input model

@@ -47,7 +47,9 @@ def size_orca(
         )
     if nas_tb > 0:
         nas_pct = (nas_tb / protected_tb * 100.0) if protected_tb > 0 else 0.0
-        notes.append(f"NAS workload represents {nas_pct:.0f}% ({nas_tb:.1f} TB) of modeled capacity.")
+        notes.append(
+            f"NAS workload represents {nas_pct:.0f}% ({nas_tb:.1f} TB) of modeled capacity."
+        )
     if total_usable_tb - protected_tb < node_tb * 0.10:
         notes.append("Less than 10% of one node remains as capacity headroom.")
 
