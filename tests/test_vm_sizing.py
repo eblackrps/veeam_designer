@@ -140,6 +140,9 @@ def test_direct_object_uses_object_capacity_without_disk_headroom():
     assert repo.total_repo_tb == 170.0
     assert sobr.extent_count == 0
     assert sobr.capacity_tier_tb == 170.0
+    assert sobr.performance_tier_tb == 0.0
+    assert sobr.moved_to_capacity_tb == 170.0
+    assert sobr.capacity_tier_policy == "direct"
 
 
 @pytest.mark.parametrize("backup_type", ["reverse_incremental", "synthetic_full_weekly"])
@@ -166,5 +169,71 @@ def test_capacity_tier_fraction_does_not_offload_operational_headroom():
     assert repo.operational_headroom_tb == 125.0
     assert repo.total_repo_tb == 355.0
     assert sobr.capacity_tier_tb == 115.0
+    assert sobr.performance_tier_tb == 240.0
+    assert sobr.moved_to_capacity_tb == 115.0
+    assert sobr.capacity_tier_policy == "move"
     assert sobr.extent_count == 2
     assert sobr.extent_size_tb == 120.0
+
+
+def test_capacity_tier_copy_keeps_full_local_footprint():
+    vin = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_fraction=0.5,
+        capacity_tier_policy="copy",
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.total_repo_tb == 355.0
+    assert sobr.capacity_tier_tb == 230.0
+    assert sobr.performance_tier_tb == 355.0
+    assert sobr.moved_to_capacity_tb == 0.0
+    assert sobr.capacity_tier_policy == "copy"
+
+
+def test_capacity_tier_copy_move_copies_all_and_moves_modeled_fraction():
+    vin = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_fraction=0.5,
+        capacity_tier_policy="copy_move",
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.total_repo_tb == 355.0
+    assert sobr.capacity_tier_tb == 230.0
+    assert sobr.performance_tier_tb == 240.0
+    assert sobr.moved_to_capacity_tb == 115.0
+    assert sobr.capacity_tier_policy == "copy_move"
+
+
+def test_capacity_tier_rejects_unknown_policy():
+    vin = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_policy="magic",
+    )
+
+    with pytest.raises(ValueError, match="capacity_tier_policy"):
+        design_sobr(size_repository(vin), vin)
+
+
+def test_forever_forward_capacity_tier_move_is_modeled_as_copy():
+    vin = _base_input(
+        backup_type="forever_forward_incremental",
+        capacity_tier_enabled=True,
+        capacity_tier_fraction=0.5,
+        capacity_tier_policy="move",
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.total_repo_tb == 295.0
+    assert sobr.capacity_tier_policy == "copy"
+    assert sobr.capacity_tier_tb == 170.0
+    assert sobr.performance_tier_tb == 295.0
+    assert sobr.moved_to_capacity_tb == 0.0
+    assert "ignores Move" in sobr.recommendation

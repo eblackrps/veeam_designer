@@ -55,7 +55,10 @@ const defaultVmSites = [
     immutability_days: 30,
     capacity_tier_enabled: true,
     capacity_tier_percent: 50,
+    capacity_tier_policy: "move",
     capacity_tier_immutable: false,
+    object_cost_usd_per_tb_month: 20,
+    onprem_cost_usd_per_tb_year: 20,
     direct_to_object: false,
     gfs_weekly_count: 4,
     gfs_monthly_count: 12,
@@ -89,7 +92,10 @@ const defaultVmSites = [
     immutability_days: 0,
     capacity_tier_enabled: false,
     capacity_tier_percent: 50,
+    capacity_tier_policy: "move",
     capacity_tier_immutable: false,
+    object_cost_usd_per_tb_month: 20,
+    onprem_cost_usd_per_tb_year: 20,
     direct_to_object: false,
     gfs_weekly_count: 2,
     gfs_monthly_count: 6,
@@ -546,7 +552,10 @@ function collectVmSites() {
     immutability_days: getCardNumber(card, "immutability_days", 0),
     capacity_tier_enabled: getCardChecked(card, "capacity_tier_enabled"),
     capacity_tier_percent: getCardNumber(card, "capacity_tier_percent", 50),
+    capacity_tier_policy: getCardValue(card, "capacity_tier_policy") || "move",
     capacity_tier_immutable: getCardChecked(card, "capacity_tier_immutable"),
+    object_cost_usd_per_tb_month: getCardNumber(card, "object_cost_usd_per_tb_month", 20),
+    onprem_cost_usd_per_tb_year: getCardNumber(card, "onprem_cost_usd_per_tb_year", 20),
     direct_to_object:
       getCardChecked(card, "direct_to_object") || getCardValue(card, "repo_type") === "object",
     gfs_weekly_count: getCardNumber(card, "gfs_weekly_count", 0),
@@ -701,7 +710,10 @@ function buildVmSiteYaml(
     `      immutability_days: ${site.immutability_days}`,
     `      capacity_tier_enabled: ${site.capacity_tier_enabled}`,
     `      capacity_tier_fraction: ${Math.max(0, Math.min(100, site.capacity_tier_percent)) / 100}`,
+    `      capacity_tier_policy: ${site.capacity_tier_policy}`,
     `      capacity_tier_immutable: ${site.capacity_tier_immutable}`,
+    `      object_cost_usd_per_tb_month: ${site.object_cost_usd_per_tb_month}`,
+    `      onprem_cost_usd_per_tb_year: ${site.onprem_cost_usd_per_tb_year}`,
     `      direct_to_object: ${site.direct_to_object}`,
     `      block_generation_days: ${site.block_generation_days}`,
     `      concurrent_jobs: ${site.concurrent_jobs}`,
@@ -826,7 +838,7 @@ function renderDashboard(dashboard) {
           `${formatInteger(site.bs_cores)} cores / ${formatInteger(site.bs_ram_gb)} GB${site.bs_deployment_mode ? ` / ${site.bs_deployment_mode}` : ""}`,
         )}
         ${renderMetric("Required WAN", `${formatNumber(site.wan_required_mbps, 1)} Mbps`)}
-        ${renderMetric("Yearly On-Prem", formatCurrency(site.yearly_onprem_usd))}
+        ${renderMetric("Storage Planning Cost/yr", formatCurrency(site.total_yearly_usd))}
       </dl>
     `;
     dashboardSites.appendChild(article);

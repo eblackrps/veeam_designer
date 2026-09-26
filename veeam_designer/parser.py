@@ -59,8 +59,15 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         # Round 5
         capacity_tier_enabled=d.get("capacity_tier_enabled", False),
         capacity_tier_fraction=d.get("capacity_tier_fraction", 0.5),
+        capacity_tier_policy=str(d.get("capacity_tier_policy", "move")),
         direct_to_object=d.get("direct_to_object", False),
         capacity_tier_immutable=d.get("capacity_tier_immutable", False),
+        object_cost_usd_per_tb_month=float(
+            d.get("object_cost_usd_per_tb_month", CONFIG["object_cost_usd_per_tb_month"])
+        ),
+        onprem_cost_usd_per_tb_year=float(
+            d.get("onprem_cost_usd_per_tb_year", CONFIG["onprem_cost_usd_per_tb_year"])
+        ),
         # v3: compliance
         compliance_framework=d.get("compliance_framework", "none"),
         # v3: replication sub-input

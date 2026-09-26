@@ -74,3 +74,36 @@ def test_dashboard_reports_platform_workers_for_proxmox():
     assert site["platform_worker_ram_each"] == 6
     assert site["bs_deployment_mode"] == "software_appliance"
     assert "PROXMOX workers" in bundle["blueprint"]
+
+
+def test_vm_summary_uses_total_storage_planning_cost_for_direct_object():
+    project_json = """
+    {
+      "profile": "enterprise",
+      "workload_type": "vm",
+      "total_data_tb": 100,
+      "annual_growth_percent": 0,
+      "years_to_plan_for": 0,
+      "daily_change_percent": 5,
+      "backup_type": "forever_forward_incremental",
+      "primary_retention_days": 7,
+      "gfs_weekly_count": 0,
+      "gfs_monthly_count": 0,
+      "gfs_yearly_count": 0,
+      "backup_window_hours": 8,
+      "vm_count": 100,
+      "repo_type": "object",
+      "direct_to_object": true,
+      "object_cost_usd_per_tb_month": 10,
+      "onprem_cost_usd_per_tb_year": 999
+    }
+    """
+
+    bundle = design_browser_bundle_from_project_text(project_json)
+    cost = bundle["payload"]["cost"]
+    summary = {card["label"]: card["value"] for card in bundle["summary_cards"]}
+
+    assert cost["yearly_onprem_usd"] == 0.0
+    assert cost["yearly_object_usd"] > 0.0
+    assert cost["total_yearly_usd"] == cost["yearly_object_usd"]
+    assert summary["Storage Planning/yr"] != "$0"

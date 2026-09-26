@@ -361,10 +361,29 @@ calculator does not invent that topology without an explicit project input.
 
 ### Cost planning
 
-The infrastructure-cost model is configuration-driven. object_cost_usd_per_tb_month and
-onprem_cost_usd_per_tb_year are planning-rate inputs, not Veeam pricing or live provider quotes.
-The calculator does not infer provider-specific prices, discounts, purchase CapEx, or a cloud
-break-even point. Reports label these values as planning assumptions.
+Storage cost output is driven by explicit per-site planning rates:
+
+- object_cost_usd_per_tb_month is the modeled effective object-storage cost per TB per month
+- onprem_cost_usd_per_tb_year is the modeled effective local-storage cost per TB per year
+
+Capacity Tier policy changes the capacity basis:
+
+- Copy models the full retained/GFS footprint in object storage while preserving the full local
+  performance-tier footprint
+- Move models only the explicit move fraction in object storage and subtracts that modeled moved
+  amount from local capacity
+- Copy + Move models the full object copy and subtracts only the explicit modeled move fraction
+  from local capacity
+- for forever-forward incremental chains, Move is modeled as Copy because Veeam documents that an
+  always-active forever-forward chain cannot be moved as an inactive chain
+
+The move fraction is deliberately a scenario input, not a hidden prediction. Actual Move behavior
+depends on inactive backup chains and the operational restore window.
+
+These rates are not Veeam pricing or live provider quotes. The storage-rate model does not infer
+provider-specific API charges, retrieval/egress, minimum-storage-duration charges, taxes, hardware
+purchase cost, support, power, rack space, discounts, or cloud break-even. Use a fully burdened
+local-storage rate and an effective object-storage rate if those costs need to be represented.
 
 ## Remaining Planning Assumptions
 

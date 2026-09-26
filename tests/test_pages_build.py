@@ -44,7 +44,11 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert "deployment_mode" in app_js
     assert "proxy_deployment_mode" in app_js
     assert "capacity_tier_fraction" in app_js
+    assert "capacity_tier_policy" in app_js
     assert "capacity_tier_immutable" in app_js
+    assert "object_cost_usd_per_tb_month" in app_js
+    assert "onprem_cost_usd_per_tb_year" in app_js
+    assert "Storage Planning Cost/yr" in app_js
     assert "Break-even" not in app_js
     assert "syncContextVisibility" in app_js
     assert "renderHumanOutput" in app_js

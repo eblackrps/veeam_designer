@@ -1,50 +1,70 @@
 from __future__ import annotations
 
-from .config import CONFIG
 from .models import CostEstimate, RepoSizing, SobrDesign, VeeamInput
-
-# ---------------------------------------------------------------------------
-# Round 9: multi-cloud provider registry
-# ---------------------------------------------------------------------------
 
 
 def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostEstimate:
-    """Estimate configured infrastructure planning costs.
+    """Estimate configured storage planning costs from explicit rates and tier policy."""
 
-    The rates are explicit configuration assumptions. This function does not infer live cloud
-    pricing, provider discounts, hardware acquisition cost, or a cloud break-even point.
-    """
-
-    object_cost_per_tb_month = float(CONFIG.get("object_cost_usd_per_tb_month", 20.0))
-    onprem_cost_per_tb_year = float(CONFIG.get("onprem_cost_usd_per_tb_year", 20.0))
+    object_rate = max(0.0, float(vin.object_cost_usd_per_tb_month))
+    onprem_rate = max(0.0, float(vin.onprem_cost_usd_per_tb_year))
 
     is_object_target = vin.repo_type == "object" or vin.direct_to_object
-    capacity_tb = sobr.capacity_tier_tb if (vin.capacity_tier_enabled or is_object_target) else 0.0
-    onprem_tb = max(0.0, repo.total_repo_tb - capacity_tb)
+    policy = (sobr.capacity_tier_policy or vin.capacity_tier_policy or "none").strip().lower()
 
-    monthly_object_usd = capacity_tb * object_cost_per_tb_month
+    object_tb = max(0.0, sobr.capacity_tier_tb)
+    if is_object_target:
+        local_tb = 0.0
+    elif vin.capacity_tier_enabled:
+        local_tb = max(0.0, sobr.performance_tier_tb)
+    else:
+        local_tb = max(0.0, repo.total_repo_tb)
+
+    monthly_object_usd = object_tb * object_rate
     yearly_object_usd = monthly_object_usd * 12.0
-    yearly_onprem_usd = onprem_tb * onprem_cost_per_tb_year
+    yearly_onprem_usd = local_tb * onprem_rate
+    total_yearly_usd = yearly_object_usd + yearly_onprem_usd
 
     notes: list[str] = [
-        "Cost values use configured planning rates only; they are not Veeam, cloud-provider, "
+        "Storage cost values use explicit planning rates; they are not live Veeam, cloud-provider, "
         "or storage-vendor quotes."
     ]
-    if capacity_tb > 0:
+    if object_tb > 0:
         notes.append(
-            f"{capacity_tb:.1f} TB object capacity at the configured "
-            f"${object_cost_per_tb_month:.2f}/TB/month planning rate."
+            f"{object_tb:.1f} TB object capacity at " + "$" + f"{object_rate:.2f}/modeled-TB/month."
         )
-    if onprem_tb > 0:
+    if local_tb > 0:
         notes.append(
-            f"{onprem_tb:.1f} TB on-premises at the configured "
-            f"${onprem_cost_per_tb_year:.2f}/TB/year planning rate."
+            f"{local_tb:.1f} TB local capacity at " + "$" + f"{onprem_rate:.2f}/modeled-TB/year."
         )
+
+    if policy == "copy":
+        notes.append(
+            "Capacity Tier Copy is additive for storage planning: the copied object footprint "
+            "does not reduce the local performance-tier capacity."
+        )
+    elif policy == "move":
+        notes.append(
+            "Capacity Tier Move reduces local capacity only by the explicit modeled move fraction. "
+            "Actual moved data depends on inactive backup chains and the operational restore window."
+        )
+    elif policy == "copy_move":
+        notes.append(
+            "Capacity Tier Copy + Move models a full object copy plus local reduction from the "
+            "explicit move fraction. Actual local aging depends on chain state and the operational "
+            "restore window."
+        )
+
+    notes.append(
+        "API operations, retrieval/egress, minimum-storage-duration charges, taxes, hardware "
+        "acquisition, support, power, rack space, and discounts are outside this storage-rate model."
+    )
 
     return CostEstimate(
         monthly_object_usd=round(monthly_object_usd, 2),
         yearly_object_usd=round(yearly_object_usd, 2),
         yearly_onprem_usd=round(yearly_onprem_usd, 2),
+        total_yearly_usd=round(total_yearly_usd, 2),
         notes=notes,
         cloud_comparison={},
         three_year_tco={},
