@@ -54,6 +54,9 @@ dev = [
   "pytest>=8,<9",
   "ruff>=0.6,<1",
 ]
+e2e = [
+  "playwright==1.63.0",
+]
 
 [tool.setuptools.dynamic]
 version = { attr = "veeam_designer._version.__version__" }
