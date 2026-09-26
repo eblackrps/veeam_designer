@@ -5,6 +5,28 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a8] - 2026-09-25
+
+### Fixed
+
+- Added a Capacity Tier Object Lock cost guardrail without changing the verified storage math:
+  object-storage dollars are labeled as a base modeled footprint when immutable expired blocks can
+  remain billed until immutability and Block Generation periods expire
+- Browser cost summaries now surface engine cost notes, including the Object Lock billing caveat
+
+### Security
+
+- Container now runs as a dedicated non-root user and includes a real Docker health check against
+  `/api/health`
+- Compose defaults now use loopback binding, a read-only root filesystem, dropped Linux
+  capabilities, `no-new-privileges`, PID limiting, init, restart policy, and a temporary `/tmp`
+- CI now audits Python dependencies and blocks publication on fixable HIGH/CRITICAL container
+  vulnerabilities
+
+### Changed
+
+- Docker deployment guidance documents hardened defaults and explicit opt-in network exposure
+
 ## [5.0.0a7] - 2026-09-25
 
 ### Fixed

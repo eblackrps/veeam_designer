@@ -263,21 +263,26 @@ def render_cost_human(payload: JSONDict) -> str:
             )
         lines.append(f"- Total configured on-prem: ${total_on_prem:,.0f}/yr")
         lines.append(f"- Total configured object: ${total_object:,.0f}/yr")
-        lines.append(
-            "- These are configured planning rates, not Veeam quotes or live market pricing."
-        )
+        seen_notes: set[str] = set()
+        for site in payload.get("sites", []):
+            cost = (site.get("design") or {}).get("cost") or {}
+            for note in cost.get("notes") or []:
+                note_text = str(note).strip()
+                if note_text and note_text not in seen_notes:
+                    seen_notes.add(note_text)
+                    lines.append(f"- {note_text}")
         return "\n".join(lines) + "\n"
 
     if kind == "vm":
         cost = payload.get("cost") or {}
-        return (
-            "Cost planning assumptions\n"
-            f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr\n"
-            f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr\n"
-            f"- Total storage planning estimate: ${float(cost.get('total_yearly_usd', 0.0)):,.0f}/yr\n"
-            "- Rates are explicit storage-planning inputs, not Veeam pricing or live market quotes. "
-            "No provider comparison or break-even point is inferred.\n"
-        )
+        lines = [
+            "Cost planning assumptions",
+            f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr",
+            f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr",
+            f"- Total storage planning estimate: ${float(cost.get('total_yearly_usd', 0.0)):,.0f}/yr",
+        ]
+        lines.extend(f"- {note}" for note in (cost.get("notes") or []))
+        return "\n".join(lines) + "\n"
 
     return "Cost projection is not generated for this calculator mode.\n"
 

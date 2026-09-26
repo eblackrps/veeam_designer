@@ -2,8 +2,18 @@ services:
   veeam-designer:
     build: .
     image: emb079/veeam-designer:latest
+    init: true
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     volumes:
       - ./config.json:/app/config.json:ro
       - ./profiles.json:/app/profiles.json:ro

@@ -107,3 +107,35 @@ def test_vm_summary_uses_total_storage_planning_cost_for_direct_object():
     assert cost["yearly_object_usd"] > 0.0
     assert cost["total_yearly_usd"] == cost["yearly_object_usd"]
     assert summary["Storage Planning/yr"] != "$0"
+
+
+def test_vm_cost_summary_surfaces_object_lock_cost_guardrail():
+    project_json = """
+    {
+      "profile": "enterprise",
+      "workload_type": "vm",
+      "total_data_tb": 100,
+      "annual_growth_percent": 0,
+      "years_to_plan_for": 0,
+      "daily_change_percent": 5,
+      "backup_type": "synthetic_full_weekly",
+      "primary_retention_days": 7,
+      "gfs_weekly_count": 0,
+      "gfs_monthly_count": 0,
+      "gfs_yearly_count": 0,
+      "backup_window_hours": 8,
+      "vm_count": 100,
+      "repo_type": "sobr",
+      "capacity_tier_enabled": true,
+      "capacity_tier_policy": "copy",
+      "capacity_tier_immutable": true,
+      "object_cost_usd_per_tb_month": 20,
+      "onprem_cost_usd_per_tb_year": 20
+    }
+    """
+
+    bundle = design_browser_bundle_from_project_text(project_json)
+
+    assert "base modeled footprint" in bundle["cost"]
+    assert "Actual billed storage may be higher" in bundle["cost"]
+    assert "Block Generation" in bundle["cost"]

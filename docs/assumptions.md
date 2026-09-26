@@ -407,6 +407,24 @@ provider-specific API charges, retrieval/egress, minimum-storage-duration charge
 purchase cost, support, power, rack space, discounts, or cloud break-even. Use a fully burdened
 local-storage rate and an effective object-storage rate if those costs need to be represented.
 
+When Capacity Tier Object Lock is enabled, the object-storage dollar amount is a **base modeled
+footprint**, not a prediction of the provider's final billed occupancy. Veeam removes immutable
+Capacity Tier blocks only after their immutability period expires. Veeam also applies Block
+Generation automatically: 30 days for Amazon S3, IBM Cloud, Google Cloud, and 11:11 Cloud object
+storage, and 10 days for other object-storage repositories. Reused or dependent blocks can have
+their immutability extended into later generations.
+
+Because that carryover depends on block age, chain behavior, immutability settings, GFS behavior,
+repository type, and provider billing, Veeam Designer does not invent a percentage uplift. Actual
+billed object storage can exceed the calculator's base footprint while expired blocks remain
+immutable.
+
+References:
+
+- [Veeam: Retention Policy for Capacity Tier](https://helpcenter.veeam.com/docs/vbr/userguide/capacity_tier_retention.html?ver=13)
+- [Veeam: Block Generation](https://helpcenter.veeam.com/docs/vbr/userguide/block_gen.html?ver=13)
+- [Veeam: Object Storage Immutability Considerations](https://helpcenter.veeam.com/docs/vbr/userguide/os_immutability_limitations.html?ver=13)
+
 ## Remaining Planning Assumptions
 
 The following values still require engineering judgment or environment-specific evidence:
