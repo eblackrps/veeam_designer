@@ -54,7 +54,7 @@ const defaultVmSites = [
     immutability_enabled: true,
     immutability_days: 30,
     capacity_tier_enabled: true,
-    capacity_tier_percent: 50,
+    capacity_tier_operational_restore_days: 7,
     capacity_tier_policy: "move",
     capacity_tier_immutable: false,
     object_cost_usd_per_tb_month: 20,
@@ -91,7 +91,7 @@ const defaultVmSites = [
     immutability_enabled: false,
     immutability_days: 0,
     capacity_tier_enabled: false,
-    capacity_tier_percent: 50,
+    capacity_tier_operational_restore_days: 7,
     capacity_tier_policy: "move",
     capacity_tier_immutable: false,
     object_cost_usd_per_tb_month: 20,
@@ -352,7 +352,16 @@ function loadStoredState() {
       replication: { ...defaultState.replication, ...(parsed.replication || {}) },
       vmSites:
         Array.isArray(parsed.vmSites) && parsed.vmSites.length
-          ? parsed.vmSites
+          ? parsed.vmSites.map((site, index) => {
+              const template =
+                defaultVmSites[index] || defaultVmSites[0] || { capacity_tier_operational_restore_days: 7 };
+              const migrated = { ...structuredClone(template), ...(site || {}) };
+              if (!Number.isFinite(Number(migrated.capacity_tier_operational_restore_days))) {
+                migrated.capacity_tier_operational_restore_days = 7;
+              }
+              delete migrated.capacity_tier_percent;
+              return migrated;
+            })
           : structuredClone(defaultState.vmSites),
     };
   } catch {
@@ -551,7 +560,11 @@ function collectVmSites() {
     immutability_enabled: getCardChecked(card, "immutability_enabled"),
     immutability_days: getCardNumber(card, "immutability_days", 0),
     capacity_tier_enabled: getCardChecked(card, "capacity_tier_enabled"),
-    capacity_tier_percent: getCardNumber(card, "capacity_tier_percent", 50),
+    capacity_tier_operational_restore_days: getCardNumber(
+      card,
+      "capacity_tier_operational_restore_days",
+      7,
+    ),
     capacity_tier_policy: getCardValue(card, "capacity_tier_policy") || "move",
     capacity_tier_immutable: getCardChecked(card, "capacity_tier_immutable"),
     object_cost_usd_per_tb_month: getCardNumber(card, "object_cost_usd_per_tb_month", 20),
@@ -709,7 +722,7 @@ function buildVmSiteYaml(
     `      immutability_enabled: ${site.immutability_enabled}`,
     `      immutability_days: ${site.immutability_days}`,
     `      capacity_tier_enabled: ${site.capacity_tier_enabled}`,
-    `      capacity_tier_fraction: ${Math.max(0, Math.min(100, site.capacity_tier_percent)) / 100}`,
+    `      capacity_tier_operational_restore_days: ${Math.max(0, site.capacity_tier_operational_restore_days)}`,
     `      capacity_tier_policy: ${site.capacity_tier_policy}`,
     `      capacity_tier_immutable: ${site.capacity_tier_immutable}`,
     `      object_cost_usd_per_tb_month: ${site.object_cost_usd_per_tb_month}`,

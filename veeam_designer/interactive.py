@@ -113,8 +113,9 @@ def collect_inputs_interactive() -> VeeamInput:
     )
 
     capacity_tier_enabled = False
-    capacity_tier_fraction = 0.5
+    capacity_tier_fraction = 0.5  # Legacy compatibility; ignored by the ORW model.
     capacity_tier_policy = "move"
+    capacity_tier_operational_restore_days = 7
     capacity_tier_immutable = False
     if repo_type == "sobr":
         capacity_tier_enabled = _prompt_bool("Enable SOBR capacity tier", False)
@@ -123,8 +124,9 @@ def collect_inputs_interactive() -> VeeamInput:
                 "Capacity tier policy (move / copy / copy_move)", "move"
             ).lower()
             if capacity_tier_policy in {"move", "copy_move"}:
-                move_percent = _prompt_float("Modeled move fraction (%)", 50.0)
-                capacity_tier_fraction = max(0.0, min(100.0, move_percent)) / 100.0
+                capacity_tier_operational_restore_days = _prompt_int(
+                    "Operational restore window (days)", 7
+                )
             capacity_tier_immutable = _prompt_bool("Enable object lock on capacity tier", False)
 
     object_cost_usd_per_tb_month = _prompt_float(
@@ -214,6 +216,7 @@ def collect_inputs_interactive() -> VeeamInput:
         capacity_tier_enabled=capacity_tier_enabled,
         capacity_tier_fraction=capacity_tier_fraction,
         capacity_tier_policy=capacity_tier_policy,
+        capacity_tier_operational_restore_days=capacity_tier_operational_restore_days,
         capacity_tier_immutable=capacity_tier_immutable,
         direct_to_object=repo_type == "object",
         object_cost_usd_per_tb_month=object_cost_usd_per_tb_month,

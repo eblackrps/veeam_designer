@@ -1,5 +1,7 @@
 from veeam_designer.cost import estimate_costs
 from veeam_designer.models import RepoSizing, SobrDesign, VeeamInput
+from veeam_designer.sizing import size_repository
+from veeam_designer.sobr import design_sobr
 
 
 def _repo(total_tb=100.0):
@@ -142,3 +144,67 @@ def test_cost_model_does_not_emit_fake_provider_or_break_even_precision():
     assert result.break_even_years == 0.0
     assert any("not live" in note for note in result.notes)
     assert any("retrieval/egress" in note for note in result.notes)
+
+
+def test_orw_driven_move_cost_known_answer_end_to_end():
+    vin = _vin(
+        daily_change_percent=10.0,
+        backup_type="synthetic_full_weekly",
+        primary_retention_days=7,
+        gfs_weekly_count=0,
+        gfs_monthly_count=0,
+        gfs_yearly_count=0,
+        compression_ratio=1.0,
+        dedupe_ratio=1.0,
+        years_to_plan_for=0,
+        refs_xfs=True,
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=7,
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+    result = estimate_costs(repo, sobr, vin)
+
+    assert sobr.capacity_tier_tb == 60.0
+    assert sobr.performance_tier_tb == 295.0
+    assert result.monthly_object_usd == 1200.0
+    assert result.yearly_object_usd == 14400.0
+    assert result.yearly_onprem_usd == 5900.0
+    assert result.total_yearly_usd == 20300.0
+
+
+def test_orw_changes_cost_without_any_move_fraction_input():
+    seven_day = _vin(
+        daily_change_percent=10.0,
+        backup_type="synthetic_full_weekly",
+        primary_retention_days=7,
+        gfs_weekly_count=0,
+        gfs_monthly_count=0,
+        gfs_yearly_count=0,
+        compression_ratio=1.0,
+        dedupe_ratio=1.0,
+        years_to_plan_for=0,
+        refs_xfs=True,
+        capacity_tier_enabled=True,
+        capacity_tier_policy="move",
+        capacity_tier_operational_restore_days=7,
+    )
+    zero_day = VeeamInput(
+        **{
+            **seven_day.__dict__,
+            "capacity_tier_operational_restore_days": 0,
+            "capacity_tier_fraction": 0.0,
+        }
+    )
+
+    seven_cost = estimate_costs(
+        size_repository(seven_day),
+        design_sobr(size_repository(seven_day), seven_day),
+        seven_day,
+    )
+    zero_repo = size_repository(zero_day)
+    zero_cost = estimate_costs(zero_repo, design_sobr(zero_repo, zero_day), zero_day)
+
+    assert seven_cost.total_yearly_usd == 20300.0
+    assert zero_cost.total_yearly_usd == 22500.0

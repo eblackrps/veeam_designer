@@ -252,7 +252,7 @@ def test_web_builder_exposes_hardened_calculation_inputs():
         "Concurrent Sources",
         "Forecast Horizon",
         "Capacity Tier Policy",
-        "Modeled Move Fraction",
+        "Operational Restore Window",
         "Capacity Tier Object Lock",
         "Object Storage Planning Rate",
         "Local Storage Planning Rate",
@@ -429,8 +429,8 @@ def test_cli_vm_hardened_inputs_reach_engine():
         "--capacity-tier",
         "--capacity-tier-policy",
         "copy_move",
-        "--capacity-tier-fraction",
-        "0.25",
+        "--capacity-tier-operational-restore-days",
+        "9",
         "--object-cost-usd-per-tb-month",
         "12.5",
         "--onprem-cost-usd-per-tb-year",
@@ -442,7 +442,7 @@ def test_cli_vm_hardened_inputs_reach_engine():
     assert payload["input"]["direct_to_object"] is True
     assert payload["input"]["immutability_days"] == 30
     assert payload["input"]["capacity_tier_policy"] == "copy_move"
-    assert payload["input"]["capacity_tier_fraction"] == 0.25
+    assert payload["input"]["capacity_tier_operational_restore_days"] == 9
     assert payload["input"]["object_cost_usd_per_tb_month"] == 12.5
     assert payload["input"]["onprem_cost_usd_per_tb_year"] == 75.0
     assert payload["repo"]["operational_headroom_tb"] == 0.0
@@ -511,3 +511,40 @@ def test_cli_replication_cdp_inputs_reach_engine():
     assert payload["input"]["cdp_retention_hours"] == 12.0
     assert payload["input"]["cdp_write_io_mb_s"] == 250.0
     assert payload["input"]["cdp_network_encryption"] is True
+
+
+def test_capacity_tier_orw_round_trips_through_yaml_parser_and_presenter():
+    project = """workload_type: vm
+total_data_tb: 100
+annual_growth_percent: 0
+years_to_plan_for: 0
+daily_change_percent: 10
+backup_type: synthetic_full_weekly
+primary_retention_days: 7
+gfs_weekly_count: 0
+gfs_monthly_count: 0
+gfs_yearly_count: 0
+backup_window_hours: 8
+target_rpo_hours: 24
+compression_ratio: 1
+dedupe_ratio: 1
+vm_count: 100
+repo_type: sobr
+refs_xfs: true
+capacity_tier_enabled: true
+capacity_tier_policy: move
+capacity_tier_operational_restore_days: 7
+object_cost_usd_per_tb_month: 20
+onprem_cost_usd_per_tb_year: 20
+"""
+
+    bundle = design_browser_bundle_from_project_text(project, suffix=".yml")
+    payload = bundle["payload"]
+    site = bundle["dashboard"]["sites"][0]
+
+    assert payload["input"]["capacity_tier_operational_restore_days"] == 7
+    assert payload["sobr"]["moved_to_capacity_tb"] == 60.0
+    assert payload["sobr"]["performance_tier_tb"] == 295.0
+    assert site["operational_restore_window_days"] == 7
+    assert "Operational restore window: 7 days" in bundle["blueprint"]
+    assert "Move basis:" in bundle["blueprint"]

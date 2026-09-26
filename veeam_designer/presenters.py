@@ -365,6 +365,9 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "capacity_tier_policy": str(sobr.get("capacity_tier_policy", "none")),
         "performance_tier_tb": float(sobr.get("performance_tier_tb", 0.0)),
         "moved_to_capacity_tb": float(sobr.get("moved_to_capacity_tb", 0.0)),
+        "operational_restore_window_days": int(sobr.get("operational_restore_window_days", 0)),
+        "move_eligible_short_term_tb": float(sobr.get("move_eligible_short_term_tb", 0.0)),
+        "move_model_basis": str(sobr.get("move_model_basis", "")),
         "cloud_comparison": cost.get("cloud_comparison", {}) or {},
         "three_year_tco": cost.get("three_year_tco", {}) or {},
         "break_even_years": float(cost.get("break_even_years", 0.0)),
@@ -414,6 +417,7 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
             roles = design.get("roles") or {}
             proxies = roles.get("proxies") or {}
             workers = roles.get("platform_workers") or {}
+            sobr = design.get("sobr") or {}
             lines.append(f"{site.get('name', 'Site')}")
             lines.append(f"- Total repo: {float(repo.get('total_repo_tb', 0.0)):.1f} TB")
             lines.append(f"- Retained data: {float(repo.get('short_term_data_tb', 0.0)):.1f} TB")
@@ -436,6 +440,17 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
                 f"- Required WAN: "
                 f"{float((design.get('network') or {}).get('required_mbps', 0.0)):.1f} Mbps"
             )
+            if str(sobr.get("capacity_tier_policy", "none")) != "none":
+                lines.append(
+                    f"- Capacity tier: {str(sobr.get('capacity_tier_policy', 'none')).replace('_', ' ')} / "
+                    f"{float(sobr.get('performance_tier_tb', 0.0)):.1f} TB local / "
+                    f"{float(sobr.get('capacity_tier_tb', 0.0)):.1f} TB object"
+                )
+                if str(sobr.get("capacity_tier_policy", "none")) in {"move", "copy_move"}:
+                    lines.append(
+                        f"- Operational restore window: "
+                        f"{int(sobr.get('operational_restore_window_days', 0))} days"
+                    )
             lines.append("")
         return "\n".join(lines).strip() + "\n"
 
@@ -445,6 +460,24 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
     workers = roles.get("platform_workers") or {}
     backup_server = roles.get("backup_server") or {}
     network = payload.get("network") or {}
+    sobr = payload.get("sobr") or {}
+    tier_policy = str(sobr.get("capacity_tier_policy", "none"))
+    tier_lines = ""
+    if tier_policy != "none":
+        tier_lines = (
+            f"- Capacity tier: {tier_policy.replace('_', ' ')} / "
+            f"{float(sobr.get('performance_tier_tb', 0.0)):.1f} TB local / "
+            f"{float(sobr.get('capacity_tier_tb', 0.0)):.1f} TB object\n"
+        )
+        if tier_policy in {"move", "copy_move"}:
+            tier_lines += (
+                f"- Operational restore window: "
+                f"{int(sobr.get('operational_restore_window_days', 0))} days\n"
+            )
+        move_basis = str(sobr.get("move_model_basis", "")).strip()
+        if move_basis:
+            tier_lines += f"- Move basis: {move_basis}\n"
+
     mover_line = (
         f"- {str(workers.get('platform', 'platform')).upper()} workers: "
         f"{int(workers.get('worker_count', 0))} x "
@@ -467,6 +500,7 @@ def _render_vm_blueprint(payload: JSONDict) -> str:
         f"- Retained short-term data: {float(repo.get('short_term_data_tb', 0.0)):.1f} TB\n"
         f"- Operational headroom: {float(repo.get('operational_headroom_tb', 0.0)):.1f} TB\n"
         f"{basis_line}"
+        f"{tier_lines}"
         f"{mover_line}"
         f"- Backup server: {int(backup_server.get('cores', 0))} cores / "
         f"{int(backup_server.get('ram_gb', 0))} GB RAM "

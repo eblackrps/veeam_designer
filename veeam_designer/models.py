@@ -59,8 +59,10 @@ class VeeamInput:
 
     # Round 5: capacity tier
     capacity_tier_enabled: bool = False
+    # Legacy compatibility only. Capacity Tier Move sizing no longer uses a percentage.
     capacity_tier_fraction: float = 0.5
     capacity_tier_policy: str = "move"
+    capacity_tier_operational_restore_days: int = 7
     direct_to_object: bool = False
     capacity_tier_immutable: bool = False
 
@@ -228,6 +230,9 @@ class SobrDesign:
     performance_tier_tb: float = 0.0
     moved_to_capacity_tb: float = 0.0
     capacity_tier_policy: str = "none"
+    operational_restore_window_days: int = 0
+    move_eligible_short_term_tb: float = 0.0
+    move_model_basis: str = ""
 
 
 @dataclass

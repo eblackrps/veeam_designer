@@ -60,6 +60,9 @@ def _vin_from_dict(d: dict) -> VeeamInput:
         capacity_tier_enabled=d.get("capacity_tier_enabled", False),
         capacity_tier_fraction=d.get("capacity_tier_fraction", 0.5),
         capacity_tier_policy=str(d.get("capacity_tier_policy", "move")),
+        capacity_tier_operational_restore_days=int(
+            d.get("capacity_tier_operational_restore_days", 7)
+        ),
         direct_to_object=d.get("direct_to_object", False),
         capacity_tier_immutable=d.get("capacity_tier_immutable", False),
         object_cost_usd_per_tb_month=float(

@@ -26,6 +26,8 @@ sites:
       refs_xfs: true
       immutability_enabled: true
       capacity_tier_enabled: true
+      capacity_tier_policy: move
+      capacity_tier_operational_restore_days: 7
       concurrent_jobs: 20
 
   - name: Recovery Site
