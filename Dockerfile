@@ -13,8 +13,8 @@ COPY ui/ ./ui/
 COPY config.json profiles.json example-project.yml ./
 
 RUN pip install . \
-    && groupadd --system --gid 10001 veeam \
-    && useradd --system --uid 10001 --gid veeam --home-dir /app --shell /usr/sbin/nologin veeam
+    && groupadd --gid 10001 veeam \
+    && useradd --uid 10001 --gid veeam --no-create-home --home-dir /app --shell /usr/sbin/nologin veeam
 
 USER 10001:10001
 
