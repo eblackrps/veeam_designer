@@ -13,15 +13,15 @@ def design_sobr(repo: RepoSizing, vin: VeeamInput) -> SobrDesign:
     """
     total_repo_tb = repo.total_repo_tb
 
-    # Round 5: direct-to-object bypasses the performance tier entirely
-    if vin.direct_to_object:
+    # Direct-to-object or a generic object repository bypasses the performance tier entirely.
+    if vin.direct_to_object or vin.repo_type == "object":
         extent_count = 0
         extent_size_tb = 0.0
         capacity_tier_tb = round(total_repo_tb, 1)
         archive_tier_tb = 0.0
         rec = (
-            "Direct-to-object mode: all backup data written directly to object storage. "
-            "No local performance tier required; gateway server(s) act as data movers. "
+            "Object-target mode: all modeled backup capacity is assigned to object storage. "
+            "No local performance tier is included in this design. "
         )
         if vin.capacity_tier_immutable:
             rec += "Object-lock immutability enabled on capacity tier."
@@ -39,7 +39,8 @@ def design_sobr(repo: RepoSizing, vin: VeeamInput) -> SobrDesign:
     else:
         cap_fraction = 0.0
 
-    capacity_tier_tb = round(total_repo_tb * cap_fraction, 1)
+    tier_eligible_tb = max(0.0, repo.short_term_data_tb + repo.gfs_repo_tb)
+    capacity_tier_tb = round(tier_eligible_tb * cap_fraction, 1)
     perf_tier_tb = total_repo_tb - capacity_tier_tb
 
     # Performance extents sized against the on-disk (performance) portion only
@@ -64,8 +65,9 @@ def design_sobr(repo: RepoSizing, vin: VeeamInput) -> SobrDesign:
     if capacity_tier_tb > 0:
         rec = (
             f"Recommend SOBR with {extent_count} performance extent(s) (~{extent_size_tb} TB each), "
-            f"and ~{capacity_tier_tb} TB ({int(cap_fraction * 100)}% of total) offloaded to "
-            "capacity tier (object storage). "
+            f"and ~{capacity_tier_tb} TB ({int(cap_fraction * 100)}% of retained/GFS data) "
+            "offloaded to capacity tier (object storage). Operational transformation headroom "
+            "remains on the performance tier. "
         )
         if vin.capacity_tier_immutable:
             rec += "Object-lock immutability enabled on capacity tier. "

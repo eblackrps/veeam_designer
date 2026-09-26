@@ -43,3 +43,23 @@ def test_cost_has_values():
 def test_object_cost_with_capacity_tier():
     c = estimate_costs(_repo(), _sobr(cap_tb=50.0), _vin(capacity_tier_enabled=True))
     assert c.monthly_object_usd > 0
+
+
+def test_cost_model_does_not_emit_fake_provider_or_break_even_precision():
+    result = estimate_costs(_repo(), _sobr(cap_tb=50.0), _vin(capacity_tier_enabled=True))
+
+    assert result.cloud_comparison == {}
+    assert result.three_year_tco == {}
+    assert result.break_even_years == 0.0
+    assert any("planning rates only" in note for note in result.notes)
+
+
+def test_direct_object_cost_assigns_capacity_to_object_not_onprem():
+    result = estimate_costs(
+        _repo(),
+        _sobr(cap_tb=100.0),
+        _vin(repo_type="object", direct_to_object=True),
+    )
+
+    assert result.yearly_onprem_usd == 0.0
+    assert result.monthly_object_usd > 0.0

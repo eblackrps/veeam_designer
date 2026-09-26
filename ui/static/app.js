@@ -25,7 +25,6 @@ const printReportButton = document.getElementById("print-report");
 const FORM_STORAGE_KEY = "veeam-designer-form-v5";
 const EDITOR_STORAGE_KEY = "veeam-designer-yaml-v5";
 const MODE_STORAGE_KEY = "veeam-designer-editor-mode-v5";
-const PRINT_FRAME_ID = "veeam-designer-print-frame";
 
 const browserEngine = {
   loadPromise: null,
@@ -39,6 +38,7 @@ const defaultVmSites = [
     name: "Primary DC",
     total_data_tb: 500,
     annual_growth_percent: 15,
+    years_to_plan_for: 1,
     daily_change_percent: 5,
     primary_retention_days: 30,
     vm_count: 800,
@@ -54,6 +54,8 @@ const defaultVmSites = [
     immutability_enabled: true,
     immutability_days: 30,
     capacity_tier_enabled: true,
+    capacity_tier_percent: 50,
+    capacity_tier_immutable: false,
     direct_to_object: false,
     gfs_weekly_count: 4,
     gfs_monthly_count: 12,
@@ -70,6 +72,7 @@ const defaultVmSites = [
     name: "Regional DR",
     total_data_tb: 180,
     annual_growth_percent: 12,
+    years_to_plan_for: 1,
     daily_change_percent: 4,
     primary_retention_days: 21,
     vm_count: 260,
@@ -85,6 +88,8 @@ const defaultVmSites = [
     immutability_enabled: false,
     immutability_days: 0,
     capacity_tier_enabled: false,
+    capacity_tier_percent: 50,
+    capacity_tier_immutable: false,
     direct_to_object: false,
     gfs_weekly_count: 2,
     gfs_monthly_count: 6,
@@ -190,6 +195,7 @@ function wireEditorButtons() {
     setEditorMode("builder");
     updateYamlFromBuilder();
     saveState();
+    invalidateResultBundle();
   });
   document.getElementById("editor-mode-manual")?.addEventListener("click", () => {
     setEditorMode("manual");
@@ -199,6 +205,7 @@ function wireEditorButtons() {
     setEditorMode("builder");
     updateYamlFromBuilder();
     saveState();
+    invalidateResultBundle();
   });
 }
 
@@ -251,16 +258,12 @@ function wireExportButtons() {
       return;
     }
 
-    if (isStaticRuntime) {
-      downloadTextFile(
-        "veeam-designer-results.csv",
-        currentResultBundle.csv || "",
-        "text/csv;charset=utf-8",
-      );
+    const csv = currentResultBundle.csv || "";
+    if (!csv) {
+      applyError("CSV export is unavailable for the current result.");
       return;
     }
-
-    window.location.href = "/export/csv";
+    downloadTextFile("veeam-designer-results.csv", csv, "text/csv;charset=utf-8");
   });
 
   printReportButton?.addEventListener("click", () => {
@@ -268,12 +271,15 @@ function wireExportButtons() {
       return;
     }
 
-    if (isStaticRuntime) {
-      printBrowserReport(currentResultBundle);
+    if (!isStaticRuntime && currentResultBundle.dashboard) {
+      if (getEditorMode() === "builder") {
+        updateYamlFromBuilder();
+      }
+      openServerReport(yamlEditor.value);
       return;
     }
 
-    window.open("/export/report", "_blank", "noopener");
+    openBrowserReport(currentResultBundle);
   });
 }
 
@@ -298,6 +304,14 @@ function handleMutation() {
   }
   refreshSiteTitles();
   saveState();
+
+  invalidateResultBundle();
+}
+
+function invalidateResultBundle() {
+  if (currentResultBundle) {
+    renderResultBundle(null);
+  }
 }
 
 function restoreState() {
@@ -515,6 +529,7 @@ function collectVmSites() {
     name: getCardValue(card, "name") || `Site ${index + 1}`,
     total_data_tb: getCardNumber(card, "total_data_tb", 0),
     annual_growth_percent: getCardNumber(card, "annual_growth_percent", 0),
+    years_to_plan_for: getCardNumber(card, "years_to_plan_for", 1),
     daily_change_percent: getCardNumber(card, "daily_change_percent", 0),
     primary_retention_days: getCardNumber(card, "primary_retention_days", 30),
     vm_count: getCardNumber(card, "vm_count", 0),
@@ -530,7 +545,10 @@ function collectVmSites() {
     immutability_enabled: getCardChecked(card, "immutability_enabled"),
     immutability_days: getCardNumber(card, "immutability_days", 0),
     capacity_tier_enabled: getCardChecked(card, "capacity_tier_enabled"),
-    direct_to_object: getCardChecked(card, "direct_to_object"),
+    capacity_tier_percent: getCardNumber(card, "capacity_tier_percent", 50),
+    capacity_tier_immutable: getCardChecked(card, "capacity_tier_immutable"),
+    direct_to_object:
+      getCardChecked(card, "direct_to_object") || getCardValue(card, "repo_type") === "object",
     gfs_weekly_count: getCardNumber(card, "gfs_weekly_count", 0),
     gfs_monthly_count: getCardNumber(card, "gfs_monthly_count", 0),
     gfs_yearly_count: getCardNumber(card, "gfs_yearly_count", 0),
@@ -655,6 +673,7 @@ function buildVmSiteYaml(
     "    veeam_input:",
     `      total_data_tb: ${site.total_data_tb}`,
     `      annual_growth_percent: ${site.annual_growth_percent}`,
+    `      years_to_plan_for: ${site.years_to_plan_for}`,
     `      daily_change_percent: ${site.daily_change_percent}`,
     `      backup_type: ${site.backup_type}`,
     `      primary_retention_days: ${site.primary_retention_days}`,
@@ -681,6 +700,8 @@ function buildVmSiteYaml(
     `      immutability_enabled: ${site.immutability_enabled}`,
     `      immutability_days: ${site.immutability_days}`,
     `      capacity_tier_enabled: ${site.capacity_tier_enabled}`,
+    `      capacity_tier_fraction: ${Math.max(0, Math.min(100, site.capacity_tier_percent)) / 100}`,
+    `      capacity_tier_immutable: ${site.capacity_tier_immutable}`,
     `      direct_to_object: ${site.direct_to_object}`,
     `      block_generation_days: ${site.block_generation_days}`,
     `      concurrent_jobs: ${site.concurrent_jobs}`,
@@ -735,7 +756,7 @@ function renderResultBundle(bundle) {
 
   downloadJsonButton.disabled = !hasBundle;
   downloadCsvButton.disabled = !hasBundle;
-  printReportButton.disabled = !hasBundle || (!isStaticRuntime && !bundle?.dashboard);
+  printReportButton.disabled = !hasBundle;
 }
 
 function renderHumanOutput(target, value) {
@@ -806,7 +827,6 @@ function renderDashboard(dashboard) {
         )}
         ${renderMetric("Required WAN", `${formatNumber(site.wan_required_mbps, 1)} Mbps`)}
         ${renderMetric("Yearly On-Prem", formatCurrency(site.yearly_onprem_usd))}
-        ${renderMetric("Break-even", `${formatNumber(site.break_even_years, 1)} years`)}
       </dl>
     `;
     dashboardSites.appendChild(article);
@@ -924,53 +944,66 @@ async function designInBrowser(projectJson) {
   return JSON.parse(bundleJson);
 }
 
-function printBrowserReport(bundle) {
-  applyError("");
-  const frame = getPrintFrame();
-  const markup = buildBrowserReportMarkup(bundle);
-  const onLoad = () => {
-    const frameWindow = frame.contentWindow;
-    if (!frameWindow) {
-      applyError("Unable to prepare the printable report in this browser.");
-      return;
-    }
-
-    window.setTimeout(() => {
-      try {
-        frameWindow.focus();
-        frameWindow.print();
-      } catch (error) {
-        applyError(`Unable to open the printable report: ${normalizeError(error)}`);
-      }
-    }, 50);
-  };
-
-  frame.addEventListener("load", onLoad, { once: true });
-  frame.srcdoc = markup;
+function openReportWindow() {
+  const reportWindow = window.open("about:blank", "_blank");
+  if (!reportWindow) {
+    applyError("The report window was blocked by the browser. Allow pop-ups for this site and try again.");
+    return null;
+  }
+  reportWindow.opener = null;
+  return reportWindow;
 }
 
-function getPrintFrame() {
-  const existingFrame = document.getElementById(PRINT_FRAME_ID);
-  if (existingFrame instanceof HTMLIFrameElement) {
-    return existingFrame;
+function writeReportWindow(reportWindow, markup) {
+  reportWindow.document.open();
+  reportWindow.document.write(markup);
+  reportWindow.document.close();
+  reportWindow.focus();
+}
+
+function openBrowserReport(bundle) {
+  applyError("");
+  const reportWindow = openReportWindow();
+  if (!reportWindow) {
+    return;
   }
 
-  const frame = document.createElement("iframe");
-  frame.id = PRINT_FRAME_ID;
-  frame.title = "Printable Veeam Designer report";
-  frame.setAttribute("aria-hidden", "true");
-  Object.assign(frame.style, {
-    position: "fixed",
-    width: "1px",
-    height: "1px",
-    right: "0",
-    bottom: "0",
-    border: "0",
-    opacity: "0",
-    pointerEvents: "none",
-  });
-  document.body.appendChild(frame);
-  return frame;
+  try {
+    writeReportWindow(reportWindow, buildBrowserReportMarkup(bundle));
+  } catch (error) {
+    reportWindow.close();
+    applyError(`Unable to open the report: ${normalizeError(error)}`);
+  }
+}
+
+function openServerReport(projectText) {
+  applyError("");
+  const reportWindow = openReportWindow();
+  if (!reportWindow) {
+    return;
+  }
+
+  writeReportWindow(
+    reportWindow,
+    "<!doctype html><title>Veeam Designer Report</title><p>Preparing report…</p>",
+  );
+
+  void fetch("/export/report", {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: projectText,
+  })
+    .then(async (response) => {
+      const markup = await response.text();
+      if (!response.ok) {
+        throw new Error(markup || `Report request failed with HTTP ${response.status}`);
+      }
+      writeReportWindow(reportWindow, markup);
+    })
+    .catch((error) => {
+      reportWindow.close();
+      applyError(`Unable to open the report: ${normalizeError(error)}`);
+    });
 }
 
 function buildBrowserReportMarkup(bundle) {
@@ -1017,14 +1050,21 @@ function buildBrowserReportMarkup(bundle) {
   <style>
     body { font-family: Arial, sans-serif; margin: 2rem; color: #102224; }
     h1, h2 { margin-bottom: 0.4rem; }
+    .report-actions { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+    .report-actions button { border: 1px solid #8eaaa3; border-radius: 8px; background: #f7fbf9; color: #102224; padding: 0.65rem 0.9rem; font: inherit; cursor: pointer; }
     .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1.5rem 0; }
     .summary-card, .dashboard-site { border: 1px solid #d7e7e2; border-radius: 14px; padding: 1rem; background: #f7fbf9; }
     .summary-card span { display: block; color: #4d6661; font-size: 0.85rem; }
     .summary-card strong { display: block; margin-top: 0.35rem; font-size: 1.5rem; }
     pre { background: #091617; color: #eff8f2; padding: 1rem; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    @media print {
+      .report-actions { display: none; }
+      body { margin: 0.5in; }
+    }
   </style>
 </head>
 <body>
+  <div class="report-actions"><button type="button" onclick="window.print()">Print / Save PDF</button></div>
   <h1>Veeam Designer ${escapeHtml(bootstrap.version || "")}</h1>
   <p>Generated in the browser-hosted GitHub Pages edition.</p>
   <div class="summary-grid">${summaryMarkup}</div>
@@ -1044,7 +1084,7 @@ function downloadTextFile(filename, content, mimeType) {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function formatNumber(value, digits = 1) {

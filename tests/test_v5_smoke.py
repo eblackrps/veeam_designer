@@ -186,6 +186,27 @@ def test_infrastructure_appliance_proxy_mode_rejects_non_vmware(hypervisor: str)
         )
 
 
+def test_server_result_bundle_exposes_csv_and_stateless_report_is_inline():
+    client = TestClient(app)
+    project = _vm_project("vmware")
+
+    page_response = client.post(
+        "/run",
+        data={"yaml_content": project, "run_blueprint": "1", "run_cost": "1"},
+    )
+    assert page_response.status_code == 200
+    assert '"csv":' in page_response.text
+
+    report_response = client.post(
+        "/export/report",
+        content=project,
+        headers={"Content-Type": "text/plain"},
+    )
+    assert report_response.status_code == 200
+    assert report_response.headers["content-type"].startswith("text/html")
+    assert report_response.headers["content-disposition"].startswith("inline;")
+
+
 def test_api_and_server_report_smoke_for_proxmox():
     client = TestClient(app)
     project = _vm_project("proxmox")
@@ -206,7 +227,11 @@ def test_api_and_server_report_smoke_for_proxmox():
     assert page_response.status_code == 200
     assert "PROXMOX workers" in page_response.text
 
-    report_response = client.get("/export/report")
+    report_response = client.post(
+        "/export/report",
+        content=project,
+        headers={"Content-Type": "text/plain"},
+    )
     assert report_response.status_code == 200
     assert "PROXMOX Workers" in report_response.text
     assert "Backup Server" in report_response.text
@@ -226,6 +251,8 @@ def test_web_builder_exposes_hardened_calculation_inputs():
         "Immutability Period",
         "Concurrent Sources",
         "Forecast Horizon",
+        "Capacity Tier Offload",
+        "Capacity Tier Object Lock",
         "Concurrent Proxy Tasks",
         "CDP Retention",
         "Measured CDP Write I/O",
@@ -320,3 +347,151 @@ def test_cli_smoke_for_proxmox_json_output():
     assert payload["kind"] == "vm"
     assert payload["roles"]["platform_workers"]["platform"] == "proxmox"
     assert payload["roles"]["platform_workers"]["worker_count"] >= 1
+
+
+@pytest.mark.parametrize(
+    ("project", "expected_kind"),
+    [
+        (
+            """workload_type: nas
+source_tb: 10
+share_count: 2
+file_count_millions: 1
+retention_days: 14
+backup_window_hours: 8
+""",
+            "nas",
+        ),
+        (
+            """workload_type: physical
+machine_count: 10
+avg_size_gb: 250
+daily_change_pct: 5
+retention_days: 14
+backup_window_hours: 8
+network_bandwidth_mbps: 1000
+""",
+            "physical",
+        ),
+        (
+            """workload_type: replication
+source_tb: 10
+vm_count: 20
+wan_mbps: 1000
+daily_change_pct: 5
+""",
+            "replication",
+        ),
+    ],
+)
+def test_non_vm_browser_bundles_support_summary_csv_and_printable_content(project, expected_kind):
+    bundle = design_browser_bundle_from_project_text(project, suffix=".yml")
+
+    assert bundle["payload"]["kind"] == expected_kind
+    assert bundle["summary_cards"]
+    assert bundle["csv"].startswith("field,value")
+    assert bundle["blueprint"]
+
+
+def _run_cli_json(*args: str) -> dict:
+    result = subprocess.run(
+        [sys.executable, "-m", "veeam_designer.cli", *args, "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
+def test_cli_vm_hardened_inputs_reach_engine():
+    payload = _run_cli_json(
+        "--total-data-tb",
+        "50",
+        "--daily-change-percent",
+        "5",
+        "--backup-type",
+        "forever_forward_incremental",
+        "--vm-count",
+        "100",
+        "--avg-vm-size-gb",
+        "512",
+        "--years-to-plan-for",
+        "2",
+        "--wan-accel-mode",
+        "direct",
+        "--direct-to-object",
+        "--immutability",
+        "--immutability-days",
+        "30",
+    )
+
+    assert payload["input"]["years_to_plan_for"] == 2
+    assert payload["input"]["wan_accel_mode"] == "direct"
+    assert payload["input"]["direct_to_object"] is True
+    assert payload["input"]["immutability_days"] == 30
+    assert payload["repo"]["operational_headroom_tb"] == 0.0
+    assert payload["roles"]["hardened_repos"] is None
+
+
+def test_cli_nas_hardened_inputs_reach_engine():
+    payload = _run_cli_json(
+        "--workload-type",
+        "nas",
+        "--nas-source-tb",
+        "10",
+        "--nas-concurrent-sources",
+        "3",
+        "--nas-growth-rate-pct",
+        "10",
+        "--nas-forecast-years",
+        "2",
+        "--nas-object-storage",
+        "--immutability",
+    )
+
+    assert payload["input"]["concurrent_sources"] == 3
+    assert payload["input"]["growth_rate_pct"] == 10.0
+    assert payload["input"]["forecast_years"] == 2
+    assert payload["input"]["object_storage"] is True
+    assert payload["input"]["immutability_enabled"] is True
+
+
+def test_cli_physical_concurrency_reaches_engine():
+    payload = _run_cli_json(
+        "--workload-type",
+        "physical",
+        "--machine-count",
+        "20",
+        "--agent-concurrent-tasks",
+        "8",
+    )
+
+    assert payload["input"]["concurrent_tasks"] == 8
+
+
+def test_cli_replication_cdp_inputs_reach_engine():
+    payload = _run_cli_json(
+        "--workload-type",
+        "replication",
+        "--rep-source-tb",
+        "20",
+        "--rep-vm-count",
+        "40",
+        "--rep-wan-mbps",
+        "1000",
+        "--rep-daily-change-pct",
+        "7",
+        "--cdp",
+        "--cdp-rpo-seconds",
+        "15",
+        "--cdp-retention-hours",
+        "12",
+        "--cdp-write-io-mb-s",
+        "250",
+        "--cdp-network-encryption",
+    )
+
+    assert payload["input"]["daily_change_pct"] == 7.0
+    assert payload["input"]["cdp_retention_hours"] == 12.0
+    assert payload["input"]["cdp_write_io_mb_s"] == 250.0
+    assert payload["input"]["cdp_network_encryption"] is True

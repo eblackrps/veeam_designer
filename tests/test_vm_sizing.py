@@ -2,6 +2,7 @@ import pytest
 
 from veeam_designer.models import VeeamInput
 from veeam_designer.sizing import size_repository
+from veeam_designer.sobr import design_sobr
 
 
 def _base_input(**kwargs):
@@ -122,3 +123,48 @@ def test_repo_components_sum_exactly_at_reported_precision():
     result = size_repository(_base_input(gfs_weekly_count=1))
 
     assert result.total_repo_tb == result.primary_repo_tb + result.gfs_repo_tb
+
+
+def test_direct_object_uses_object_capacity_without_disk_headroom():
+    vin = _base_input(
+        backup_type="forever_forward_incremental",
+        repo_type="sobr",
+        direct_to_object=True,
+    )
+
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.short_term_data_tb == 170.0
+    assert repo.operational_headroom_tb == 0.0
+    assert repo.total_repo_tb == 170.0
+    assert sobr.extent_count == 0
+    assert sobr.capacity_tier_tb == 170.0
+
+
+@pytest.mark.parametrize("backup_type", ["reverse_incremental", "synthetic_full_weekly"])
+def test_direct_object_rejects_unsupported_backup_chain_modes(backup_type):
+    with pytest.raises(ValueError, match="object"):
+        size_repository(
+            _base_input(
+                backup_type=backup_type,
+                repo_type="object",
+            )
+        )
+
+
+def test_capacity_tier_fraction_does_not_offload_operational_headroom():
+    vin = _base_input(
+        backup_type="synthetic_full_weekly",
+        capacity_tier_enabled=True,
+        capacity_tier_fraction=0.5,
+    )
+    repo = size_repository(vin)
+    sobr = design_sobr(repo, vin)
+
+    assert repo.short_term_data_tb == 230.0
+    assert repo.operational_headroom_tb == 125.0
+    assert repo.total_repo_tb == 355.0
+    assert sobr.capacity_tier_tb == 115.0
+    assert sobr.extent_count == 2
+    assert sobr.extent_size_tb == 120.0

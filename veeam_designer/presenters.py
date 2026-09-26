@@ -274,8 +274,8 @@ def render_cost_human(payload: JSONDict) -> str:
             "Cost planning assumptions\n"
             f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr\n"
             f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr\n"
-            f"- Modeled break-even: {float(cost.get('break_even_years', 0.0)):.1f} years\n"
-            "- Rates are configuration inputs, not Veeam pricing or live market quotes.\n"
+            "- Rates are configuration inputs, not Veeam pricing or live market quotes. "
+            "No provider comparison or break-even point is inferred.\n"
         )
 
     return "Cost projection is not generated for this calculator mode.\n"

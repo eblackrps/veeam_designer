@@ -32,6 +32,14 @@ def _prompt_str(prompt: str, default: str) -> str:
     return raw or default
 
 
+def _prompt_bool(prompt: str, default: bool = False) -> bool:
+    default_text = "yes" if default else "no"
+    raw = input(f"{prompt} (yes/no) [{default_text}]: ").strip().lower()
+    if not raw:
+        return default
+    return raw in {"y", "yes", "true", "1"}
+
+
 def collect_inputs_interactive() -> VeeamInput:
     print("=== Veeam Environment Input Wizard ===")
     print("Press ENTER to accept defaults. Ctrl+C to bail.\n")
@@ -52,6 +60,9 @@ def collect_inputs_interactive() -> VeeamInput:
         total_overridden = False
 
     annual_growth_percent = _prompt_float("Annual growth (%)", 5.0)
+    years_to_plan_for = _prompt_int(
+        "Capacity growth forecast horizon (years)", int(CONFIG["years_to_plan_for"])
+    )
     daily_change_percent = _prompt_float("Average daily change (%)", 5.0)
 
     backup_type = _prompt_str(
@@ -88,7 +99,28 @@ def collect_inputs_interactive() -> VeeamInput:
         total_data_tb = round(inferred_total_tb, 2)
 
     wan_bandwidth_mbps = _prompt_float("WAN bandwidth for copy/replication (Mbps, 0 = none)", 500.0)
-    repo_type = _prompt_str("Repo type (local_disk / san / sobr / object)", "sobr")
+    wan_accel_mode = _prompt_str(
+        "WAN accelerator mode (auto / direct / low / high)", "auto"
+    ).lower()
+    repo_type = _prompt_str("Repo type (local_disk / san / sobr / object)", "sobr").lower()
+
+    immutability_enabled = _prompt_bool("Enable immutability", False)
+    immutability_days = _prompt_int("Immutability period (days)", 30) if immutability_enabled else 0
+    block_generation_days = (
+        _prompt_int("Object block generation planning days", 10)
+        if immutability_enabled and repo_type == "object"
+        else 10
+    )
+
+    capacity_tier_enabled = False
+    capacity_tier_fraction = 0.5
+    capacity_tier_immutable = False
+    if repo_type == "sobr":
+        capacity_tier_enabled = _prompt_bool("Enable SOBR capacity tier", False)
+        if capacity_tier_enabled:
+            offload_percent = _prompt_float("Capacity tier offload (%)", 50.0)
+            capacity_tier_fraction = max(0.0, min(100.0, offload_percent)) / 100.0
+            capacity_tier_immutable = _prompt_bool("Enable object lock on capacity tier", False)
 
     hypervisor = _prompt_str(
         "Hypervisor (vmware / hyperv / nutanix_ahv / proxmox / agent)", "vmware"
@@ -136,6 +168,7 @@ def collect_inputs_interactive() -> VeeamInput:
     return VeeamInput(
         total_data_tb=total_data_tb,
         annual_growth_percent=annual_growth_percent,
+        years_to_plan_for=years_to_plan_for,
         daily_change_percent=daily_change_percent,
         backup_type=backup_type,
         primary_retention_days=primary_retention_days,
@@ -150,6 +183,7 @@ def collect_inputs_interactive() -> VeeamInput:
         vm_count=vm_count,
         avg_vm_size_gb=avg_vm_size_gb,
         wan_bandwidth_mbps=wan_bandwidth_mbps,
+        wan_accel_mode=wan_accel_mode,
         repo_type=repo_type,
         hypervisor=hypervisor,
         has_san_access=has_san_access,
@@ -160,6 +194,13 @@ def collect_inputs_interactive() -> VeeamInput:
         platform_cluster_count=platform_cluster_count,
         platform_concurrent_tasks=platform_concurrent_tasks,
         worker_task_limit=worker_task_limit,
+        immutability_enabled=immutability_enabled,
+        immutability_days=immutability_days,
+        block_generation_days=block_generation_days,
+        capacity_tier_enabled=capacity_tier_enabled,
+        capacity_tier_fraction=capacity_tier_fraction,
+        capacity_tier_immutable=capacity_tier_immutable,
+        direct_to_object=repo_type == "object",
     )
 
 
@@ -232,7 +273,7 @@ def print_human_summary(d: VeeamDesign) -> None:
     )
     print(f"  Meets target          : {d.network.meets_target}\n")
 
-    print("Cost (rough):")
+    print("Cost planning assumptions:")
     print(f"  Monthly object        : ${d.cost.monthly_object_usd:.2f}")
     print(f"  Yearly object         : ${d.cost.yearly_object_usd:.2f}")
     print(f"  Yearly on-prem        : ${d.cost.yearly_onprem_usd:.2f}\n")

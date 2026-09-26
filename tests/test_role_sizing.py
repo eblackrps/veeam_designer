@@ -265,3 +265,28 @@ def test_infrastructure_appliance_proxy_mode_is_rejected_for_non_vmware_platform
                 proxy_deployment_mode="infrastructure_appliance",
             )
         )
+
+
+def test_direct_object_role_plan_does_not_invent_disk_repo_or_gateway_roles():
+    payload = design_payload_from_project_text(
+        """workload_type: vm
+total_data_tb: 50
+daily_change_percent: 5
+backup_type: forever_forward_incremental
+primary_retention_days: 14
+backup_window_hours: 8
+vm_count: 100
+avg_vm_size_gb: 512
+repo_type: sobr
+direct_to_object: true
+immutability_enabled: false
+hypervisor: vmware
+""",
+        suffix=".yml",
+    )
+
+    assert payload["roles"]["hardened_repos"] is None
+    assert payload["roles"]["gateways"] is None
+    assert all(job["repo_target"] == "object" for job in payload["jobs"])
+    assert payload["risk"]["details"]["immutability"] == 1
+    assert "Vendor appliance node count is not inferred" in payload["notes"]["object_storage"]

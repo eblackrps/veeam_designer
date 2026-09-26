@@ -32,9 +32,6 @@ app = FastAPI(title="Veeam Designer", version=__version__)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-LAST_RESULT_PAYLOAD: Optional[dict[str, Any]] = None
-LAST_DASHBOARD_DATA: Optional[dict[str, Any]] = None
-
 
 def get_default_project_text() -> str:
     """Return the default YAML shown in the editor."""
@@ -76,6 +73,7 @@ def _server_result_bundle(
         "dashboard": build_dashboard_from_payload(payload),
         "blueprint": blueprint_output or render_blueprint_human(payload),
         "cost": cost_output or render_cost_human(payload),
+        "csv": build_csv_from_payload(payload),
     }
 
 
@@ -167,10 +165,6 @@ async def post_run(
             error_message=f"Unable to run the design: {exc}",
         )
 
-    global LAST_RESULT_PAYLOAD, LAST_DASHBOARD_DATA
-    LAST_RESULT_PAYLOAD = payload
-    LAST_DASHBOARD_DATA = build_dashboard_from_payload(payload)
-
     return _render_page(
         request,
         yaml_content=yaml_content,
@@ -181,49 +175,81 @@ async def post_run(
 
 
 @app.get("/export/csv")
-async def export_csv() -> PlainTextResponse:
-    """Export the most recent result payload as CSV."""
+async def export_csv_get() -> None:
+    """Reject legacy stateful GET exports."""
 
-    if LAST_RESULT_PAYLOAD is None:
-        raise HTTPException(status_code=400, detail="No design output is available yet.")
+    raise HTTPException(
+        status_code=405,
+        detail="CSV export is stateless. POST the project YAML to /export/csv or use the UI export button.",
+    )
+
+
+@app.post("/export/csv")
+async def export_csv(yaml_content: str = Body(..., media_type="text/plain")) -> PlainTextResponse:
+    """Render CSV directly from supplied project YAML."""
+
+    if len(yaml_content.encode("utf-8")) > MAX_PROJECT_TEXT_BYTES:
+        raise HTTPException(status_code=413, detail="Project input exceeds the 1 MB limit.")
+
+    try:
+        payload = design_payload_from_project_text(yaml_content, suffix=".yml")
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return PlainTextResponse(
-        content=build_csv_from_payload(LAST_RESULT_PAYLOAD),
+        content=build_csv_from_payload(payload),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=veeam-designer-results.csv"},
     )
 
 
 @app.get("/export/report")
-async def export_report(request: Request) -> PlainTextResponse:
-    """Export a printable HTML report for VM-based dashboards."""
+async def export_report_get() -> None:
+    """Reject legacy stateful GET reports."""
 
-    if LAST_DASHBOARD_DATA is None or LAST_RESULT_PAYLOAD is None:
+    raise HTTPException(
+        status_code=405,
+        detail=(
+            "Server reports are stateless. POST VM or multi-site project YAML to /export/report "
+            "or use the UI Report button."
+        ),
+    )
+
+
+@app.post("/export/report", response_class=HTMLResponse)
+async def export_report(
+    request: Request,
+    yaml_content: str = Body(..., media_type="text/plain"),
+) -> HTMLResponse:
+    """Render a printable HTML report directly from supplied project YAML."""
+
+    if len(yaml_content.encode("utf-8")) > MAX_PROJECT_TEXT_BYTES:
+        raise HTTPException(status_code=413, detail="Project input exceeds the 1 MB limit.")
+
+    try:
+        payload = design_payload_from_project_text(yaml_content, suffix=".yml")
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    dashboard = build_dashboard_from_payload(payload)
+    if dashboard is None:
         raise HTTPException(
-            status_code=400,
-            detail="Printable reports are available after a VM or multi-site design run.",
+            status_code=422,
+            detail="Server-rendered reports require a VM or multi-site design.",
         )
 
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    rendered_response = templates.TemplateResponse(
+    return templates.TemplateResponse(
         request,
         "report.html",
         {
             "request": request,
             "version": __version__,
-            "dashboard": LAST_DASHBOARD_DATA,
-            "result_payload": LAST_RESULT_PAYLOAD,
+            "dashboard": dashboard,
+            "result_payload": payload,
             "generated_at": generated_at,
         },
-    )
-    rendered_body = rendered_response.body
-    if isinstance(rendered_body, memoryview):
-        rendered_body = rendered_body.tobytes()
-    html_content = rendered_body.decode("utf-8")
-    return PlainTextResponse(
-        content=html_content,
-        media_type="text/html",
-        headers={"Content-Disposition": "attachment; filename=veeam-design-report.html"},
+        headers={"Content-Disposition": "inline; filename=veeam-design-report.html"},
     )
 
 

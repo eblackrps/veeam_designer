@@ -330,8 +330,8 @@
         <th>Total Repo (TB)</th>
         <th>Risk Level</th>
         <th>Data Movers</th>
-        <th>Yearly On-Prem Cost</th>
-        <th>Yearly Object Cost</th>
+        <th>Configured On-Prem / Year</th>
+        <th>Configured Object / Year</th>
       </tr>
     </thead>
     <tbody>
@@ -371,7 +371,7 @@
   {% endfor %}
   <p style="font-size:9.5pt;color:#444;margin-top:2mm;">
     Aggregate: <strong>{{ "%.1f" | format(ns.total_repo) }} TB</strong> total repository &nbsp;|&nbsp;
-    <strong>${{ "{:,.0f}".format(ns.total_onprem) }}</strong> estimated yearly on-prem cost across all sites.
+    <strong>${{ "{:,.0f}".format(ns.total_onprem) }}</strong> configured yearly on-prem planning cost across all sites.
   </p>
 </div>
 
@@ -663,18 +663,7 @@
       <span class="clabel">Yearly cost (est.)</span>
       <span class="cval">${{ "{:,.0f}".format(site.yearly_onprem_usd | default(0)) }}</span>
     </div>
-    {% if site.three_year_tco %}
-    <div class="card-row">
-      <span class="clabel">3-year TCO</span>
-      <span class="cval">${{ "{:,.0f}".format(site.three_year_tco.get("on_prem", 0) if site.three_year_tco else 0) }}</span>
-    </div>
-    {% endif %}
-    {% if site.break_even_years %}
-    <div class="card-row">
-      <span class="clabel">Break-even vs cloud</span>
-      <span class="cval">{{ "%.1f" | format(site.break_even_years) }} years</span>
-    </div>
-    {% endif %}
+    <p class="note">Uses configured planning rates only; no live provider pricing or break-even model is inferred.</p>
   </div>
 
   <div class="card">
@@ -693,27 +682,6 @@
     {% endif %}
   </div>
 </div>
-
-{% if site.cloud_comparison %}
-<table class="avoid-break" style="margin-top:2mm;">
-  <thead>
-    <tr><th>Cloud Provider</th><th>Monthly Cost</th><th>Yearly Cost</th></tr>
-  </thead>
-  <tbody>
-    {% for provider, info in site.cloud_comparison.items() %}
-    <tr>
-      <td>{{ provider | title }}</td>
-      <td>
-        {% if info is mapping %}${{ "{:,.0f}".format(info.get("monthly_usd", 0)) }}{% else %}—{% endif %}
-      </td>
-      <td>
-        {% if info is mapping %}${{ "{:,.0f}".format(info.get("yearly_usd", 0)) }}{% else %}—{% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endif %}
 
 {% endfor %}
 

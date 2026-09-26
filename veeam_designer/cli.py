@@ -40,6 +40,12 @@ def build_parser() -> argparse.ArgumentParser:
     # --- VM / common flags ---
     p.add_argument("--total-data-tb", type=float)
     p.add_argument("--annual-growth-percent", type=float, default=0.0)
+    p.add_argument(
+        "--years-to-plan-for",
+        type=int,
+        default=CONFIG["years_to_plan_for"],
+        help="VM capacity growth forecast horizon in years.",
+    )
     p.add_argument("--daily-change-percent", type=float)
     p.add_argument("--backup-type", default="synthetic_full_weekly")
     p.add_argument("--primary-retention-days", type=int, default=30)
@@ -58,6 +64,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--vm-count", type=int, default=0)
     p.add_argument("--avg-vm-size-gb", type=float, default=0.0)
     p.add_argument("--wan-bandwidth-mbps", type=float, default=0.0)
+    p.add_argument(
+        "--wan-accel-mode",
+        choices=["auto", "direct", "low", "high"],
+        default="auto",
+    )
     p.add_argument("--repo-type", default="sobr")
     p.add_argument("--hypervisor", default="vmware")
     p.add_argument("--has-san-access", action="store_true")
@@ -84,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Round 3
     p.add_argument("--no-refs-xfs", action="store_true")
     p.add_argument("--immutability", action="store_true")
+    p.add_argument("--immutability-days", type=int, default=0)
     p.add_argument("--block-generation-days", type=int, default=10)
     # Round 5
     p.add_argument("--capacity-tier", action="store_true")
@@ -95,10 +107,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--nas-source-tb", type=float)
     p.add_argument("--nas-share-count", type=int, default=70)
     p.add_argument("--nas-file-count-millions", type=float, default=1.0)
+    p.add_argument("--nas-concurrent-sources", type=int, default=1)
     p.add_argument("--nas-daily-change-pct", type=float, default=5.0)
     p.add_argument("--nas-retention-days", type=int, default=14)
     p.add_argument("--nas-compress-pct", type=float, default=30.0)
+    p.add_argument("--nas-growth-rate-pct", type=float, default=0.0)
+    p.add_argument("--nas-forecast-years", type=int, default=0)
     p.add_argument("--nas-cft", action="store_true")
+    p.add_argument("--nas-object-storage", action="store_true")
 
     # --- Physical / Agent flags ---
     p.add_argument("--machine-count", type=int, default=0)
@@ -107,14 +123,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--agent-retention-days", type=int, default=14)
     p.add_argument("--agent-os-type", default="windows")
     p.add_argument("--agent-network-mbps", type=float, default=1000.0)
+    p.add_argument("--agent-concurrent-tasks", type=int, default=4)
 
     # --- Replication flags ---
     p.add_argument("--rep-source-tb", type=float)
     p.add_argument("--rep-vm-count", type=int, default=0)
     p.add_argument("--rep-wan-mbps", type=float, default=0.0)
     p.add_argument("--rep-rpo-hours", type=float, default=1.0)
+    p.add_argument("--rep-daily-change-pct", type=float, default=5.0)
     p.add_argument("--cdp", action="store_true")
     p.add_argument("--cdp-rpo-seconds", type=int, default=15)
+    p.add_argument("--cdp-retention-hours", type=float, default=24.0)
+    p.add_argument("--cdp-write-io-mb-s", type=float, default=0.0)
+    p.add_argument("--cdp-network-encryption", action="store_true")
 
     p.add_argument("--json", action="store_true", help="Output JSON")
 
@@ -136,7 +157,7 @@ def _print_agent_summary(design):
     print("\n=== Agent / Physical Sizing ===")
     print(f"  Total repo      : {design.total_repo_tb:.1f} TB")
     print(
-        f"  Coordinator     : {design.coordinator_cores} cores, {design.coordinator_ram_gb} GB RAM"
+        f"  General proxy   : {design.coordinator_cores} cores, {design.coordinator_ram_gb} GB RAM"
     )
     for note in design.notes:
         print(f"  NOTE: {note}")
@@ -145,11 +166,15 @@ def _print_agent_summary(design):
 def _print_replication_summary(design):
     print("\n=== Replication Sizing ===")
     print(f"  Required bandwidth : {design.required_mbps:.1f} Mbps")
-    print(f"  Meets RPO          : {'YES' if design.meets_rpo else 'NO'}")
+    print(f"  WAN carries change : {'YES' if design.meets_rpo else 'NO'}")
     print(f"  Replica storage    : {design.replica_storage_tb:.1f} TB")
-    if design.cdp_proxy_cores:
-        print(f"  CDP proxy cores    : {design.cdp_proxy_cores}")
-        print(f"  CDP journal        : {design.cdp_journal_tb:.2f} TB")
+    if design.cdp_proxy_count_per_side:
+        print(f"  CDP proxies/side   : {design.cdp_proxy_count_per_side}")
+        print(
+            f"  Per CDP proxy      : {design.cdp_proxy_cores} cores, "
+            f"{design.cdp_proxy_ram_gb} GB RAM, {design.cdp_proxy_cache_gb} GB cache"
+        )
+        print(f"  CDP retention      : {design.cdp_journal_tb:.2f} TB")
     for note in design.notes:
         print(f"  NOTE: {note}")
 
@@ -227,11 +252,16 @@ def main():
                 source_tb=args.nas_source_tb,
                 share_count=args.nas_share_count,
                 file_count_millions=args.nas_file_count_millions,
+                concurrent_sources=args.nas_concurrent_sources,
                 daily_change_pct=args.nas_daily_change_pct,
                 backup_window_hours=args.backup_window_hours,
                 retention_days=args.nas_retention_days,
                 compress_pct=args.nas_compress_pct,
+                growth_rate_pct=args.nas_growth_rate_pct,
+                forecast_years=args.nas_forecast_years,
                 storage_native_cft=args.nas_cft,
+                immutability_enabled=args.immutability,
+                object_storage=args.nas_object_storage,
             )
             design = size_nas(nin)
             if args.json:
@@ -251,6 +281,7 @@ def main():
                 retention_days=args.agent_retention_days,
                 os_type=args.agent_os_type,
                 network_bandwidth_mbps=args.agent_network_mbps,
+                concurrent_tasks=args.agent_concurrent_tasks,
             )
             design = size_agent(ain)
             if args.json:
@@ -267,8 +298,12 @@ def main():
                 vm_count=args.rep_vm_count,
                 wan_mbps=args.rep_wan_mbps,
                 rpo_hours=args.rep_rpo_hours,
+                daily_change_pct=args.rep_daily_change_pct,
                 cdp_enabled=args.cdp,
                 rpo_seconds=args.cdp_rpo_seconds,
+                cdp_retention_hours=args.cdp_retention_hours,
+                cdp_write_io_mb_s=args.cdp_write_io_mb_s,
+                cdp_network_encryption=args.cdp_network_encryption,
             )
             design = size_replication(rin)
             if args.json:
@@ -284,6 +319,7 @@ def main():
             vin = VeeamInput(
                 total_data_tb=args.total_data_tb,
                 annual_growth_percent=args.annual_growth_percent,
+                years_to_plan_for=args.years_to_plan_for,
                 daily_change_percent=args.daily_change_percent,
                 backup_type=args.backup_type,
                 primary_retention_days=args.primary_retention_days,
@@ -298,6 +334,7 @@ def main():
                 vm_count=args.vm_count,
                 avg_vm_size_gb=args.avg_vm_size_gb,
                 wan_bandwidth_mbps=args.wan_bandwidth_mbps,
+                wan_accel_mode=args.wan_accel_mode,
                 repo_type=args.repo_type,
                 hypervisor=args.hypervisor,
                 has_san_access=args.has_san_access,
@@ -314,6 +351,7 @@ def main():
                 v13_appliance=not args.no_v13_appliance,
                 refs_xfs=not args.no_refs_xfs,
                 immutability_enabled=args.immutability,
+                immutability_days=args.immutability_days,
                 block_generation_days=args.block_generation_days,
                 capacity_tier_enabled=args.capacity_tier,
                 capacity_tier_fraction=args.capacity_tier_fraction,

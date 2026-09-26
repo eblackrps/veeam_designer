@@ -5,6 +5,45 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a5] - 2026-09-25
+
+### Fixed
+
+- Replaced the browser report button's hidden-iframe print path with a user-gesture report window
+  that works reliably across desktop and mobile browsers and includes an explicit Print / Save PDF
+  action
+- Removed shared process-global export state; CSV and server-rendered report endpoints are now
+  stateless and operate only on the project YAML supplied with each request
+- Exposed the VM forecast horizon so annual growth no longer relies on an invisible engine default
+- Unified generic object-repository and Direct-to-Object behavior across repository capacity,
+  performance, SOBR, and cost planning
+- Prevented unsupported reverse-incremental and independently scheduled synthetic-full chain modes
+  from being modeled as valid direct-object designs
+- Corrected capacity-tier offload so only retained/GFS backup data is tier-eligible; local
+  transformation headroom is no longer incorrectly offloaded
+- Removed stale fixed-capacity Object First auto-sizing and the fabricated immutability overhead
+  percentage; Object First helper sizing now requires an explicit current node capacity
+- Removed hardcoded provider-price comparisons and calculated cloud break-even output that looked
+  more precise than the configured planning inputs support
+- Removed stale unused GFS/pricing configuration knobs and aligned fallback configuration with the
+  packaged runtime configuration
+
+### Changed
+
+- Added explicit Capacity Tier Offload and Capacity Tier Object Lock controls to the VM builder
+- Normalized JSON, CSV, and report export behavior around the current result bundle and invalidate
+  stale exports immediately when any design input changes
+- Preserved the full server-rendered VM report for Docker/local deployments while Pages and
+  non-VM modes use the browser printable report
+- Brought CLI and interactive VM sizing inputs into parity with the hardened engine, including
+  forecast horizon, immutability duration, WAN mode, NAS/Agent concurrency, and CDP retention/I/O
+- Stopped inferring hardened-repository or gateway-server roles for generic/direct object targets;
+  direct vs gateway-mediated object access remains an explicit architecture decision
+- Reports now identify cost figures as configured planning rates instead of live provider pricing
+- Added regression coverage for browser report behavior, stateless exports, object-target chain
+  validation, capacity-tier math, Object First explicit sizing, all workload browser bundles, and
+  removal of fake pricing precision
+
 ## [5.0.0a4] - 2026-09-25
 
 ### Fixed

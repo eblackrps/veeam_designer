@@ -9,7 +9,7 @@ capacity, WAN, risk, and cost guidance.
 
 **Live calculator:** https://eblackrps.github.io/veeam_designer/
 
-Current development line: **5.0.0a4**
+Current development line: **5.0.0a5**
 
 ## What It Sizes
 
@@ -107,6 +107,8 @@ The FastAPI deployment exposes:
 - `GET /api/health`
 - `GET /api/profiles`
 - `POST /api/design`
+- `POST /export/csv`
+- `POST /export/report` for VM or multi-site YAML
 
 Example:
 
