@@ -79,6 +79,9 @@ Pushing to `main`:
 
 - runs the full CI matrix on Python 3.10, 3.11, and 3.12
 - validates browser JavaScript syntax
+- audits Python dependencies for known vulnerabilities
+- builds and smoke-tests the container as non-root with the hardened runtime controls
+- scans the candidate container for fixable HIGH and CRITICAL OS/library vulnerabilities
 - rebuilds and deploys GitHub Pages
 - rebuilds and pushes Docker images to both registries as `latest` and the package version
   (for example, `5.0.0a4`)
