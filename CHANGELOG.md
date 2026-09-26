@@ -31,7 +31,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 ### Changed
 
 - Added explicit Capacity Tier Offload and Capacity Tier Object Lock controls to the VM builder
-- Normalized JSON, CSV, and report export behavior around the current result bundle
+- Normalized JSON, CSV, and report export behavior around the current result bundle and invalidate
+  stale exports immediately when any design input changes
+- Preserved the full server-rendered VM report for Docker/local deployments while Pages and
+  non-VM modes use the browser printable report
+- Brought CLI and interactive VM sizing inputs into parity with the hardened engine, including
+  forecast horizon, immutability duration, WAN mode, NAS/Agent concurrency, and CDP retention/I/O
+- Stopped inferring hardened-repository or gateway-server roles for generic/direct object targets;
+  direct vs gateway-mediated object access remains an explicit architecture decision
 - Reports now identify cost figures as configured planning rates instead of live provider pricing
 - Added regression coverage for browser report behavior, stateless exports, object-target chain
   validation, capacity-tier math, Object First explicit sizing, all workload browser bundles, and

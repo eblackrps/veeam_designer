@@ -268,6 +268,15 @@ function wireExportButtons() {
     if (!currentResultBundle) {
       return;
     }
+
+    if (!isStaticRuntime && currentResultBundle.dashboard) {
+      if (getEditorMode() === "builder") {
+        updateYamlFromBuilder();
+      }
+      openServerReport(yamlEditor.value);
+      return;
+    }
+
     openBrowserReport(currentResultBundle);
   });
 }
@@ -293,6 +302,10 @@ function handleMutation() {
   }
   refreshSiteTitles();
   saveState();
+
+  if (currentResultBundle) {
+    renderResultBundle(null);
+  }
 }
 
 function restoreState() {
@@ -925,24 +938,66 @@ async function designInBrowser(projectJson) {
   return JSON.parse(bundleJson);
 }
 
-function openBrowserReport(bundle) {
-  applyError("");
+function openReportWindow() {
   const reportWindow = window.open("about:blank", "_blank");
   if (!reportWindow) {
     applyError("The report window was blocked by the browser. Allow pop-ups for this site and try again.");
+    return null;
+  }
+  reportWindow.opener = null;
+  return reportWindow;
+}
+
+function writeReportWindow(reportWindow, markup) {
+  reportWindow.document.open();
+  reportWindow.document.write(markup);
+  reportWindow.document.close();
+  reportWindow.focus();
+}
+
+function openBrowserReport(bundle) {
+  applyError("");
+  const reportWindow = openReportWindow();
+  if (!reportWindow) {
     return;
   }
 
   try {
-    reportWindow.opener = null;
-    reportWindow.document.open();
-    reportWindow.document.write(buildBrowserReportMarkup(bundle));
-    reportWindow.document.close();
-    reportWindow.focus();
+    writeReportWindow(reportWindow, buildBrowserReportMarkup(bundle));
   } catch (error) {
     reportWindow.close();
     applyError(`Unable to open the report: ${normalizeError(error)}`);
   }
+}
+
+function openServerReport(projectText) {
+  applyError("");
+  const reportWindow = openReportWindow();
+  if (!reportWindow) {
+    return;
+  }
+
+  writeReportWindow(
+    reportWindow,
+    "<!doctype html><title>Veeam Designer Report</title><p>Preparing report…</p>",
+  );
+
+  void fetch("/export/report", {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: projectText,
+  })
+    .then(async (response) => {
+      const markup = await response.text();
+      if (!response.ok) {
+        throw new Error(markup || `Report request failed with HTTP ${response.status}`);
+      }
+      writeReportWindow(reportWindow, markup);
+    })
+    .catch((error) => {
+      reportWindow.close();
+      applyError(`Unable to open the report: ${normalizeError(error)}`);
+    });
 }
 
 function buildBrowserReportMarkup(bundle) {

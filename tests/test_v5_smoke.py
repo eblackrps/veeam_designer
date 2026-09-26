@@ -391,3 +391,107 @@ def test_non_vm_browser_bundles_support_summary_csv_and_printable_content(projec
     assert bundle["summary_cards"]
     assert bundle["csv"].startswith("field,value")
     assert bundle["blueprint"]
+
+
+def _run_cli_json(*args: str) -> dict:
+    result = subprocess.run(
+        [sys.executable, "-m", "veeam_designer.cli", *args, "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
+def test_cli_vm_hardened_inputs_reach_engine():
+    payload = _run_cli_json(
+        "--total-data-tb",
+        "50",
+        "--daily-change-percent",
+        "5",
+        "--backup-type",
+        "forever_forward_incremental",
+        "--vm-count",
+        "100",
+        "--avg-vm-size-gb",
+        "512",
+        "--years-to-plan-for",
+        "2",
+        "--wan-accel-mode",
+        "direct",
+        "--direct-to-object",
+        "--immutability",
+        "--immutability-days",
+        "30",
+    )
+
+    assert payload["input"]["years_to_plan_for"] == 2
+    assert payload["input"]["wan_accel_mode"] == "direct"
+    assert payload["input"]["direct_to_object"] is True
+    assert payload["input"]["immutability_days"] == 30
+    assert payload["repo"]["operational_headroom_tb"] == 0.0
+    assert payload["roles"]["hardened_repos"] is None
+
+
+def test_cli_nas_hardened_inputs_reach_engine():
+    payload = _run_cli_json(
+        "--workload-type",
+        "nas",
+        "--nas-source-tb",
+        "10",
+        "--nas-concurrent-sources",
+        "3",
+        "--nas-growth-rate-pct",
+        "10",
+        "--nas-forecast-years",
+        "2",
+        "--nas-object-storage",
+        "--immutability",
+    )
+
+    assert payload["input"]["concurrent_sources"] == 3
+    assert payload["input"]["growth_rate_pct"] == 10.0
+    assert payload["input"]["forecast_years"] == 2
+    assert payload["input"]["object_storage"] is True
+    assert payload["input"]["immutability_enabled"] is True
+
+
+def test_cli_physical_concurrency_reaches_engine():
+    payload = _run_cli_json(
+        "--workload-type",
+        "physical",
+        "--machine-count",
+        "20",
+        "--agent-concurrent-tasks",
+        "8",
+    )
+
+    assert payload["input"]["concurrent_tasks"] == 8
+
+
+def test_cli_replication_cdp_inputs_reach_engine():
+    payload = _run_cli_json(
+        "--workload-type",
+        "replication",
+        "--rep-source-tb",
+        "20",
+        "--rep-vm-count",
+        "40",
+        "--rep-wan-mbps",
+        "1000",
+        "--rep-daily-change-pct",
+        "7",
+        "--cdp",
+        "--cdp-rpo-seconds",
+        "15",
+        "--cdp-retention-hours",
+        "12",
+        "--cdp-write-io-mb-s",
+        "250",
+        "--cdp-network-encryption",
+    )
+
+    assert payload["input"]["daily_change_pct"] == 7.0
+    assert payload["input"]["cdp_retention_hours"] == 12.0
+    assert payload["input"]["cdp_write_io_mb_s"] == 250.0
+    assert payload["input"]["cdp_network_encryption"] is True

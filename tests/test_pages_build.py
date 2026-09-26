@@ -36,6 +36,8 @@ def test_build_pages_outputs_static_site(tmp_path, monkeypatch):
     assert (output_dir / "assets" / fake_wheel.name).exists()
     assert "veeam-designer-print-frame" not in app_js
     assert 'window.open("about:blank", "_blank")' in app_js
+    assert 'fetch("/export/report"' in app_js
+    assert "renderResultBundle(null)" in app_js
     assert "Print / Save PDF" in app_js
     assert "frame.srcdoc = markup;" not in app_js
     assert "platform_concurrent_tasks" in app_js

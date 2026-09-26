@@ -355,6 +355,10 @@ Object First appliance node count is not inferred from a generic object target. 
 hardware is available in multiple usable-capacity models, so the optional helper requires an
 explicit node capacity and adds no fabricated immutability percentage.
 
+Object-storage role planning does not automatically create a hardened repository host or gateway.
+Veeam supports direct data-mover access to object storage as well as gateway-mediated access; the
+calculator does not invent that topology without an explicit project input.
+
 ### Cost planning
 
 The infrastructure-cost model is configuration-driven. object_cost_usd_per_tb_month and
