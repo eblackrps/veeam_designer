@@ -195,6 +195,7 @@ function wireEditorButtons() {
     setEditorMode("builder");
     updateYamlFromBuilder();
     saveState();
+    invalidateResultBundle();
   });
   document.getElementById("editor-mode-manual")?.addEventListener("click", () => {
     setEditorMode("manual");
@@ -204,6 +205,7 @@ function wireEditorButtons() {
     setEditorMode("builder");
     updateYamlFromBuilder();
     saveState();
+    invalidateResultBundle();
   });
 }
 
@@ -303,6 +305,10 @@ function handleMutation() {
   refreshSiteTitles();
   saveState();
 
+  invalidateResultBundle();
+}
+
+function invalidateResultBundle() {
   if (currentResultBundle) {
     renderResultBundle(null);
   }
