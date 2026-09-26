@@ -38,6 +38,14 @@ def estimate_costs(repo: RepoSizing, sobr: SobrDesign, vin: VeeamInput) -> CostE
             f"{local_tb:.1f} TB local capacity at " + "$" + f"{onprem_rate:.2f}/modeled-TB/year."
         )
 
+    if vin.capacity_tier_immutable and object_tb > 0:
+        notes.append(
+            "Capacity Tier Object Lock is enabled. The object-storage dollar figure is a base "
+            "footprint estimate and does not predict extra billed blocks that remain immutable "
+            "after job retention. If immutability exceeds effective retention, actual object "
+            "storage cost can be higher."
+        )
+
     if policy == "copy":
         notes.append(
             "Capacity Tier Copy is additive for storage planning: the copied object footprint "

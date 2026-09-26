@@ -5,6 +5,22 @@ All notable changes to Veeam Designer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [5.0.0a7] - 2026-09-25
+
+### Fixed
+
+- Capacity Tier Object Lock cost output now explicitly identifies itself as a base object-storage
+  footprint when immutability can preserve expired blocks beyond job retention
+- Browser cost summaries now surface engine cost notes so immutability and excluded-cost guardrails
+  are visible outside the full report
+
+### Changed
+
+- Immutable Capacity Tier estimates warn that actual billed object storage can exceed the modeled
+  footprint when the repository immutability window extends beyond effective retention
+- No extra immutability percentage is invented; the calculator preserves the verified base storage
+  calculation and labels the unmodeled carryover instead
+
 ## [5.0.0a6] - 2026-09-25
 
 ### Fixed

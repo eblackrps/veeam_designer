@@ -385,6 +385,14 @@ provider-specific API charges, retrieval/egress, minimum-storage-duration charge
 purchase cost, support, power, rack space, discounts, or cloud break-even. Use a fully burdened
 local-storage rate and an effective object-storage rate if those costs need to be represented.
 
+When Capacity Tier Object Lock is enabled, the displayed object-storage cost is the base modeled
+backup footprint. Veeam can retain immutable blocks after job retention has expired, and Veeam
+warns that an immutability period longer than job retention can create extra charges. The
+calculator does not invent an uplift for this because the exact carryover depends on block age,
+immutability settings, block generation, GFS behavior, and provider billing. Include that effect in
+the effective object-storage rate or validate against observed bucket growth for budget-grade
+estimates.
+
 ## Remaining Planning Assumptions
 
 The following values still require engineering judgment or environment-specific evidence:

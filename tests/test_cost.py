@@ -142,3 +142,20 @@ def test_cost_model_does_not_emit_fake_provider_or_break_even_precision():
     assert result.break_even_years == 0.0
     assert any("not live" in note for note in result.notes)
     assert any("retrieval/egress" in note for note in result.notes)
+
+
+
+def test_capacity_tier_object_lock_marks_cost_as_base_footprint():
+    result = estimate_costs(
+        _repo(),
+        _sobr(capacity_tb=100.0, performance_tb=100.0, policy="copy"),
+        _vin(
+            capacity_tier_enabled=True,
+            capacity_tier_policy="copy",
+            capacity_tier_immutable=True,
+        ),
+    )
+
+    assert result.total_yearly_usd == 26000.0
+    assert any("base footprint estimate" in note for note in result.notes)
+    assert any("actual object storage cost can be higher" in note for note in result.notes)
