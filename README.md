@@ -9,7 +9,7 @@ capacity, WAN, risk, and cost guidance.
 
 **Live calculator:** https://eblackrps.github.io/veeam_designer/
 
-Current development line: **5.0.0a9**
+Current stable release: **5.0.0**
 
 ## What It Sizes
 
@@ -54,15 +54,21 @@ Open `http://127.0.0.1:8000/run`.
 
 ### Docker
 
-```bash
-docker run --rm -p 8000:8000 emb079/veeam-designer:latest
-```
-
-Or build the repository locally:
+For production, deploy an explicit release tag with the hardened runtime controls:
 
 ```bash
-docker compose up --build
+docker run --rm \
+  --read-only \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --pids-limit 256 \
+  --tmpfs /tmp:size=64m,mode=1777 \
+  -p 127.0.0.1:8000:8000 \
+  emb079/veeam-designer:5.0.0
 ```
+
+The same release is published as `ghcr.io/eblackrps/veeam-designer:5.0.0`. The Compose file also
+defaults to the stable `5.0.0` image and can be overridden with `VEEAM_DESIGNER_IMAGE`.
 
 Open `http://localhost:8000/run`.
 
@@ -164,7 +170,7 @@ Install the development dependencies:
 python -m pip install -e ".[dev]"
 ```
 
-Run the same validation gates used by CI:
+Run the same core validation gates used by CI:
 
 ```bash
 python -m ruff check .
@@ -175,6 +181,10 @@ python -m pytest -q
 python -m build
 python tools/build_pages.py --output _site
 ```
+
+Browser E2E coverage is maintained separately with Playwright and exercises all workload modes,
+JSON/CSV exports, report generation, and a mobile viewport. CI also runs dependency auditing,
+dependency-review, CodeQL, hardened-container smoke tests, and container vulnerability scanning.
 
 ## Repository Layout
 
@@ -196,6 +206,14 @@ example-project.yml
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 - [Security](SECURITY.md)
+
+## Project Status
+
+Veeam Designer is an independent community project. It is not affiliated with or endorsed by
+Veeam Software. Veeam and related marks are the property of their respective owners.
+
+The calculator provides engineering sizing guidance rather than vendor-certified sizing. Review
+environment-specific assumptions and current vendor documentation before implementation.
 
 ## License
 
