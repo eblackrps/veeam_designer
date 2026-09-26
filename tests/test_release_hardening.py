@@ -52,4 +52,5 @@ def test_independent_project_notice_is_present_on_public_surfaces() -> None:
         "ui/templates/report.html",
         "ui/static/app.js",
     ):
-        assert notice in (ROOT / relative_path).read_text(encoding="utf-8")
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert notice in " ".join(text.split())
