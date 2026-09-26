@@ -275,14 +275,14 @@ def render_cost_human(payload: JSONDict) -> str:
 
     if kind == "vm":
         cost = payload.get("cost") or {}
-        return (
-            "Cost planning assumptions\n"
-            f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr\n"
-            f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr\n"
-            f"- Total storage planning estimate: ${float(cost.get('total_yearly_usd', 0.0)):,.0f}/yr\n"
-            "- Rates are explicit storage-planning inputs, not Veeam pricing or live market quotes. "
-            "No provider comparison or break-even point is inferred.\n"
-        )
+        lines = [
+            "Cost planning assumptions",
+            f"- Configured on-prem estimate: ${float(cost.get('yearly_onprem_usd', 0.0)):,.0f}/yr",
+            f"- Configured object estimate: ${float(cost.get('yearly_object_usd', 0.0)):,.0f}/yr",
+            f"- Total storage planning estimate: ${float(cost.get('total_yearly_usd', 0.0)):,.0f}/yr",
+        ]
+        lines.extend(f"- {note}" for note in (cost.get("notes") or []))
+        return "\n".join(lines) + "\n"
 
     return "Cost projection is not generated for this calculator mode.\n"
 
