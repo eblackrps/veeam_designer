@@ -109,7 +109,6 @@ def test_vm_summary_uses_total_storage_planning_cost_for_direct_object():
     assert summary["Storage Planning/yr"] != "$0"
 
 
-
 def test_vm_cost_summary_surfaces_immutability_cost_guardrail():
     project_json = """
     {

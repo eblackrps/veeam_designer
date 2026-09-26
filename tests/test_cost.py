@@ -144,7 +144,6 @@ def test_cost_model_does_not_emit_fake_provider_or_break_even_precision():
     assert any("retrieval/egress" in note for note in result.notes)
 
 
-
 def test_capacity_tier_object_lock_marks_cost_as_base_footprint():
     result = estimate_costs(
         _repo(),
