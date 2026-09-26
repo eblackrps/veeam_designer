@@ -263,9 +263,14 @@ def render_cost_human(payload: JSONDict) -> str:
             )
         lines.append(f"- Total configured on-prem: ${total_on_prem:,.0f}/yr")
         lines.append(f"- Total configured object: ${total_object:,.0f}/yr")
-        lines.append(
-            "- These are configured planning rates, not Veeam quotes or live market pricing."
-        )
+        seen_notes: set[str] = set()
+        for site in payload.get("sites", []):
+            cost = (site.get("design") or {}).get("cost") or {}
+            for note in cost.get("notes") or []:
+                note_text = str(note).strip()
+                if note_text and note_text not in seen_notes:
+                    seen_notes.add(note_text)
+                    lines.append(f"- {note_text}")
         return "\n".join(lines) + "\n"
 
     if kind == "vm":
