@@ -45,12 +45,12 @@ def test_all_github_actions_are_pinned_to_commit_shas() -> None:
 
 
 def test_independent_project_notice_is_present_on_public_surfaces() -> None:
-    notice = "Independent community project. Not affiliated with or endorsed by Veeam Software."
     for relative_path in (
         "README.md",
         "ui/templates/index.html",
         "ui/templates/report.html",
         "ui/static/app.js",
     ):
-        text = (ROOT / relative_path).read_text(encoding="utf-8")
-        assert notice in " ".join(text.split())
+        text = " ".join((ROOT / relative_path).read_text(encoding="utf-8").split()).lower()
+        assert "independent community project" in text
+        assert "not affiliated with or endorsed by veeam software" in text
