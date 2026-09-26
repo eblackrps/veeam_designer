@@ -209,6 +209,7 @@ def test_orw_changes_cost_without_any_move_fraction_input():
     assert seven_cost.total_yearly_usd == 20300.0
     assert zero_cost.total_yearly_usd == 22500.0
 
+
 def test_capacity_tier_object_lock_marks_cost_as_base_footprint():
     result = estimate_costs(
         _repo(),
