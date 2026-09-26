@@ -365,9 +365,7 @@ def _build_dashboard_site(design_payload: JSONDict, name: str) -> JSONDict:
         "capacity_tier_policy": str(sobr.get("capacity_tier_policy", "none")),
         "performance_tier_tb": float(sobr.get("performance_tier_tb", 0.0)),
         "moved_to_capacity_tb": float(sobr.get("moved_to_capacity_tb", 0.0)),
-        "operational_restore_window_days": int(
-            sobr.get("operational_restore_window_days", 0)
-        ),
+        "operational_restore_window_days": int(sobr.get("operational_restore_window_days", 0)),
         "move_eligible_short_term_tb": float(sobr.get("move_eligible_short_term_tb", 0.0)),
         "move_model_basis": str(sobr.get("move_model_basis", "")),
         "cloud_comparison": cost.get("cloud_comparison", {}) or {},
