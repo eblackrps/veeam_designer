@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# The optional Playwright import intentionally follows pytest.importorskip.
+# ruff: noqa: I001
+
 import pytest
 
 try:
