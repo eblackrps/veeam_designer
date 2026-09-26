@@ -2,7 +2,12 @@
 
 ## Supported Versions
 
-The latest published release line is supported for security fixes and critical correctness issues.
+| Version | Supported |
+| --- | --- |
+| 5.0.x | Yes |
+| < 5.0 | No |
+
+The current stable 5.0.x line receives security fixes and critical correctness fixes.
 
 ## Reporting a Vulnerability
 
