@@ -50,8 +50,8 @@ veeam-designer-web = "ui.main:run"
 dev = [
   "build>=1.2,<2",
   "httpx>=0.27,<1",
-  "mypy>=1.11,<2",
-  "pytest>=8,<9",
+  "mypy>=1.11,<3",
+  "pytest>=8,<10",
   "ruff>=0.6,<1",
 ]
 e2e = [
